@@ -1,0 +1,87 @@
+# ─── Environment / secrets ─────────────────────────────────────
+# .env is gitignored; .env.example IS tracked as the template.
+.env
+.env.*
+!.env.example
+.envrc
+
+# Credential material — never commit any of these
+secrets/
+*.pem
+*.key
+*.crt
+*.p12
+
+# ─── Python ────────────────────────────────────────────────────
+.venv/
+venv/
+env/
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+
+# Packaging
+dist/
+build/
+*.egg-info/
+*.egg
+
+# Test & type caches
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.tox/
+
+# Coverage
+.coverage
+.coverage.*
+htmlcov/
+coverage.xml
+
+# ─── Storage (runtime, generated) ──────────────────────────────
+storage/
+*.db
+*.sqlite
+*.sqlite3
+
+# Chroma
+chroma/
+.chroma/
+
+# HuggingFace / sentence-transformers local cache spillage
+.cache/
+
+# ─── Evaluation output (large; keep folder via .gitkeep) ───────
+evaluation/results/*.json
+evaluation/results/*.csv
+evaluation/results/*.jsonl
+!evaluation/results/.gitkeep
+
+# ─── OS ────────────────────────────────────────────────────────
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# ─── Editors / IDEs ────────────────────────────────────────────
+.vscode/
+.idea/
+.zed/
+*.swp
+*.swo
+*~
+*.bak
+*.orig
+
+# ─── Notebooks ─────────────────────────────────────────────────
+.ipynb_checkpoints/
+
+# ─── Logs ──────────────────────────────────────────────────────
+*.log
+logs/
+
+# ─── Local cleanup / scratch ───────────────────────────────────
+_to_delete/
+_scratch/
+NOTES.local.md
