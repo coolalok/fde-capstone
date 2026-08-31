@@ -14,13 +14,15 @@ import warnings
 from collections import defaultdict
 from pathlib import Path
 
-# Silence LangChain deprecation noise
+# Silence LangChain deprecation noise. Must happen before the langchain
+# imports below or the warnings still fire during import — hence the E402
+# noqa on those imports.
 warnings.filterwarnings("ignore", category=DeprecationWarning)
 
-from langchain_community.vectorstores import Chroma
-from langchain_community.embeddings import HuggingFaceEmbeddings
+from langchain_community.vectorstores import Chroma  # noqa: E402
+from langchain_community.embeddings import HuggingFaceEmbeddings  # noqa: E402
 
-from src.config import CHROMA_PATH, EMBEDDING_MODEL
+from src.config import CHROMA_PATH, EMBEDDING_MODEL  # noqa: E402
 
 ROOT = Path(__file__).parent.parent
 DEV = ROOT / "data" / "development_tickets.json"
@@ -113,7 +115,7 @@ def main() -> int:
     print(f"[d02] wrote {OUT}")
 
     print("\n" + "=" * 60)
-    print(f"DENSE (all-MiniLM-L6-v2)  vs  TF-IDF baseline")
+    print("DENSE (all-MiniLM-L6-v2)  vs  TF-IDF baseline")
     print("=" * 60)
     for k in ("hit@1", "hit@3", "hit@5"):
         d = overall[k]
@@ -126,22 +128,24 @@ def main() -> int:
     print("D-02 REVISIT VERDICT")
     print("=" * 60)
     dense_h3 = overall["hit@3"]
-    if dense_h3 >= TF_IDF_BASELINE["hit@3"]:
-        print(f"  Dense hit@3 ({dense_h3:.3f}) matches or beats TF-IDF ({TF_IDF_BASELINE['hit@3']:.3f}).")
-        print(f"  D-02 stays as-is: all-MiniLM-L6-v2 is a valid choice.")
-    elif dense_h3 >= TF_IDF_BASELINE["hit@3"] - 0.03:
-        print(f"  Dense hit@3 ({dense_h3:.3f}) within 3pp of TF-IDF ({TF_IDF_BASELINE['hit@3']:.3f}).")
-        print(f"  D-02 stays as-is with a note. Semantic search buys us nothing on this corpus but doesn't hurt.")
+    tfidf_h3 = TF_IDF_BASELINE["hit@3"]
+    if dense_h3 >= tfidf_h3:
+        print(f"  Dense hit@3 ({dense_h3:.3f}) matches or beats TF-IDF ({tfidf_h3:.3f}).")
+        print("  D-02 stays as-is: all-MiniLM-L6-v2 is a valid choice.")
+    elif dense_h3 >= tfidf_h3 - 0.03:
+        print(f"  Dense hit@3 ({dense_h3:.3f}) within 3pp of TF-IDF ({tfidf_h3:.3f}).")
+        print("  D-02 stays as-is with a note.")
+        print("  Semantic search buys us nothing on this corpus but doesn't hurt.")
     else:
-        print(f"  Dense hit@3 ({dense_h3:.3f}) UNDER-performs TF-IDF ({TF_IDF_BASELINE['hit@3']:.3f}) by more than 3pp.")
-        print(f"  D-02 needs a supersession ADR. Options: BGE embedder, hybrid dense+sparse, TF-IDF fallback.")
+        print(f"  Dense hit@3 ({dense_h3:.3f}) UNDER-performs TF-IDF ({tfidf_h3:.3f}) by >3pp.")
+        print("  D-02 needs a supersession ADR.")
+        print("  Options: BGE embedder, hybrid dense+sparse, TF-IDF fallback.")
 
     print("\n" + "=" * 60)
     print("PER-INTENT hit@3 (weakest 5)")
     print("=" * 60)
     weakest = sorted(result["by_intent"].items(), key=lambda x: x[1]["hit@3"])[:5]
     for intent, stats in weakest:
-        tfidf_hit = None  # would need q3 pilot result loaded
         print(f"  {intent:<28} n={stats['n']:>3}  hit@3={stats['hit@3']:.3f}")
 
     return 0

@@ -161,7 +161,9 @@ for strategy_name, chunker in strategies.items():
             r1 = int(bool(set(top5[:1]) & expected))
             r3 = int(bool(set(top5[:3]) & expected))
             r5 = int(bool(set(top5[:5]) & expected))
-            h1 += r1; h3 += r3; h5 += r5
+            h1 += r1
+            h3 += r3
+            h5 += r5
             per_ticket.append({
                 "ticket_id": t["ticket_id"],
                 "intent": t["labels"]["intent"],
@@ -207,7 +209,12 @@ for strategy_name, chunker in strategies.items():
 
         cfg_name = f"{strategy_name}_{retriever_name}"
         results_per_config[cfg_name] = {"overall": overall, "segments": seg}
-        print(f"     {retriever_name:<6}  hit@1={overall['hit_at_1']:.3f}  hit@3={overall['hit_at_3']:.3f}  hit@5={overall['hit_at_5']:.3f}")
+        print(
+            f"     {retriever_name:<6}  "
+            f"hit@1={overall['hit_at_1']:.3f}  "
+            f"hit@3={overall['hit_at_3']:.3f}  "
+            f"hit@5={overall['hit_at_5']:.3f}"
+        )
 
 OUT.write_text(json.dumps(results_per_config, indent=2))
 print(f"\n[q3] wrote {OUT}")
