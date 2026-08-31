@@ -100,6 +100,38 @@ Every dependency and every service is free / free-tier. Never suggest a paid ser
 - Numbers reported with their uncertainty. Never quote a metric without stating what data it came from.
 - The word "chatbot" appears only when referring to what the client asked for. What we're building is a "support automation system".
 
+## Sequencing discipline — REQUIRED
+
+Two rules the assistant MUST follow. These were added mid-project after three failures — writing Setup Guide code before the PRD (Week 1 Wed), populating PRD Discovery evidence with pack acceptance criteria instead of EV-* tags (Week 1 Sat), running the D-02 revisit check before the sprint plan authorised it (Week 1 Sun). Each failure had the same shape: reaching for what was available instead of what was on the plan.
+
+### Rule 1 — Never propose a task that isn't in a written plan
+
+If the task isn't in `workbooks/Stage_4_Sprint_Plan.docx` (backlog Table 3 or a daily plan Table 4/5) OR named in a PRD Open Questions row (Table 9) with a target date matching today, don't start it. Don't offer to start it. Don't hint that it's "next available."
+
+The correct response to a not-on-plan task is: **"That task isn't in the sprint plan. Do you want to add it, or defer until it is?"**
+
+Exception: work the user directly asks for by name in this turn overrides the plan for this turn only, but the assistant flags it: "That's not on the plan; I'll do it now and note it in the daily check-in."
+
+### Rule 2 — When the user asks "what's next?", the answer MUST cite the plan row
+
+Not "the environment is warm." Not "the script is ready." Not "we just finished X, so Y is available."
+
+The answer format is:
+
+> "Per Stage 4 Table 4 (Week 2 daily plan), today (Mon 31 Aug) has: **B-07** (D-02 revisit check, 1h) and **B-03** (PR-CLASSIFY-01 prompt, 2h). Starting with B-07 because it unblocks B-05 and B-08."
+
+Or, when the plan is silent:
+
+> "Stage 4 doesn't have anything queued for today. The next unblocked backlog item is **B-14** which depends on B-12 and B-13. Do you want to slot it into today, or is there something else?"
+
+### The trap this closes
+
+When a tool has a lot of capability and the environment is already set up, "what could I do next?" produces an infinite list of plausible things. The AI reaches for the nearest one. The result looks like productivity but hides that no sequencing discipline exists — because if the AI is always picking the next thing, the user never has to look at the plan.
+
+The Effort Log Table 7 reflection question captured this in Week 1: *"I under-estimate discipline overhead — the time spent making sure requirements trace to evidence, ADRs record alternatives, and sections don't drift between documents. Actual writing of an FR takes 5 minutes; the audit + trace + rewrite loop takes another 5 minutes per FR and I didn't budget for it."*
+
+The two rules above are the specific correction to that budgeting failure.
+
 ## When resuming a session
 
 1. Read `claude/capstone_overview.md` in the project.

@@ -89,6 +89,42 @@ Use these as starting templates; each still needs its Trace, Acceptance and Veri
 
 The three are independent: high context relevance + low groundedness = model ignored retrieval and made things up. High groundedness + low answer relevance = model cited faithfully but answered a different question. High answer relevance + low context relevance = model happened to know the answer without retrieval (impressive but non-reproducible and off-thesis for our project).
 
+## The traceability audit pass — REQUIRED before saving any PRD version
+
+The single most common way this rule gets broken is: you finish writing FRs, save, and only later discover some FRs don't trace to any discovery evidence. Prevent it by running an explicit audit pass before saving. It's mechanical and takes five minutes.
+
+### Two-direction audit
+
+1. **Forward:** for every FR/NFR, list the discovery evidence tags it carries. Any requirement with zero EV-*, `#N`, or `R-XX` reference is broken — either find the trace or delete the requirement.
+2. **Reverse:** for every EV-* tag in `workbooks/discovery_notes.md` and `workbooks/discovery_notes_thursday.md`, list the FR/NFR IDs that reference it. Any EV with zero references is orphan evidence: either write a requirement that addresses it, mark it explicitly out-of-scope in Table 6, or add a note in the risk register acknowledging you deferred it.
+
+### Reference categories the audit accepts
+
+- `EV-<initial><n>` — interview evidence, e.g. `EV-M3`, `EV-S5`, `EV-I2`
+- `EV-DATA-<nn>` — ticket-data evidence, e.g. `EV-DATA-10`
+- `#N` with a specific row reference — e.g. "#2, channel split row"
+- `R-<nn>` — risk register entry from Stage 1 Table 12
+- A named artefact of Stage 1 discovery (Q3 pilot findings, etc.)
+
+### Reference categories the audit REJECTS as evidence
+
+- `A1`..`A12` — those are pack acceptance criteria, not discovery. They go in the **Acceptance criteria** column of Table 4.
+- References to Governance Framework, Evaluation Framework, Build Specification — those are pack constraints, not discovery evidence.
+- References to any capstone skill file (`capstone-prompt-writer`, `avoid-ai-writing`, etc.) — those are process guides authored during the project, not evidence gathered from CloudServe.
+
+Mixing categories is what caused the v1 PRD's "Discovery evidence" column to contain `A5`, `A7`, `Governance Framework guardrail table`, and skill names — a category error corrected in the traceability revision.
+
+### Running the audit
+
+Use `scripts/traceability_audit.py` (checked into the repo). It:
+
+- Extracts EV-* and R-* tags from both discovery notes and the Stage 1 workbook
+- Reads Table 4 of `Stage_2_PRD_Template.docx` and lists every FR's Discovery evidence cell
+- Reports the two failure modes: FRs without evidence, and orphan EV tags
+- Exits non-zero if anything is missing
+
+Run it as `python -m scripts.traceability_audit`. In CI, wire it as a pre-commit for anything in `workbooks/` or `docs/adr/`.
+
 ## When revising a requirement (Stage 5)
 
 Write the revision as:

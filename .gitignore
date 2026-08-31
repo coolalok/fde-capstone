@@ -85,3 +85,6 @@ logs/
 _to_delete/
 _scratch/
 NOTES.local.md
+
+# Local reference — author use only, not for the repo
+workbooks/section_notation.md

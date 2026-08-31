@@ -1,38 +1,89 @@
-# Core Dependencies
-langchain==0.1.0
-langgraph==0.0.20
-langchain-community==0.0.10
-langchain-openai==0.0.7
+# ─────────────────────────────────────────────────────────────────────────
+# FDE Capstone — Python requirements
+# Python: 3.11 (see D-01 ADR; 3.10 minimum per pack, 3.13+ unsupported by pins)
+# ─────────────────────────────────────────────────────────────────────────
+#
+# Deviations from the pack's original 06_Configuration/requirements.txt:
+#
+#   openai         1.0.0  → 1.10.0    langchain-openai==0.1.7 requires openai>=1.6.1;
+#                                     pack's 1.0.0 conflicted. 1.30.0 sits inside the
+#                                     1.24.0-<2.0.0 window. To be recorded in Stage 5.
+#
+#   pydantic       2.0.0  → 2.5.0     fastapi==0.104.0 explicitly excludes pydantic
+#                                     ==2.0.0/2.0.1/2.1.0. 2.5.0 clears the exclude
+#                                     and stays inside all downstream <3 caps. Stage 5.
+#
+#   chromadb       0.3.21 → 0.4.22    Setup Guide's 0.3.21 has known Python 3.11
+#                                     install failures. 0.4.22 works and keeps the
+#                                     same LangChain integration surface. Stage 5.
+#
+#   psycopg2-binary  DROPPED          D-03 chose SQLite (stdlib) over PostgreSQL.
+#                                     Pack shipped the driver by default. Removed to
+#                                     keep the free-tier / cost-nothing rule clean and
+#                                     avoid a libpq build failure on machines without
+#                                     PostgreSQL headers. Stage 5.
+#
+#   langchain-core  ADDED (0.1.23)     Pack left this transitive dependency
+#                                     unpinned. Pip picks langchain-core 0.1.26+,
+#                                     which needs langsmith>=0.1.0 — conflicts with
+#                                     langchain==0.1.20's langsmith<0.1.0 requirement.
+#                                     Pinning to 0.1.23 sits in the compatible corridor:
+#                                     >= 0.1.20 (langchain-openai==0.1.7 floor) and
+#                                     < 0.1.26 (before langsmith requirement jumps). Stage 5.
+#
+#   langsmith       ADDED (0.0.87)    Same story — transitive, pack unpinned.
+#                                     0.0.87 is the exact version langchain-core 0.1.23 pins (>=0.0.87,<0.0.88). Stage 5.
+#
+#   sentence-transformers  2.2.2 → 3.0.1  Pack's 2.2.2 uses huggingface_hub.cached_download()
+#                                     which was removed in huggingface_hub 0.26+.
+#                                     langchain 0.1.20's transitive deps pull in
+#                                     modern huggingface_hub, so 2.2.2 imports fail
+#                                     at runtime. 3.0.1 uses the modern API.
+#                                     Stage 5.
+#
+#   python-docx    ADDED (1.1.0)      Needed to programmatically fill Stage 1 / 2 /
+#                                     Effort Log workbooks. Not shipped by the pack.
+#
+# See docs/adr/ for the decisions each dependency serves.
+# ─────────────────────────────────────────────────────────────────────────
 
-# Vector Database & Embeddings
+# Core dependencies — the LLM / agent stack
+langchain==0.1.20
+langgraph==0.0.40
+langchain-community==0.0.38
+langchain-openai==0.1.7
+langchain-core==0.1.52       # transitive; pinned to match langchain==0.1.20 era
+langsmith==0.1.63            # transitive; matches langchain 0.1.20 family requirement
+
+# Vector database & embeddings — D-02 (all-MiniLM-L6-v2 via sentence-transformers)
 chromadb==0.4.22
-sentence-transformers==2.2.2
+sentence-transformers==3.0.1
 
-# Data Processing
+# Data processing
 pandas==2.0.0
 numpy==1.24.0
 scikit-learn==1.3.0
 
-# Web Framework
+# Web framework — FastAPI serves the /ticket and /metrics endpoints
 fastapi==0.104.0
 uvicorn==0.24.0
-pydantic==2.0.0
+pydantic==2.5.0
 python-multipart==0.0.6
 
-# LLM & API
-openai==1.0.0
+# LLM API — D-01 (OpenRouter free tier via the openai-python client surface)
+openai==1.30.0
 requests==2.31.0
 python-dotenv==1.0.0
 aiohttp==3.9.0
 
-# Monitoring & Logging
+# Monitoring & logging — Prometheus metrics endpoint
 prometheus-client==0.18.0
 python-json-logger==2.0.7
 
-# Database
+# Persistence — D-03 (SQLite via SQLAlchemy Core; no PostgreSQL)
 SQLAlchemy==2.0.0
 
-# Testing & Quality
+# Testing & lint — CI runs pytest + flake8
 pytest==7.4.0
 pytest-asyncio==0.21.0
 pytest-cov==4.1.0
