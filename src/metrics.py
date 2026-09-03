@@ -32,6 +32,12 @@ CONFIDENCE = Histogram(
     buckets=(0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0),
 )
 
+DECISION_LOG_FAILURES = Counter(
+    "decision_log_write_failures_total",
+    "Decision-log writes that failed — FR-20 not satisfied for those decisions",
+    ["stage"],  # classification | routing | generation | validation
+)
+
 
 def start_metrics_server(port: int = 8001) -> None:
     """Start the /metrics HTTP endpoint on the given port."""

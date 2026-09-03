@@ -24,6 +24,12 @@ CHROMA_PATH: Path = Path(os.environ.get("CHROMA_PATH", _ROOT / "storage" / "chro
 DATABASE_URL: str = os.environ.get(
     "DATABASE_URL", f"sqlite:///{_ROOT / 'storage' / 'decisions.db'}"
 )
+# How long a decision-log write waits for the SQLite lock before giving up.
+# SQLite's own default is 5s, which a parallel harness run can exceed; a write
+# that times out becomes an A8 reconciliation gap, so give it room.
+DECISION_LOG_TIMEOUT_SECONDS: float = float(
+    os.environ.get("DECISION_LOG_TIMEOUT_SECONDS", "30.0")
+)
 
 # Runtime thresholds (illustrative — set from data per D-05 ADR)
 CONFIDENCE_THRESHOLD: float = float(os.environ.get("CONFIDENCE_THRESHOLD", "0.80"))

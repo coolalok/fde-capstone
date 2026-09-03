@@ -25,6 +25,8 @@ Every non-obvious design choice gets a row here. Read the linked ADR for what el
 | [D-05](adr/D-05-confidence-threshold.md) | Confidence threshold above which the system auto-replies | 0.80 fixed · 0.85 · 0.70 · Set by measurement | Set by measurement (data-driven sweep); provisional value 0.80 until B-16 | Project Brief mandates that this be set from data; the precision-first constraint (≥0.95) comes from EV-M3 (Marcus: "I would rather it said nothing than said something wrong"). | 2026-08-30 |
 | [D-06](adr/D-06-agent-architecture-pattern.md) | Overall agent pattern | Router · ReAct · Plan-and-Execute · Self-RAG · Hybrid | Router with an inline Self-RAG self-check on the draft; retry cap 1 | Q3 pilot showed search is essentially a solved problem on this corpus; the engineering value shifts to the draft-and-safety-check layer sitting on top. | 2026-08-30 |
 
+| [D-03b](adr/D-03b-decision-log-write-failure-policy.md) | What happens when a decision-log write fails | Raise (kill the ticket) · Swallow silently · Swallow, report, and refuse to auto-respond | Swallow operational failures, flag the decision as unlogged, router escalates it | FR-20 exists so EV-M5's auditor can reconstruct any action; degrading the *action* preserves that where degrading the *record* would not. | 2026-09-03 |
+
 D-04 gets its own ADR file this week (backlog item B-08). Now that the dense-retrieval measurement is in, the chunking decision can be finalised on the same evidence base.
 
 ## The six components — what each one does
@@ -51,6 +53,7 @@ D-04 gets its own ADR file this week (backlog item B-08). Now that the dense-ret
 - **What it does:** looks at the classifier's confidence, the retrieval result, and the guardrail outcomes, then decides one of three things — `auto_respond`, `escalate`, or `block`.
 - **Deterministic:** the same input always produces the same decision and the same reason. D-06 keeps this true by using `temperature=0.0` on the AI model calls.
 - **On escalate:** the router passes along the retrieved passages, the classifier's top three alternatives, any draft the system produced, and tier 1's flag of what wasn't clear. That closes the missing-context loop Daniel complained about in the interviews (EV-D1).
+- **Unlogged decisions force escalation (D-03b):** if the decision-log write failed, the upstream result arrives with `decision_logged=False`. The router must escalate on that alone, checked before the confidence threshold. A reply the autumn compliance review couldn't reconstruct (EV-M5) must not be sent automatically, however confident the classifier was.
 
 ### 5. Generate — FR-13, FR-14, FR-15
 - **What it does:** takes the ticket and the retrieved passages, and writes a reply that cites its sources. Returns JSON with `answer`, `citations[]`, `confidence`, and an `unknown` flag.
@@ -71,7 +74,12 @@ A blocked reply routes to escalate. The reason it was blocked gets recorded in t
 ## Cross-cutting concerns
 
 ### Decision log — FR-20
-SQLite database at `storage/decisions.db` (D-03). The schema matches the minimum record required by the Governance Framework. Every decision writes one row before the reply is sent. At the end of a harness run, a reconciliation query counts `decisions_by_ticket_id` against `tickets_processed`. Any gap fails acceptance criterion A8.
+SQLite database at `storage/decisions.db` (D-03). The schema is the Governance Framework's minimum record plus one added column (`run_id`) and one widened column (`action_taken`); both extensions are recorded in the Stage 5 revision log (`workbooks/Stage_5_PRD_Revision_Log.docx`, Table 3 rows 6 and 7).
+
+- **`run_id`** — stamped on every row by the harness at the start of an invocation (`src/logging_store.py::set_run_id`). Reconciliation scopes by this. Without it, a fresh run against a persistent `decisions.db` (the grading condition) would count every dev and validation row already in the file as `extra_in_log` and fail A8 on arrival. Was the Bug 2 fix.
+- **`action_taken` vocabulary** — carries either a routing outcome (`auto_respond | escalate | block` at `stage='routing'`) or a stage outcome (`classified | fallback` at `stage='classification'`; `retrieved | empty` at `stage='retrieval'`; `generated | blocked` at `stage='generation'` / `'validation'`). Distinguished by the `stage` column. Single-column, per-stage vocabulary. FR-20 asks for one row per autonomous decision, so classification rows have to describe what happened at classification — the pack's example values (which are routing verbs) don't cover that. Two alternatives considered and rejected: splitting into `stage_outcome` + `action_taken` (over-engineering), and folding classify into the routing row (loses per-stage auditability).
+
+Every decision writes one row before the reply is sent. At the end of a harness run, a reconciliation query counts logged decisions scoped to the current `run_id` against tickets processed. Any gap fails acceptance criterion A8.
 
 ### Metrics — FR-22
 Prometheus counters and histograms exposed at `:8001/metrics`. What we track: tickets by outcome, response latency, guardrail activations by type, and the distribution of confidence scores (so we can watch whether the classifier's confidence is calibrated — 90% should mean right 90% of the time).
@@ -90,8 +98,10 @@ See section 6 above. Each guardrail is a `Guardrail` class with one method — `
 - **D-04 (chunking):** provisionally fixed 800/120; the final ADR is backlog item B-08 this week, now that dense-retrieval measurement is in.
 - **D-05b:** the confidence-threshold sweep result, backlog item B-16 (Friday).
 - **PR-EVAL-JUDGE-01:** the three-dimensional RAG rubric prompt for the evaluation harness (backlog item B-17, Week 3).
+- **D-03b's router rule has no consumer yet.** `ClassificationResult.decision_logged` is written by `classify.py` but nothing reads it until `route.py` exists. B-15's definition of done must include the forced-escalation check, or D-03b is only half-implemented and unlogged decisions can still be auto-responded to.
 
 ## Changelog
 
 - 2026-08-30 — first version, six components + decision table.
 - 2026-08-31 — updated the D-02 decision-table row to reflect the measured verdict from backlog item B-07 (91.0% top-3 hit rate, within 3 points of the TF-IDF baseline, better on non-fluent English). Added the "verified" date to the D-02 row. Added a note to the Classify component describing what the classifier deliberately doesn't see (fairness decision, see PR-CLASSIFY-01). Removed `docs/intent_classes.md` from the pending list (it's now written — see the file). Updated D-04's row to note that B-07 has cleared the way for the final ADR (backlog item B-08). Rewrote the document in plainer language throughout; all requirement IDs, ADR IDs, file paths, and numeric claims preserved.
+- 2026-08-31 (later) — updated the Decision-log cross-cutting section to describe the two extensions to the Governance Framework's minimum-record schema: the added `run_id` column (per-run scoping, Bug 2 fix) and the widened `action_taken` vocabulary (per-stage values distinguished by the `stage` column, Option A in the code-review deliberation). Both extensions are recorded in Stage 5 revision log Table 3 rows 6 and 7.

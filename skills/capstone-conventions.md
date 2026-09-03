@@ -1,6 +1,6 @@
 ---
 name: capstone-conventions
-description: Load the shared conventions for Alok's FDE Capstone project (CloudServe support automation). Use whenever starting or resuming any capstone task — writing requirements, prompts, code, tests, ADRs, docs, or evaluation. Names the ID space, file paths, traceability rules, and the cost-nothing constraint that keep every session on-model.
+description: Load the shared conventions for Alok's FDE Capstone project (CloudServe support automation). Use whenever starting or resuming any capstone task — writing requirements, prompts, code, tests, ADRs, docs, or evaluation. Names the ID space, file paths, traceability rules, evidence tag families, data fidelity discipline, and the cost-nothing constraint that keep every session on-model.
 ---
 
 # FDE Capstone — Conventions
@@ -60,6 +60,20 @@ storage/        runtime (gitignored)
 
 If a chain breaks anywhere, the requirement isn't done.
 
+## Evidence tag families — external prior art
+
+Added 2026-09-03 after Masterclass 3 / Masterclass 4 / RAG_demo audit. Beyond `EV-<initial><n>` (stakeholder / discovery evidence) and `EV-DATA-<n>` (dataset-derived), FRs / NFRs / ADRs / backlog rows MAY cite the following prior-art tag families. The traceability audit accepts these; treat them as first-class evidence.
+
+| Family | Source | Example uses |
+|--------|--------|--------------|
+| `EV-MC3-<slug>` | Masterclass 3 — Agentic AI Industry Practices | `EV-MC3-CUSTOPS` (Customer Ops industry example, slide 36); `EV-MC3-DECISION` (five-step decision framework); `EV-MC3-COST` (Token & Cost Monitoring section). |
+| `EV-MC4-<slug>` | Masterclass 4 — LLMOps & Production Readiness | `EV-MC4-TRACE` (slide 13 production trace fields); `EV-MC4-SAFETY` (slide 8 four-layer safety); `EV-MC4-EVAL` (slide 6 layered evaluation); `EV-MC4-PILLARS` (slide 6 five pillars). |
+| `EV-RAGD-<slug>` | RAG_demo reference implementation | `EV-RAGD-INJ` (prompt-injection regex list); `EV-RAGD-PII` (PII patterns); `EV-RAGD-CONF` (retrieval-confidence hard block); `EV-RAGD-CHUNK` (tiktoken splitter config); `EV-RAGD-PROMPT` (generate prompt template); `EV-RAGD-GUARD` (GuardrailResult interface). |
+
+When `capstone-component-impl` builds against an FR / DoD row carrying any of these tags, the skill MUST consult the cited source before generating code and align the implementation with it. Deviation from the cited source is a design decision that requires an ADR.
+
+When `capstone-adr` writes an ADR, prior-art tags belong in the *alternatives considered* or *evidence* sections — never fabricated into the decision itself. A prior-art tag is evidence *that a pattern exists*, not evidence that our system must adopt it.
+
 ## Twelve acceptance criteria (short form — keep in mind for every design decision)
 
 - **A1** Runs from a clean checkout via README.
@@ -99,6 +113,33 @@ Every dependency and every service is free / free-tier. Never suggest a paid ser
 - Requirements written in verifiable language: "the system SHALL", never "the system should try to".
 - Numbers reported with their uncertainty. Never quote a metric without stating what data it came from.
 - The word "chatbot" appears only when referring to what the client asked for. What we're building is a "support automation system".
+
+## Data fidelity — REQUIRED
+
+Added after a Week 2 D1 failure: I paraphrased a DEV-0008 ticket body in a test case for `PR-CLASSIFY-01`, adding an MFA-in-body sentence that was not in the real ticket (the subject mentioned MFA; the body did not). The paraphrase read as plausible but was fabrication — exactly the shape of failure the assessor is graded on catching. User caught it.
+
+### Rule 1 — Quote dataset content byte-for-byte
+
+When a prompt file, test case, ADR, or PRD row quotes a specific ticket, article passage, or ground-truth response, the quoted text MUST be the verbatim string from the source file. Re-read the source before pasting. Never reconstruct from memory. Never combine two fields (e.g. subject + body) into one quoted string without labelling each field.
+
+The check is mechanical: `python3 -c "import json; d=[t for t in json.load(open('data/development_tickets.json')) if t['ticket_id']=='DEV-0008'][0]; print(repr(d['body']))"`. If the printed string does not match what's in the artefact character-for-character, the artefact is wrong.
+
+### Rule 2 — Mark paraphrase as paraphrase
+
+Sometimes a shortened or hypothetical version of a ticket is genuinely useful — for a schema-shape example, for an adversarial case that isn't in the dataset (injection attempts), or in prose. Then say so explicitly:
+
+- "**Source:** synthetic. Injection attempts are not present in the 500-ticket dev set."
+- "**Paraphrase for illustration** — the real body is different; see DEV-0008 in `data/development_tickets.json` for the verbatim text."
+
+The fabrication failure was not that a paraphrase existed — it was that a paraphrase was presented as if verbatim.
+
+### Rule 3 — Cite the source location for every quote
+
+Every dataset quote in a durable artefact carries its identifier: `DEV-0008`, `DOC-AUTH-001`, `data/ground_truth_responses.json → response_id GT-042`. Without the identifier, the quote cannot be verified and the artefact isn't defensible in the report.
+
+### Rule 4 — When in doubt, read the file
+
+If I'm not 100% sure a phrase is in the source, I re-read the source before writing the artefact — not after. "Close enough" is the shape of the failure this section exists to prevent.
 
 ## Sequencing discipline — REQUIRED
 
