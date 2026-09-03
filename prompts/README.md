@@ -25,13 +25,14 @@ decomposed rubrics — never a single overall score).
 
 | ID              | Purpose                                         | Component | Version | Last changed | Notes                                    |
 |-----------------|-------------------------------------------------|-----------|---------|--------------|------------------------------------------|
-| PR-CLASSIFY-01  | Ticket intent + urgency + calibrated confidence | classify  | 1.1     | 2026-08-31   | FR-04, FR-05. Three test cases (T-01/T-02/T-03). Input scope documented (fairness-blind to tier/region/name). |
+| PR-CLASSIFY-01  | Ticket intent + urgency + calibrated confidence | classify  | 1.2     | 2026-08-31   | FR-04, FR-05. Three test cases (T-01/T-02/T-03). Input scope documented (fairness-blind to tier/region/name). |
+| PR-GENERATE-01  | Grounded answer with citations                  | generate  | 2.0     | 2026-09-03   | FR-13, FR-14, FR-15. Five test cases; four built on real dev tickets (DEV-0008/0091/0004/0005), injection case synthetic and labelled. v1.0.0 was unloadable and cited the wrong FRs — see its changelog. |
 
 ## Deferred to Week 2 (per Sprint Plan Table 3)
 
 - `PR-RETRIEVE-01` — B-05, query rewriting for onboarding intent only per B-07 findings.
-- `PR-GENERATE-01` — B-09, grounded answer with citations.
-- `PR-GENERATE-02` — B-10, "I don't know" response for empty retrieval.
+- `PR-GENERATE-02` — B-10, "I don't know" response for empty retrieval. PR-GENERATE-01
+  assumes at least one passage and hands this case over, so B-11 needs both.
 - `PR-GUARDRAIL-PII-01` — B-12.
 - `PR-GUARDRAIL-GROUNDING-01` — B-13.
 
