@@ -23,9 +23,9 @@ __pycache__/
 *.pyd
 .Python
 
-# Packaging
-dist/
-build/
+# Packaging — anchored to repo root so they don't swallow prompts/build/.
+/dist/
+/build/
 *.egg-info/
 *.egg
 

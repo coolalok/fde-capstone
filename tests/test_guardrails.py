@@ -1,11 +1,16 @@
 """Tests for src/guardrails — the FR-GUARD-01..04 contract.
 
-This file is written ahead of B-11 (implementation) so the contract is
-locked before code is written. It skips cleanly on the current guardrails.py
-stub and starts running the moment `validate_input`, `validate_output`, and
-`GuardrailResult` are exported.
+STATUS 2026-09-03 — BLOCKED ON DEFERRED FR.
+This file was written against a drafted FR set that PRD Table 9 Q7 resolved
+2026-09-03 as deferred to Week 3 candidate. FR-GUARD-01..04 are NOT in the
+Stage 2 PRD for the Week 2 build. The tests below stay for the Week 3
+revisit; the whole module is skipped in Week 2 CI.
 
-Coverage per Sprint Plan B-11 definition of done:
+For the Week 2 guardrail contract (FR-16 PII, FR-17 grounding, FR-18
+instruction-integrity, FR-19 confidence-floor) see the tests co-located with
+src/guardrails.py once B-14 lands.
+
+Original design intent, kept for the Week 3 revisit:
   - FR-GUARD-01 (empty / over-length input)
   - FR-GUARD-02 (prompt-injection heuristics, all patterns per EV-RAGD-INJ)
   - FR-GUARD-03 (output PII redaction, all patterns per EV-RAGD-PII)
@@ -13,9 +18,18 @@ Coverage per Sprint Plan B-11 definition of done:
 
 No network is touched; the OpenAI Moderation branch (if enabled) is stubbed.
 """
+
 from __future__ import annotations
 
 import pytest
+
+# Module-level skip. MUST stay below the __future__ import: a __future__
+# import has to be the first statement after the docstring, so putting the
+# skip marker above it is a SyntaxError that aborts collection for the whole
+# test run, not just this file.
+pytestmark = pytest.mark.skip(
+    reason="FR-GUARD-01..04 deferred to Week 3 per PRD Table 9 Q7 (2026-09-03)"
+)
 
 # The stub src/guardrails.py exists but doesn't yet export these. Skip the
 # whole module until B-11 lands. This lets CI stay green today while the

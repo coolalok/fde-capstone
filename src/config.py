@@ -39,6 +39,12 @@ RETRIEVAL_TOP_K: int = int(os.environ.get("RETRIEVAL_TOP_K", "5"))
 # means something different (src/index_docs.py DISTANCE_SPACE).
 RETRIEVAL_THRESHOLD: float = float(os.environ.get("RETRIEVAL_THRESHOLD", "0.25"))
 
+# Generation
+# Self-RAG groundedness check retry cap (D-06 — retry once, then escalate).
+GENERATE_MAX_RETRIES: int = int(os.environ.get("GENERATE_MAX_RETRIES", "1"))
+# Model temperature for generation — 0.0 = deterministic per D-06 A5.
+GENERATE_TEMPERATURE: float = float(os.environ.get("GENERATE_TEMPERATURE", "0.0"))
+
 # Logging
 LOG_LEVEL: str = os.environ.get("LOG_LEVEL", "INFO")
 

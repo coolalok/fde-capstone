@@ -96,3 +96,46 @@ class Passage(BaseModel):
     category: str = ""
     chunk_index: int = 0
     chunk_text: str = ""
+
+
+class GeneratedResponse(BaseModel):
+    """Return type of src.generate.generate. Per FR-13, FR-14, FR-15.
+
+    On success `error` is None. On any failure (network, parse, schema
+    violation, retry exhaustion, citation resolution failure), returns an
+    unknown-response with `error` populated. The generator never raises out of
+    the pipeline (per acceptance criterion A11).
+
+    Field semantics:
+      - answer: the drafted reply to the customer. Empty string ("") when
+        unknown is true.
+      - citations: doc_ids the answer relies on. Each citation MUST be present
+        in the retrieval result the caller supplied. Empty list ([]) when
+        unknown is true.
+      - confidence: the model's stated confidence in [0, 1]. 0.0 on
+        unknown_fallback.
+      - unknown: true when the passages do not support an answer (FR-14) or
+        when generation failed. When true, answer is "" and citations is [].
+      - retries: how many times the Self-RAG loop retried (0 or 1).
+    """
+
+    answer: str
+    citations: list[str] = Field(default_factory=list)
+    confidence: float = Field(ge=0.0, le=1.0)
+    unknown: bool
+    retries: int = 0
+    error: Optional[str] = None
+    decision_logged: bool = True
+
+    @classmethod
+    def unknown_fallback(
+        cls, error: str, retries: int = 0
+    ) -> "GeneratedResponse":
+        return cls(
+            answer="",
+            citations=[],
+            confidence=0.0,
+            unknown=True,
+            retries=retries,
+            error=error,
+        )

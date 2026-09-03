@@ -3,7 +3,9 @@
 **Status:** Provisional. Extends D-05.
 **Date:** 2026-09-03
 **Decider:** Alok Kulkarni
-**Constrains:** FR-GUARD-04 (new), FR-19, NFR-07
+**Constrains:** FR-19, NFR-07
+
+> **Note 2026-09-03:** the original Constrains line also cited `FR-GUARD-04 (new)`. That reference was removed after PRD Table 9 Q7 resolved 2026-09-03 that FR-GUARD-01..04 are deferred to Week 3 candidate (see Stage 5 revision log). The dual-role reasoning of this ADR — routing vs floor — still applies to FR-19 alone; the "floor" role is not implemented as a separate guardrail in the Week 2 build. `src/guardrails.py` gains only the FR-16..19 validators; the `MIN_RELEVANCE_SCORE` construct proposed here stays unbuilt until Q7 revisits.
 **Affects:** `src/guardrails.py`, `src/route.py`, `src/config.py`, `evaluation/harness.py`
 
 ## Context
@@ -41,7 +43,7 @@ Trust the router. Rejected: A7 requires at least one guardrail that BLOCKS, and 
 
 ## Consequences
 
-- `src/guardrails.py` gains `validate_output(answer, retrieved_context, max_relevance_score)` per FR-GUARD-04.
+- `src/guardrails.py` gains only the FR-16..19 validators for the Week 2 build. The `validate_output(answer, retrieved_context, max_relevance_score)` shape proposed here is unbuilt until PRD Table 9 Q7 revisits (deferred 2026-09-03).
 - `src/route.py` structure unchanged; the router only sees turns that already cleared the floor.
 - `src/config.py` gains `MIN_RELEVANCE_SCORE` (default 0.25) and startup assertion for the invariant.
 - Decision log records both thresholds and both outcomes (see D-03a).

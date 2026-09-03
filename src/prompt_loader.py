@@ -33,11 +33,27 @@ class LoadedPrompt:
     user_template: str
 
     def render_user(self, **kwargs: Any) -> str:
-        """Fill {{key}} placeholders in the user template."""
-        rendered = self.user_template
-        for key, value in kwargs.items():
-            rendered = rendered.replace("{{" + key + "}}", str(value))
-        return rendered
+        """Fill ``{{key}}`` placeholders in the user template.
+
+        Single-pass substitution (Bug 4 fix). The previous implementation
+        ran ``str.replace`` once per key, so a substituted value's contents
+        could themselves match a later ``{{key}}`` placeholder — meaning a
+        customer body containing literal ``{{passages}}`` would splice the
+        system-controlled passages block into a customer-controlled region
+        of the rendered prompt. The regex substitution below rewrites every
+        matched placeholder in one pass, so a substituted value is inert
+        against the remaining keys regardless of iteration order.
+
+        Placeholders whose keys are not in ``kwargs`` are left untouched
+        (same behaviour as the previous implementation). If ``kwargs`` is
+        empty, the template is returned as-is.
+        """
+        if not kwargs:
+            return self.user_template
+        pattern = re.compile(
+            r"\{\{(" + "|".join(re.escape(k) for k in kwargs) + r")\}\}"
+        )
+        return pattern.sub(lambda m: str(kwargs[m.group(1)]), self.user_template)
 
 
 def load_prompt(prompt_id: str) -> LoadedPrompt:

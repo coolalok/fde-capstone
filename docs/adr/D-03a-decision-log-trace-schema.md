@@ -3,7 +3,9 @@
 **Status:** Provisional. Extends D-03.
 **Date:** 2026-09-03
 **Decider:** Alok Kulkarni
-**Constrains:** NFR-observability (Stage 2 PRD), A8, FR-GUARD-04
+**Constrains:** NFR-observability (Stage 2 PRD), A8
+
+> **Note 2026-09-03:** the original Constrains line also cited `FR-GUARD-04`. That reference was removed after PRD Table 9 Q7 resolved 2026-09-03 that FR-GUARD-01..04 are deferred to Week 3 candidate (see Stage 5 revision log). The substance of this ADR (the trace-schema fields for the decision log) is unaffected. The `groundedness_score` and `retrieval_max_score` fields the schema adds are still worth carrying — they are observability, independent of whether a guardrail acts on them.
 **Affects:** `src/logging_store.py`, `src/api.py` trace hook, Governance Framework §Decision Log Schema
 
 ## Context
