@@ -34,7 +34,10 @@ DECISION_LOG_TIMEOUT_SECONDS: float = float(
 # Runtime thresholds (illustrative — set from data per D-05 ADR)
 CONFIDENCE_THRESHOLD: float = float(os.environ.get("CONFIDENCE_THRESHOLD", "0.80"))
 RETRIEVAL_TOP_K: int = int(os.environ.get("RETRIEVAL_TOP_K", "5"))
-RETRIEVAL_THRESHOLD: float = float(os.environ.get("RETRIEVAL_THRESHOLD", "0.35"))
+# 0.25 set by measurement, not by feel — see D-02a. Calibrated against COSINE
+# relevance scores; the index must be built in cosine space or this number
+# means something different (src/index_docs.py DISTANCE_SPACE).
+RETRIEVAL_THRESHOLD: float = float(os.environ.get("RETRIEVAL_THRESHOLD", "0.25"))
 
 # Logging
 LOG_LEVEL: str = os.environ.get("LOG_LEVEL", "INFO")

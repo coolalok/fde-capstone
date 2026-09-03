@@ -25,6 +25,7 @@ Every non-obvious design choice gets a row here. Read the linked ADR for what el
 | [D-05](adr/D-05-confidence-threshold.md) | Confidence threshold above which the system auto-replies | 0.80 fixed · 0.85 · 0.70 · Set by measurement | Set by measurement (data-driven sweep); provisional value 0.80 until B-16 | Project Brief mandates that this be set from data; the precision-first constraint (≥0.95) comes from EV-M3 (Marcus: "I would rather it said nothing than said something wrong"). | 2026-08-30 |
 | [D-06](adr/D-06-agent-architecture-pattern.md) | Overall agent pattern | Router · ReAct · Plan-and-Execute · Self-RAG · Hybrid | Router with an inline Self-RAG self-check on the draft; retry cap 1 | Q3 pilot showed search is essentially a solved problem on this corpus; the engineering value shifts to the draft-and-safety-check layer sitting on top. | 2026-08-30 |
 
+| [D-02a](adr/D-02a-retrieval-distance-metric-and-threshold.md) | Retrieval distance metric + relevance threshold | Keep l2 and lower the floor · Cosine space, re-calibrate · Normalise the embeddings | Cosine space; threshold 0.25 set by measurement | The l2 default scored passages from -0.094 to 0.650, so the uncalibrated 0.35 floor discarded 42% of correct answers (hit@3 52.4% vs 94.1%); cosine puts scores in a real [0,1] range and 0.25 sits at the recall ceiling. | 2026-09-03 |
 | [D-03b](adr/D-03b-decision-log-write-failure-policy.md) | What happens when a decision-log write fails | Raise (kill the ticket) · Swallow silently · Swallow, report, and refuse to auto-respond | Swallow operational failures, flag the decision as unlogged, router escalates it | FR-20 exists so EV-M5's auditor can reconstruct any action; degrading the *action* preserves that where degrading the *record* would not. | 2026-09-03 |
 
 D-04 gets its own ADR file this week (backlog item B-08). Now that the dense-retrieval measurement is in, the chunking decision can be finalised on the same evidence base.
@@ -46,8 +47,10 @@ D-04 gets its own ADR file this week (backlog item B-08). Now that the dense-ret
 
 ### 3. Retrieve — FR-06, FR-07, FR-08
 - **What it does:** takes a ticket body, searches the 29 help articles, and returns the top matching passages with their scores.
-- **Design settings:** chunks of 800 characters with 120-character overlap (D-04, provisional), embeddings from `all-MiniLM-L6-v2` (D-02, verified 2026-08-31).
+- **Design settings:** chunks of 800 characters with 120-character overlap (D-04, provisional), embeddings from `all-MiniLM-L6-v2` (D-02, verified 2026-08-31), index built in cosine space with a 0.25 relevance floor (D-02a, measured 2026-09-03). Each chunk is embedded with its article title and category prepended (B-30).
 - **When search finds nothing:** if no passage scores above the `RETRIEVAL_THRESHOLD` set in the config, the retriever returns an empty list. Downstream, that means the router will escalate the ticket to a human.
+- **The floor is not an answerability test (D-02a):** at 0.25 only 14 of 143 non-answerable dev tickets return nothing, so a non-empty passage list is *not* evidence the ticket can be answered. Deciding that is the router's job — classifier confidence, the must-not-auto-respond types, and the guardrails. Raising the floor to make it a stronger signal costs recall much faster than it buys precision.
+- **The metric and the threshold are coupled:** 0.25 is calibrated against cosine scores. An index built in another distance space makes the number mean something else, which is how the 0.35 default came to discard 42% of correct answers. `retrieve._assert_distance_space` logs an error at open time if the index on disk does not match.
 
 ### 4. Route — FR-09, FR-10, FR-11, FR-12
 - **What it does:** looks at the classifier's confidence, the retrieval result, and the guardrail outcomes, then decides one of three things — `auto_respond`, `escalate`, or `block`.

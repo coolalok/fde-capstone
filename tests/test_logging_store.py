@@ -8,11 +8,9 @@ were already in the file.
 from __future__ import annotations
 
 import sqlite3
-from pathlib import Path
 
 import pytest
 
-from src import logging_store as ls
 from src.logging_store import (
     clear_run_id,
     current_run_id,

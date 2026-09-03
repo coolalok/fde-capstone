@@ -35,6 +35,18 @@ from src.config import CHROMA_PATH, EMBEDDING_MODEL
 
 DATA_PATH = Path(__file__).parent.parent / "data" / "documentation.json"
 
+# Distance metric for the Chroma collection (D-02a). NOT env-configurable on
+# purpose: RETRIEVAL_THRESHOLD is calibrated against this metric's score scale,
+# so letting the two drift apart independently is precisely the defect D-02a
+# exists to prevent. Changing this requires re-running the threshold sweep.
+#
+# Without it, Chroma defaults to l2 and LangChain scores with
+# `1.0 - distance / sqrt(2)` — a formula for normalised vectors applied to
+# un-normalised MiniLM output. That produced scores from -0.094 to 0.650
+# (LangChain warns "Relevance scores must be between 0 and 1"), against which
+# the 0.35 threshold cut 42% of correct answers. See D-02a for the measurement.
+DISTANCE_SPACE = "cosine"
+
 
 def _annotate_chunk(title: str, category: str, chunk: str) -> str:
     """Prepend the article title (bold) and category to the chunk before embedding.
@@ -92,6 +104,7 @@ def main() -> int:
         metadatas=metadatas,
         embedding=embeddings,
         persist_directory=str(CHROMA_PATH),
+        collection_metadata={"hnsw:space": DISTANCE_SPACE},  # D-02a
     )
     # NOTE: store.persist() was a no-op deprecation on chromadb 0.4.22 —
     # persistence is automatic when persist_directory is passed to Chroma.

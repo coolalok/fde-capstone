@@ -60,18 +60,13 @@ class ClassificationResult(BaseModel):
     reasoning: str = ""
     error: Optional[str] = None
 
-    # False when the decision-log write for this classification failed. FR-20
-    # was then not satisfied for this ticket, so the router must escalate
-    # rather than auto-respond however high `confidence` is: a reply the
-    # compliance review (EV-M5) cannot reconstruct must not reach a customer.
+    # Governance flag set by classify() when log_decision failed to persist.
+    # Router treats decision_logged=False as a hard-escalate signal (per D-06,
+    # EV-M5). See src/classify.py and Bug 1 in the Stage 5 revision log.
     decision_logged: bool = True
 
     @classmethod
     def unknown_fallback(cls, error: str, urgency: str = "medium") -> "ClassificationResult":
-        """Build the FR-05 fallback. urgency defaults to 'medium' — a neutral
-        floor when we couldn't classify. The router treats any 'unknown' as
-        escalate regardless of urgency, so this value is informational.
-        """
         return cls(
             intent="unknown",
             urgency=urgency,
@@ -80,3 +75,24 @@ class ClassificationResult(BaseModel):
             reasoning="",
             error=error,
         )
+
+
+class Passage(BaseModel):
+    """One retrieved passage from the help-article corpus. Per FR-06 and FR-07.
+
+    Passages are ordered by relevance score (higher = better). Callers cite by
+    doc_id — that identifier is what resolves back to a full article. `text` is
+    what the retriever returned (post-B-30 this includes the title header); the
+    raw chunk without the title header is preserved as `chunk_text` for any
+    consumer that needs just the passage body.
+    """
+
+    model_config = ConfigDict(extra="ignore")
+
+    doc_id: str
+    score: float = Field(ge=0.0, le=1.0)
+    text: str
+    title: str = ""
+    category: str = ""
+    chunk_index: int = 0
+    chunk_text: str = ""
