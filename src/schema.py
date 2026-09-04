@@ -139,3 +139,52 @@ class GeneratedResponse(BaseModel):
             retries=retries,
             error=error,
         )
+
+
+class GuardrailResult(BaseModel):
+    """One guardrail's verdict on a generated response.
+
+    Every guardrail in this project is blocking (per A7). A non-passing
+    result with ``blocking=True`` is what makes the router pick ``block``.
+
+    Fields:
+      - name: guardrail identifier, e.g. ``"pii" | "grounding" |
+        "instruction_integrity" | "confidence_floor"``.
+      - passed: True when the response cleared the check.
+      - blocking: True for every guardrail in this project (A7). Kept as a
+        field so a future non-blocking check can be added without changing
+        the router.
+      - reason: short human-readable sentence for the decision log's
+        ``guardrail_results`` column and the router's ``reason`` string.
+      - details: structured verdict payload — e.g. PII detections list,
+        unsupported-claim list. Deliberately loose (Dict[str, Any]) so each
+        guardrail can carry its own shape without inflating the schema.
+    """
+
+    model_config = ConfigDict(extra="ignore")
+
+    name: str
+    passed: bool
+    blocking: bool = True
+    reason: str = ""
+    details: dict = Field(default_factory=dict)
+
+
+class GuardrailContext(BaseModel):
+    """Everything a guardrail is allowed to see when scoring one response.
+
+    Carried explicitly (rather than passing globals) so the guardrails stay
+    pure functions of ``(response, context)`` — testable without any
+    global state. The ticket is here for the PII customer-name whitelist
+    (FR-16); passages are here for the grounding check (FR-17); the
+    classification is here for the confidence-floor check (FR-19).
+    """
+
+    model_config = ConfigDict(extra="ignore", arbitrary_types_allowed=True)
+
+    ticket: Ticket
+    passages: list[Passage] = Field(default_factory=list)
+    classification: "ClassificationResult"
+
+
+GuardrailContext.model_rebuild()

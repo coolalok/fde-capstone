@@ -27,14 +27,13 @@ decomposed rubrics — never a single overall score).
 |-----------------|-------------------------------------------------|-----------|---------|--------------|------------------------------------------|
 | PR-CLASSIFY-01  | Ticket intent + urgency + calibrated confidence | classify  | 1.2     | 2026-08-31   | FR-04, FR-05. Three test cases (T-01/T-02/T-03). Input scope documented (fairness-blind to tier/region/name). |
 | PR-GENERATE-01  | Grounded answer with citations                  | generate  | 2.0     | 2026-09-03   | FR-13, FR-14, FR-15. Five test cases; four built on real dev tickets (DEV-0008/0091/0004/0005), injection case synthetic and labelled. v1.0.0 was unloadable and cited the wrong FRs — see its changelog. |
+| PR-GUARDRAIL-PII-01 | Detects PII in the drafted response (emails, keys, phones, account numbers, third-party names) | guardrails | 1.0     | 2026-09-03   | FR-16, R-02. Six test cases (T-01..T-06) covering clean draft, email leak, API-key leak, injection-in-draft, third-party name, and placeholder text. Customer-blind — customer-name whitelist applied by src/guardrails.py, not by the prompt. Injection-safe via `<<DRAFT_START>>` markers. |
+| PR-GUARDRAIL-GROUNDING-01 | Verifies every factual claim in the drafted answer is supported by a cited passage | guardrails | 1.0     | 2026-09-03   | FR-17. Five test cases (T-01..T-05) covering grounded happy path, extrapolation beyond passage, contradiction behind real citation, claim supported by NON-cited passage, and courtesy sentences not treated as claims. Fails SAFE — LLM error blocks send. Cross-checks the citation-matches-content requirement of FR-17 the generator's structural Self-RAG critic cannot check on its own. |
+| PR-GUARDRAIL-TONESCOPE-01 | Blocks replies that make commitments about refunds, delivery timings, or product roadmap items | guardrails | 1.0     | 2026-09-03   | Implicit — no PRD FR yet; architecture.md §6 lists tone/scope as the fifth safety check. Traceability via R-04 (commitment/liability risk) + EV-D4 (Daniel: billing disputes become contractual). Six test cases covering clean draft, refund commitment, ETA commitment, roadmap commitment, adversarial injection, policy-description (not commitment). Injection-safe via `<<DRAFT_START>>` markers. FR-25 for tone/scope is intentional debt — logged in Stage 5. |
 
 ## Deferred to Week 2 (per Sprint Plan Table 3)
 
 - `PR-RETRIEVE-01` — B-05, query rewriting for onboarding intent only per B-07 findings.
-- `PR-GENERATE-02` — B-10, "I don't know" response for empty retrieval. PR-GENERATE-01
-  assumes at least one passage and hands this case over, so B-11 needs both.
-- `PR-GUARDRAIL-PII-01` — B-12.
-- `PR-GUARDRAIL-GROUNDING-01` — B-13.
 
 ## Deferred to Week 3
 
