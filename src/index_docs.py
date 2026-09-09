@@ -32,6 +32,7 @@ from langchain_community.embeddings import HuggingFaceEmbeddings
 from langchain.text_splitter import RecursiveCharacterTextSplitter
 
 from src.config import CHROMA_PATH, EMBEDDING_MODEL
+from src.logging_config import configure_logging
 
 DATA_PATH = Path(__file__).parent.parent / "data" / "documentation.json"
 
@@ -62,6 +63,7 @@ def _annotate_chunk(title: str, category: str, chunk: str) -> str:
 
 
 def main() -> int:
+    configure_logging()
     if not DATA_PATH.exists():
         print(f"[index_docs] documentation.json not found at {DATA_PATH}")
         return 1

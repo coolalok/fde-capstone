@@ -16,8 +16,15 @@ import logging
 import re
 from typing import Callable, Optional
 
-from src.config import MODEL_NAME, OPENROUTER_API_KEY, require_key
+from src.config import (
+    MODEL_MAX_RETRIES,
+    MODEL_NAME,
+    MODEL_TIMEOUT_SECONDS,
+    OPENROUTER_API_KEY,
+    require_key,
+)
 from src.logging_store import log_decision
+from src.metrics import MODEL_CALL_FAILURES
 from src.prompt_loader import load_prompt
 from src.schema import Alternative, ClassificationResult, Ticket
 
@@ -75,9 +82,14 @@ def _openrouter_call(system: str, user: str, seed: int = 0) -> str:
     from openai import OpenAI  # imported lazily so unit tests don't need the pkg
 
     require_key()
+    # Bounded on purpose: the SDK default is a 600s read timeout with 2
+    # retries, so one unresponsive call can occupy ~30 minutes and stall an
+    # unattended run (A9). See MODEL_TIMEOUT_SECONDS in src/config.py.
     client = OpenAI(
         api_key=OPENROUTER_API_KEY,
         base_url="https://openrouter.ai/api/v1",
+        timeout=MODEL_TIMEOUT_SECONDS,
+        max_retries=MODEL_MAX_RETRIES,
     )
     completion = client.chat.completions.create(
         model=MODEL_NAME,
@@ -113,6 +125,7 @@ def classify(
     """
     caller = call_model or _openrouter_call
 
+    raw: Optional[str] = None
     try:
         # FR-04 v2: only channel/subject/body reach the model. Segment fields
         # (customer_tier, customer_region, customer_name, language_fluency)
@@ -126,12 +139,19 @@ def classify(
         raw = caller(_PROMPT.system, user_prompt, seed)
         result = _parse_response(raw)
     except Exception as exc:  # broad on purpose — FR-05 / A11
+        MODEL_CALL_FAILURES.labels(
+            stage="classification", error_type=type(exc).__name__
+        ).inc()
         logger.warning(
             "classify.failure",
             extra={
                 "ticket_id": ticket.ticket_id,
                 "error": str(exc),
                 "error_type": type(exc).__name__,
+                # The model answered but we could not use it: keep the text.
+                # Without this the evidence is gone and a model that starts
+                # emitting prose instead of JSON looks like a network fault.
+                "raw_response_head": (raw[:500] if raw is not None else None),
             },
         )
         result = ClassificationResult.unknown_fallback(

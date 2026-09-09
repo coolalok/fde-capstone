@@ -65,19 +65,21 @@ from typing import Callable, Optional, Protocol
 
 from src.config import (
     CONFIDENCE_THRESHOLD,
+    MODEL_MAX_RETRIES,
+    GUARDRAIL_MODEL,
     MODEL_NAME,
+    MODEL_TIMEOUT_SECONDS,
     OPENROUTER_API_KEY,
     require_key,
 )
 from src.logging_store import log_decision
+from src.metrics import MODEL_CALL_FAILURES
 from src.prompt_loader import load_prompt
 from src.schema import (
-    ClassificationResult,
     GeneratedResponse,
     GuardrailContext,
     GuardrailResult,
     Passage,
-    Ticket,
 )
 
 logger = logging.getLogger(__name__)
@@ -107,12 +109,17 @@ def _openrouter_call(system: str, user: str, seed: int = 0) -> str:
     from openai import OpenAI  # lazy import so tests don't need the pkg
 
     require_key()
+    # Bounded on purpose: the SDK default is a 600s read timeout with 2
+    # retries, so one unresponsive call can occupy ~30 minutes and stall an
+    # unattended run (A9). See MODEL_TIMEOUT_SECONDS in src/config.py.
     client = OpenAI(
         api_key=OPENROUTER_API_KEY,
         base_url="https://openrouter.ai/api/v1",
+        timeout=MODEL_TIMEOUT_SECONDS,
+        max_retries=MODEL_MAX_RETRIES,
     )
     completion = client.chat.completions.create(
-        model=MODEL_NAME,
+        model=GUARDRAIL_MODEL,
         messages=[
             {"role": "system", "content": system},
             {"role": "user", "content": user},
@@ -121,7 +128,15 @@ def _openrouter_call(system: str, user: str, seed: int = 0) -> str:
         seed=seed,
         response_format={"type": "json_object"},
     )
-    return completion.choices[0].message.content or ""
+    content = completion.choices[0].message.content
+    if not content:
+        # Observed with nemotron: a 200 response carrying null content. The old
+        # `or ""` turned that into an empty string, which then failed JSON
+        # parsing as "Expecting value" — a misleading error for a provider that
+        # simply returned nothing. Raise the true cause so the fail-safe verdict
+        # and the failure counter record what actually happened.
+        raise ValueError(f"{GUARDRAIL_MODEL} returned empty content")
+    return content
 
 
 # ─── regex signatures for structured PII (belt-and-braces on PR-GUARDRAIL-PII-01)
@@ -200,10 +215,15 @@ _RE_ETA = re.compile(
     r"""
     \b(?:
         we\ will\ (?:have\ this\ )?(?:fix|resolve|deliver|ship|deploy|complete)
-      | (?:fixed|resolved|delivered|shipped|deployed|completed)\ by\ (?:end\ of\ business|eod|tomorrow|next\ week|\w+day)
+      | (?:fixed|resolved|delivered|shipped|deployed|completed)
+        \ by\ (?:end\ of\ business|eod|tomorrow|next\ week|\w+day)
       | you.ll\ (?:have|get|see)\ (?:this|it)\ (?:fixed|resolved|working)\ (?:by|within)
       | expect\ (?:a\ )?(?:resolution|response|fix)\ (?:by|within)
-      | within\ \d+\ (?:hours?|days?|business\ days?)
+      # Must carry a resolution verb. A bare "within N days" also appears in
+      # descriptions of policy ("refund requests within 30 days"), which is
+      # reporting a documented rule, not promising anything.
+      | (?:resolved|fixed|completed|delivered|shipped|actioned)
+        \ within\ \d+\ (?:hours?|days?|business\ days?)
     )\b
     """,
     re.VERBOSE | re.IGNORECASE,
@@ -308,7 +328,7 @@ class PIIGuardrail:
                 )
 
         # ── Pass 2: LLM ───────────────────────────────────────
-        llm_detections = self._call_llm(response.answer)
+        llm_detections = self._call_llm(response.answer, context.ticket.ticket_id)
         if llm_detections is None:
             # LLM path failed — fail SAFE (block) if regex also found nothing;
             # if regex found something, the block reason is already there.
@@ -351,7 +371,7 @@ class PIIGuardrail:
             details={"detections": []},
         )
 
-    def _call_llm(self, draft: str) -> Optional[list[dict]]:
+    def _call_llm(self, draft: str, ticket_id: str = "") -> Optional[list[dict]]:
         """Run PR-GUARDRAIL-PII-01. Returns None on any failure — caller
         decides. Returns a special sentinel [{"category": "__contract__", ...}]
         for a passed/detections contract violation so the caller can force a
@@ -364,9 +384,13 @@ class PIIGuardrail:
             raw = caller(_PII_PROMPT.system, user, 0)
             data = _parse_json_verdict(raw)
         except Exception as exc:  # broad — fail SAFE per A11
+            MODEL_CALL_FAILURES.labels(
+                stage="guardrail:pii", error_type=type(exc).__name__
+            ).inc()
             logger.warning(
                 "guardrails.pii.llm_failure",
-                extra={"error": str(exc), "error_type": type(exc).__name__},
+                extra={"ticket_id": ticket_id, "error": str(exc),
+                       "error_type": type(exc).__name__},
             )
             return None
 
@@ -389,7 +413,8 @@ class PIIGuardrail:
         if contract_violation:
             logger.warning(
                 "guardrails.pii.contract_violation",
-                extra={"passed": passed, "n_detections": len(detections)},
+                extra={"ticket_id": ticket_id, "passed": passed,
+                       "n_detections": len(detections)},
             )
             return [
                 {
@@ -469,12 +494,42 @@ class GroundingGuardrail:
                 answer=response.answer,
                 citations=json.dumps(response.citations),
             )
+            # ── TEMP DEBUG (remove after diagnosis) ──────────────────
+            logger.info(
+                "DEBUG.grounding.request",
+                extra={
+                    "ticket_id": context.ticket.ticket_id,
+                    "prompt_version": _GROUNDING_PROMPT_VERSION,
+                    "n_passages": len(context.passages),
+                    "cited": response.citations,
+                    "answer": response.answer,
+                    "passages_block_chars": len(_format_passages(context.passages)),
+                    "user_prompt_chars": len(user),
+                    "system_prompt_chars": len(_GROUNDING_PROMPT.system),
+                },
+            )
             raw = caller(_GROUNDING_PROMPT.system, user, 0)
+            logger.info("DEBUG.grounding.raw_response",
+                        extra={"ticket_id": context.ticket.ticket_id, "raw": raw})
             data = _parse_json_verdict(raw)
+            logger.info(
+                "DEBUG.grounding.parsed",
+                extra={
+                    "ticket_id": context.ticket.ticket_id,
+                    "parsed_passed": data.get("passed"),
+                    "parsed_n_claims": len(data.get("unsupported_claims") or []),
+                    "parsed_keys": sorted(data.keys()),
+                },
+            )
+            # ── END TEMP DEBUG ───────────────────────────────────────
         except Exception as exc:  # broad — fail SAFE per A11
+            MODEL_CALL_FAILURES.labels(
+                stage="guardrail:grounding", error_type=type(exc).__name__
+            ).inc()
             logger.warning(
                 "guardrails.grounding.llm_failure",
-                extra={"error": str(exc), "error_type": type(exc).__name__},
+                extra={"ticket_id": context.ticket.ticket_id, "error": str(exc),
+                       "error_type": type(exc).__name__},
             )
             return GuardrailResult(
                 name=self.name,
@@ -489,6 +544,18 @@ class GroundingGuardrail:
         # Filter to real claim dicts (guard against schema slop).
         unsupported = [c for c in unsupported if isinstance(c, dict) and c.get("claim")]
         passed = data.get("passed")
+        # ── TEMP DEBUG (remove after diagnosis) ──────────────────────
+        logger.info(
+            "DEBUG.grounding.after_filter",
+            extra={
+                "ticket_id": context.ticket.ticket_id,
+                "passed_field": passed,
+                "n_after_filter": len(unsupported),
+                "claims": [c.get("claim", "")[:160] for c in unsupported],
+                "reasons": [c.get("why_not_supported", "")[:160] for c in unsupported],
+            },
+        )
+        # ── END TEMP DEBUG ───────────────────────────────────────────
 
         # ── Contract enforcement (fail-open guard) ────────────────────
         # PR-GUARDRAIL-GROUNDING-01 §Output schema requires passed and
@@ -504,7 +571,8 @@ class GroundingGuardrail:
         if contract_violation:
             logger.warning(
                 "guardrails.grounding.contract_violation",
-                extra={"passed": passed, "n_unsupported": len(unsupported)},
+                extra={"ticket_id": context.ticket.ticket_id, "passed": passed,
+                       "n_unsupported": len(unsupported)},
             )
             return GuardrailResult(
                 name=self.name,
@@ -521,6 +589,12 @@ class GroundingGuardrail:
                 },
             )
 
+        logger.info(
+            "DEBUG.grounding.decision_point",
+            extra={"ticket_id": context.ticket.ticket_id,
+                   "contract_violation": contract_violation,
+                   "will_block": bool(unsupported)},
+        )  # TEMP DEBUG
         if unsupported:
             summary = "; ".join(
                 f"{c.get('claim', '?')[:80]!r}: {c.get('why_not_supported', '?')[:80]}"
@@ -665,7 +739,7 @@ class ToneScopeGuardrail:
                 )
 
         # ── Pass 2: LLM ──────────────────────────────────────────
-        llm_commitments = self._call_llm(response.answer)
+        llm_commitments = self._call_llm(response.answer, context.ticket.ticket_id)
         if llm_commitments is None:
             if commitments:
                 return _fail_tonescope(self.name, self.blocking, commitments)
@@ -702,7 +776,7 @@ class ToneScopeGuardrail:
             details={"commitments": []},
         )
 
-    def _call_llm(self, draft: str) -> Optional[list[dict]]:
+    def _call_llm(self, draft: str, ticket_id: str = "") -> Optional[list[dict]]:
         """Run PR-GUARDRAIL-TONESCOPE-01. Same contract enforcement + fail-
         safe shape as PIIGuardrail._call_llm. Returns a __contract__
         sentinel for a passed/commitments agreement violation.
@@ -713,9 +787,13 @@ class ToneScopeGuardrail:
             raw = caller(_TONESCOPE_PROMPT.system, user, 0)
             data = _parse_json_verdict(raw)
         except Exception as exc:
+            MODEL_CALL_FAILURES.labels(
+                stage="guardrail:tonescope", error_type=type(exc).__name__
+            ).inc()
             logger.warning(
                 "guardrails.tonescope.llm_failure",
-                extra={"error": str(exc), "error_type": type(exc).__name__},
+                extra={"ticket_id": ticket_id, "error": str(exc),
+                       "error_type": type(exc).__name__},
             )
             return None
 
@@ -731,7 +809,8 @@ class ToneScopeGuardrail:
         if contract_violation:
             logger.warning(
                 "guardrails.tonescope.contract_violation",
-                extra={"passed": passed, "n_commitments": len(commitments)},
+                extra={"ticket_id": ticket_id, "passed": passed,
+                       "n_commitments": len(commitments)},
             )
             return [
                 {
@@ -852,6 +931,7 @@ def run_all(
             logger.warning(
                 "guardrails.check_raised",
                 extra={
+                    "ticket_id": context.ticket.ticket_id,
                     "guardrail": getattr(g, "name", type(g).__name__),
                     "error": str(exc),
                     "error_type": type(exc).__name__,
@@ -977,7 +1057,10 @@ def _fail(name: str, blocking: bool, detections: list[dict]) -> GuardrailResult:
             details={"contract_violation": True, "detections": detections},
         )
     categories = sorted({d["category"] for d in detections})
-    summary = ", ".join(f"{c}={sum(1 for d in detections if d['category'] == c)}" for c in categories)
+    summary = ", ".join(
+        f"{c}={sum(1 for d in detections if d['category'] == c)}"
+        for c in categories
+    )
     return GuardrailResult(
         name=name,
         passed=False,

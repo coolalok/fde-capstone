@@ -15,8 +15,38 @@ load_dotenv()
 OPENROUTER_API_KEY: str = os.environ.get("OPENROUTER_API_KEY", "")
 MODEL_NAME: str = os.environ.get("MODEL_NAME", "meta-llama/llama-3.1-8b-instruct")
 
+# Judge model for the LLM-backed guardrails (PII, grounding, tone/scope).
+#
+# Deliberately NOT MODEL_NAME. The 8B generator model cannot perform claim-level
+# verification: measured on the validation set it blocked 71 of 71 drafts it
+# judged, including 48 whose ground truth says auto-respond, and it rejected text
+# that was byte-for-byte present in the cited passage. Recalibrating the prompt
+# (PR-GUARDRAIL-GROUNDING-01 v2.0) changed nothing, so the limit is capability.
+# On pinned drafts nemotron-120b gets both directions right where llama-8b gets
+# one wrong. See Bug 5 in the Stage 5 revision log.
+#
+# Using a different model family for the judge also matches the self-preference
+# rule capstone-prompt-writer sets for evaluation judges.
+GUARDRAIL_MODEL: str = os.environ.get(
+    "GUARDRAIL_MODEL", "nvidia/nemotron-3-super-120b-a12b:free"
+)
+
 # Embeddings (local — no key)
 EMBEDDING_MODEL: str = os.environ.get("EMBEDDING_MODEL", "all-MiniLM-L6-v2")
+
+# Per-request timeout and retry cap for every model call.
+#
+# The OpenAI SDK defaults to a 600s read timeout with 2 retries, so an
+# unresponsive call can occupy ~30 minutes before it fails and nothing in our
+# code caps it. A9 promises the evaluation set is processed unattended in one
+# command; without an explicit bound, a single hung call stalls that run
+# indefinitely. Found 2026-09-04 when a validation sweep hung for two hours at
+# ticket 40 of 80.
+#
+# A healthy call runs ~2s, so 60s is ~30x headroom while keeping the worst
+# case per call bounded at (1 + retries) * timeout.
+MODEL_TIMEOUT_SECONDS: float = float(os.environ.get("MODEL_TIMEOUT_SECONDS", "60.0"))
+MODEL_MAX_RETRIES: int = int(os.environ.get("MODEL_MAX_RETRIES", "2"))
 
 # Storage paths
 _ROOT = Path(__file__).parent.parent
@@ -32,7 +62,12 @@ DECISION_LOG_TIMEOUT_SECONDS: float = float(
 )
 
 # Runtime thresholds (illustrative — set from data per D-05 ADR)
-CONFIDENCE_THRESHOLD: float = float(os.environ.get("CONFIDENCE_THRESHOLD", "0.80"))
+# 0.85 set by the B-16 sweep on the validation set (D-05b), NOT by feel.
+# Caveat recorded in D-05b: no threshold reached the EV-M3 precision floor of
+# 0.95 — the measured ceiling is 0.760 here. The binding constraint is
+# answerability, not confidence, so this number is provisional until the
+# FR-17 grounding guardrail is measured in the loop.
+CONFIDENCE_THRESHOLD: float = float(os.environ.get("CONFIDENCE_THRESHOLD", "0.85"))
 RETRIEVAL_TOP_K: int = int(os.environ.get("RETRIEVAL_TOP_K", "5"))
 # 0.25 set by measurement, not by feel — see D-02a. Calibrated against COSINE
 # relevance scores; the index must be built in cosine space or this number
@@ -47,6 +82,10 @@ GENERATE_TEMPERATURE: float = float(os.environ.get("GENERATE_TEMPERATURE", "0.0"
 
 # Logging
 LOG_LEVEL: str = os.environ.get("LOG_LEVEL", "INFO")
+# Optional second destination for structured logs. Empty = stderr only.
+# An unattended run (A9) has nobody watching stderr, so B-19/B-21 should
+# set this. Applied by src/logging_config.configure_logging().
+LOG_FILE: str = os.environ.get("LOG_FILE", "")
 
 
 def require_key() -> str:

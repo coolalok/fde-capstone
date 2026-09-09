@@ -16,7 +16,7 @@ import sqlite3
 
 import pytest
 
-from src.generate import CritiqueResult, _structural_critic, generate
+from src.generate import _structural_critic, generate
 from src.schema import GeneratedResponse, Passage, Ticket
 
 

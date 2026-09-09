@@ -237,7 +237,7 @@ def test_pii_customer_first_name_only_is_whitelisted(context):
     exact-string match would block, and would do so unevenly across
     name-form conventions (see PR-GUARDRAIL-PII-01.md §Fairness note).
     """
-    from src.schema import Ticket, GuardrailContext
+    from src.schema import GuardrailContext
     from src.guardrails import PIIGuardrail
 
     rosa_ticket = context.ticket.model_copy(update={"customer_name": "Rosa Sharma"})
@@ -513,7 +513,6 @@ def test_confidence_floor_blocks_below_threshold(
 # ─── run_all: integration + decision log ─────────────────────────────
 
 
-
 def test_run_all_writes_a_decision_log_row(grounded_response, context, db):
     """FR-20 via guardrails stage. One row per run_all invocation carrying
     the full guardrail_results array.
@@ -532,9 +531,10 @@ def test_run_all_writes_a_decision_log_row(grounded_response, context, db):
     assert stage == "guardrails"
     assert action == "pass"
     parsed = json.loads(guardrail_results)
-    assert len(parsed) == 4
+    assert len(parsed) == 5
     assert {r["name"] for r in parsed} == {
-        "pii", "grounding", "instruction_integrity", "confidence_floor",
+        "pii", "grounding", "instruction_integrity", "tone_scope",
+        "confidence_floor",
     }
 
 
@@ -581,7 +581,9 @@ def test_run_all_survives_a_guardrail_that_raises(grounded_response, context, db
 # ─── Contract-violation blocks (fail-safe defence) ───────────────────
 
 
-def test_grounding_contract_violation_passed_false_empty_list_blocks(grounded_response, context, db):
+def test_grounding_contract_violation_passed_false_empty_list_blocks(
+    grounded_response, context, db
+):
     """Fail-safe defence: LLM returns passed=false with an empty
     unsupported_claims list — an agreement violation. Must NOT be treated
     as a clean pass. Reason must name grounding_guardrail_contract_violation.
@@ -594,7 +596,9 @@ def test_grounding_contract_violation_passed_false_empty_list_blocks(grounded_re
     assert result.details.get("contract_violation") is True
 
 
-def test_grounding_contract_violation_passed_true_with_claims_blocks(grounded_response, context, db):
+def test_grounding_contract_violation_passed_true_with_claims_blocks(
+    grounded_response, context, db
+):
     """Symmetric case: LLM says passed=true but names unsupported claims.
     Force a block.
     """
@@ -653,7 +657,11 @@ def test_decision_log_carries_grounding_unsupported_claims_list(grounded_respons
     lived in GuardrailResult but was silently dropped by _write_decision_log.
     """
     unsupported = [
-        {"claim": f"claim number {i}", "cited_passages": ["DOC-AUTH-001"], "why_not_supported": f"why {i}"}
+        {
+            "claim": f"claim number {i}",
+            "cited_passages": ["DOC-AUTH-001"],
+            "why_not_supported": f"why {i}",
+        }
         for i in range(5)
     ]
     stub = _stub_returning({"passed": False, "unsupported_claims": unsupported})
@@ -917,7 +925,10 @@ def test_run_all_now_returns_five_guardrails(grounded_response, context, db):
     """run_all() returns all five guardrails in a fixed order — tone/scope
     sits between instruction_integrity and confidence_floor.
     """
-    stub = _stub_returning({"passed": True, "detections": [], "unsupported_claims": [], "commitments": []})
+    stub = _stub_returning(
+        {"passed": True, "detections": [], "unsupported_claims": [],
+         "commitments": []}
+    )
     results = run_all(grounded_response, context, call_model=stub)
     assert len(results) == 5
     names = [r.name for r in results]

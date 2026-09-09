@@ -12,6 +12,8 @@ import importlib
 import sys
 from pathlib import Path
 
+from src.logging_config import configure_logging
+
 
 def check(label: str, ok: bool, hint: str = "") -> bool:
     marker = "OK  " if ok else "FAIL"
@@ -22,6 +24,7 @@ def check(label: str, ok: bool, hint: str = "") -> bool:
 
 
 def main() -> int:
+    configure_logging()
     print("\n== FDE Capstone setup verifier ==\n")
     all_ok = True
 
@@ -61,7 +64,7 @@ def main() -> int:
 
     # 4. Model round-trip
     try:
-        import requests, os
+        import requests
         from src.config import require_key, MODEL_NAME
         key = require_key()
         r = requests.post(

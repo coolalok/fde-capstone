@@ -188,3 +188,45 @@ class GuardrailContext(BaseModel):
 
 
 GuardrailContext.model_rebuild()
+
+
+class EscalationBundle(BaseModel):
+    """What a human receives when the system hands a ticket over. Per FR-11.
+
+    EV-D1: escalations today arrive as a bare forwarded ticket, so Daniel
+    re-reads it, re-searches the docs, and re-asks the customer things they
+    already answered. EV-D3 is his stated ideal: the original ticket, what
+    tier one thought it was about, the relevant help articles, and the
+    specific point where tier one wasn't sure. These four fields are that
+    list, produced by the pipeline instead of a person.
+
+    This is not decoration. EV-DATA-03 found 46 of 189 correct escalations
+    (24.3%) still have an answer in the help articles — those tickets need a
+    human AND the article the retriever already found.
+    """
+
+    model_config = ConfigDict(extra="ignore")
+
+    passages: list[Passage] = Field(default_factory=list)
+    alternatives: list[Alternative] = Field(default_factory=list)
+    draft: str = ""
+    draft_blocked: bool = False
+    uncertainty: str = ""
+
+
+class Route(BaseModel):
+    """The router's decision for one ticket. Per FR-09 through FR-12.
+
+    `decision` is the action taken. `reason` is written for a support manager
+    to read, not a numeric code (FR-12). `trigger` is the machine-readable
+    name of the rule that fired, so the decision log can be grouped without
+    parsing prose.
+    """
+
+    model_config = ConfigDict(extra="ignore")
+
+    decision: str  # auto_respond | escalate | block
+    reason: str
+    trigger: str
+    bundle: Optional[EscalationBundle] = None
+    threshold_applied: float = 0.0

@@ -32,6 +32,12 @@ CONFIDENCE = Histogram(
     buckets=(0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0),
 )
 
+MODEL_CALL_FAILURES = Counter(
+    "model_call_failures_total",
+    "Model calls that failed, by pipeline stage and exception class",
+    ["stage", "error_type"],  # stage: classification | generation | guardrail:<name>
+)
+
 DECISION_LOG_FAILURES = Counter(
     "decision_log_write_failures_total",
     "Decision-log writes that failed — FR-20 not satisfied for those decisions",

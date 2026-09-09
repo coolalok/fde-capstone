@@ -52,11 +52,14 @@ from typing import Callable, Optional
 from src.config import (
     GENERATE_MAX_RETRIES,
     GENERATE_TEMPERATURE,
+    MODEL_MAX_RETRIES,
     MODEL_NAME,
+    MODEL_TIMEOUT_SECONDS,
     OPENROUTER_API_KEY,
     require_key,
 )
 from src.logging_store import log_decision
+from src.metrics import MODEL_CALL_FAILURES
 from src.prompt_loader import load_prompt
 from src.schema import GeneratedResponse, Passage, Ticket
 
@@ -103,9 +106,14 @@ def _openrouter_call(system: str, user: str, seed: int = 0) -> str:
     from openai import OpenAI  # imported lazily so unit tests don't need the pkg
 
     require_key()
+    # Bounded on purpose: the SDK default is a 600s read timeout with 2
+    # retries, so one unresponsive call can occupy ~30 minutes and stall an
+    # unattended run (A9). See MODEL_TIMEOUT_SECONDS in src/config.py.
     client = OpenAI(
         api_key=OPENROUTER_API_KEY,
         base_url="https://openrouter.ai/api/v1",
+        timeout=MODEL_TIMEOUT_SECONDS,
+        max_retries=MODEL_MAX_RETRIES,
     )
     completion = client.chat.completions.create(
         model=MODEL_NAME,
@@ -252,6 +260,9 @@ def _run_empty_branch(
         raw = caller(_PROMPT_02.system, user_prompt, seed)
         response = _parse_response(raw)
     except Exception as exc:  # broad on purpose — A11
+        MODEL_CALL_FAILURES.labels(
+            stage="generation", error_type=type(exc).__name__
+        ).inc()
         logger.warning(
             "generate.empty_branch.failure",
             extra={
@@ -312,6 +323,9 @@ def _run_grounded_branch(
             raw = caller(_PROMPT_01.system, user_prompt, seed + attempt)
             response = _parse_response(raw)
         except Exception as exc:  # broad on purpose — A11
+            MODEL_CALL_FAILURES.labels(
+                stage="generation", error_type=type(exc).__name__
+            ).inc()
             logger.warning(
                 "generate.grounded_branch.failure",
                 extra={
@@ -331,6 +345,9 @@ def _run_grounded_branch(
         try:
             critique = check(response, passages)
         except Exception as exc:  # critic errors also fall back per A11
+            MODEL_CALL_FAILURES.labels(
+                stage="generation:critic", error_type=type(exc).__name__
+            ).inc()
             logger.warning(
                 "generate.critic.failure",
                 extra={
@@ -457,7 +474,7 @@ def _write_decision_log(
         ticket_id=ticket_id,
         stage="generation",
         prediction=(
-            f"unknown=true"
+            "unknown=true"
             if response.unknown
             else f"answer_len={len(response.answer)} citations={response.citations}"
         ),

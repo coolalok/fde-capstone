@@ -72,6 +72,13 @@ python-multipart==0.0.6
 
 # LLM API — D-01 (OpenRouter free tier via the openai-python client surface)
 openai==1.30.0
+# httpx pinned <0.28 deliberately. openai 1.30.0 declares httpx<1,>=0.23.0, but
+# httpx 0.28 removed the `proxies` argument that openai 1.30.0 still passes to
+# httpx.Client, so an unpinned resolve installs 0.28.x and EVERY model call dies
+# with TypeError: Client.__init__() got an unexpected keyword argument 'proxies'.
+# A11 catches it, so the pipeline degrades to unknown on every ticket instead of
+# crashing — which is why it went unnoticed. Found at B-16, 2026-09-04.
+httpx==0.27.2
 requests==2.31.0
 python-dotenv==1.0.0
 aiohttp==3.9.0
