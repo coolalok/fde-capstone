@@ -97,6 +97,17 @@ def process_ticket(raw: dict, *, skip_guardrails: bool = False,
         row["unknown"] = response.unknown
         row["citations"] = response.citations
         row["answer_len"] = len(response.answer)
+        # The draft itself, not just its length. Diagnosing why a guardrail
+        # blocked needs the text that was judged: the DEV-0485 / VAL-0008 /
+        # VAL-0019 PII false positive could not be identified from these rows
+        # and cost a re-run against the live provider to reproduce. A blocked
+        # draft is never sent to the customer, so this file is the only place
+        # it survives. Drafts blocked for PII are retained deliberately —
+        # withholding them here would make exactly the tickets that most need
+        # review the ones that cannot be reviewed. Treat results.jsonl as
+        # carrying reply text (it is gitignored by default at the top level;
+        # committed run directories are diagnostic runs on synthetic data).
+        row["answer"] = response.answer
         row["generator_error"] = response.error
         row["retries"] = response.retries
 
@@ -108,6 +119,9 @@ def process_ticket(raw: dict, *, skip_guardrails: bool = False,
             guardrail_results = run_all(response, ctx, call_model=call_model)
         row["guardrails"] = [
             {"name": g.name, "passed": g.passed, "blocking": g.blocking,
+             # A block because the JUDGE failed, not because the answer did.
+             # Both block; they mean opposite things to a reader.
+             "fail_safe": g.fail_safe,
              "reason": g.reason[:200]}
             for g in guardrail_results
         ]
@@ -188,12 +202,22 @@ def build_metrics(rows: list[dict], truth: dict[str, dict], *,
     # ── governance ────────────────────────────────────────────────────
     recon = reconcile([r["ticket_id"] for r in rows], run_id=run_id)
     guardrail_activations: Counter = Counter()
+    # Split out separately: a fail-safe block means the judge model errored or
+    # broke its output contract, NOT that the answer was bad. Both block, so
+    # both land in guardrail_activations — but a report that cannot tell them
+    # apart reads a judge outage as rampant fabrication. If
+    # guardrail_fail_safe_blocks is a large share of guardrail_activations,
+    # the block rate is measuring provider health, not model quality.
+    guardrail_fail_safe: Counter = Counter()
     pii_detections = 0
     for r in rows:
         for g in r.get("guardrails", []):
             if not g["passed"]:
                 guardrail_activations[g["name"]] += 1
-                if g["name"] == "pii":
+                if g.get("fail_safe"):
+                    guardrail_fail_safe[g["name"]] += 1
+                elif g["name"] == "pii":
+                    # Only a real detection counts as PII found in a draft.
                     pii_detections += 1
 
     # ── business ──────────────────────────────────────────────────────
@@ -257,6 +281,7 @@ def build_metrics(rows: list[dict], truth: dict[str, dict], *,
             "missing_from_log": recon["missing_from_log"],
             "extra_in_log": recon["extra_in_log"],
             "guardrail_activations": dict(guardrail_activations),
+            "guardrail_fail_safe_blocks": dict(guardrail_fail_safe),
             "pii_detections": pii_detections,
         },
     }

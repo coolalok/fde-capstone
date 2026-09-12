@@ -159,6 +159,15 @@ class GuardrailResult(BaseModel):
       - details: structured verdict payload — e.g. PII detections list,
         unsupported-claim list. Deliberately loose (Dict[str, Any]) so each
         guardrail can carry its own shape without inflating the schema.
+      - fail_safe: True when passed=False because the CHECK failed, not
+        because the answer did — the judge model errored, returned an
+        unparseable verdict, or broke its own passed/detections contract.
+        Both still block (A7/A11, fail safe); the flag exists because they
+        mean opposite things to a reader. A run where the judge provider
+        rate-limits reports "grounding blocked 71/71", which looks like
+        rampant fabrication and is actually an outage. That misreading cost
+        real time on Bug 5, and nothing in the result row distinguished the
+        two cases. Routing behaviour is deliberately unchanged.
     """
 
     model_config = ConfigDict(extra="ignore")
@@ -166,6 +175,7 @@ class GuardrailResult(BaseModel):
     name: str
     passed: bool
     blocking: bool = True
+    fail_safe: bool = False
     reason: str = ""
     details: dict = Field(default_factory=dict)
 

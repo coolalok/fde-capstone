@@ -169,3 +169,55 @@ def test_full_cli_run_exits_zero_and_writes_both_artefacts(db, _no_retrieval, tm
     report = json.loads((out / "metrics_report.json").read_text())
     assert report["counts"]["tickets_processed"] == len(SMOKE_TICKETS)
     assert len((out / "results.jsonl").read_text().strip().splitlines()) == len(SMOKE_TICKETS)
+
+
+# ─── result rows must be auditable after the fact (2026-09-13) ───────
+
+
+def test_row_records_the_draft_not_just_its_length(db, _no_retrieval):
+    """Diagnosing a guardrail block needs the text that was judged.
+
+    The DEV-0485 / VAL-0008 / VAL-0019 PII false positive could not be
+    identified from the stored rows — only answer_len was kept — and cost a
+    re-run against the live provider to reproduce. A blocked draft is never
+    sent to the customer, so results.jsonl is the only place it survives.
+    """
+    row = process_ticket(SMOKE_TICKETS[0])
+    assert "answer" in row
+    assert isinstance(row["answer"], str)
+    assert row["answer_len"] == len(row["answer"])
+
+
+def test_fail_safe_blocks_are_reported_apart_from_real_findings():
+    """A judge outage and a fabricating generator both block. A report that
+    cannot tell them apart reads the outage as rampant fabrication — the
+    misreading that cost time on Bug 5.
+    """
+    rows = [
+        {"ticket_id": "T1", "decision": "block", "latency_seconds": 0.1,
+         "guardrails": [
+             {"name": "grounding", "passed": False, "blocking": True,
+              "fail_safe": True, "reason": "grounding_guardrail_error: Timeout"},
+         ]},
+        {"ticket_id": "T2", "decision": "block", "latency_seconds": 0.1,
+         "guardrails": [
+             {"name": "grounding", "passed": False, "blocking": True,
+              "fail_safe": False, "reason": "1 unsupported claim(s)"},
+             {"name": "pii", "passed": False, "blocking": True,
+              "fail_safe": False, "reason": "PII detected (email=1)"},
+         ]},
+        {"ticket_id": "T3", "decision": "block", "latency_seconds": 0.1,
+         "guardrails": [
+             {"name": "pii", "passed": False, "blocking": True,
+              "fail_safe": True, "reason": "pii_guardrail_error: llm path failed"},
+         ]},
+    ]
+    m = build_metrics(rows, {}, run_id="smoke", skip_guardrails=False)
+    gov = m["governance_metrics"]
+
+    # Both kinds still count as activations — they are all blocks (A7).
+    assert gov["guardrail_activations"] == {"grounding": 2, "pii": 2}
+    # But the fail-safe half is separable.
+    assert gov["guardrail_fail_safe_blocks"] == {"grounding": 1, "pii": 1}
+    # And a PII guardrail that ERRORED did not detect PII in a draft.
+    assert gov["pii_detections"] == 1

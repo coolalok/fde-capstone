@@ -380,6 +380,7 @@ class PIIGuardrail:
                 blocking=self.blocking,
                 reason="pii_guardrail_error: llm path failed and no regex evidence "
                        "either — failing SAFE per A7",
+                fail_safe=True,
                 details={"detections": []},
             )
         detections.extend(llm_detections)
@@ -525,6 +526,7 @@ class GroundingGuardrail:
                 blocking=self.blocking,
                 reason="grounding_guardrail_error: non-unknown answer with no "
                        "passages in context — cannot verify grounding",
+                fail_safe=True,
             )
 
         caller = self.call_model or _openrouter_call
@@ -550,6 +552,7 @@ class GroundingGuardrail:
                 passed=False,
                 blocking=self.blocking,
                 reason=f"grounding_guardrail_error: {type(exc).__name__}: {exc}",
+                fail_safe=True,
             )
 
         unsupported = data.get("unsupported_claims", [])
@@ -596,6 +599,7 @@ class GroundingGuardrail:
                     f"grounding_guardrail_contract_violation: "
                     f"passed={passed} n_unsupported={len(unsupported)}"
                 ),
+                fail_safe=True,
                 details={
                     "contract_violation": True,
                     "raw_passed": passed,
@@ -759,6 +763,7 @@ class ToneScopeGuardrail:
                     "tonescope_guardrail_error: llm path failed and no regex "
                     "evidence either — failing SAFE per A7"
                 ),
+                fail_safe=True,
                 details={"commitments": []},
             )
         commitments.extend(llm_commitments)
@@ -951,6 +956,7 @@ def run_all(
                     passed=False,
                     blocking=getattr(g, "blocking", True),
                     reason=f"guardrail_error: {type(exc).__name__}: {exc}",
+                    fail_safe=True,
                 )
             )
 
@@ -1062,6 +1068,7 @@ def _fail(name: str, blocking: bool, detections: list[dict]) -> GuardrailResult:
                 "pii_guardrail_contract_violation: "
                 + contract_hits[0].get("text", "")
             ),
+            fail_safe=True,
             details={"contract_violation": True, "detections": detections},
         )
     categories = sorted({d["category"] for d in detections})
@@ -1097,6 +1104,7 @@ def _fail_tonescope(
                 "tonescope_guardrail_contract_violation: "
                 + contract_hits[0].get("text", "")
             ),
+            fail_safe=True,
             details={"contract_violation": True, "commitments": commitments},
         )
     categories = sorted({c["category"] for c in commitments})

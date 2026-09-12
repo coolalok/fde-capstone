@@ -1011,3 +1011,92 @@ def test_mask_citation_markers_preserves_indices():
     assert len(masked) == len(text)
     assert "ACCT-001" not in masked
     assert masked.index("CUST-4471") == text.index("CUST-4471")
+
+
+# ─── fail-safe blocks are labelled as such (2026-09-13) ──────────────
+# A block because the JUDGE failed and a block because the ANSWER failed are
+# both blocks (A7/A11) and mean opposite things. Nothing in the result row
+# used to distinguish them, so a judge outage read as rampant fabrication.
+
+
+def test_guardrail_error_sets_fail_safe(context, grounded_response):
+    """A judge that raises must block AND be labelled fail_safe."""
+    def exploding(system, user, seed):
+        raise TimeoutError("provider unreachable")
+
+    g = GroundingGuardrail(call_model=exploding)
+    result = g.check(grounded_response, context)
+    assert result.passed is False
+    assert result.blocking is True
+    assert result.fail_safe is True
+
+
+def test_genuine_finding_is_not_fail_safe(context, grounded_response):
+    """A real unsupported claim blocks with fail_safe=False — the flag must
+    not become 'every block', which would make it useless.
+    """
+    stub = _stub_returning(
+        {"passed": False,
+         "unsupported_claims": [
+             {"claim": "released yesterday", "why_not_supported": "not in passage"}
+         ]}
+    )
+    g = GroundingGuardrail(call_model=stub)
+    result = g.check(grounded_response, context)
+    assert result.passed is False
+    assert result.fail_safe is False
+
+
+def test_every_fail_safe_return_site_sets_the_flag():
+    """AST scan, not a substring match: every GuardrailResult built with a
+    reason naming a guardrail error or contract violation must set
+    fail_safe=True. Catches a new fail-safe branch added without the flag,
+    which would silently re-merge the two categories.
+    """
+    import ast
+    import pathlib
+
+    src = pathlib.Path("src/guardrails.py").read_text()
+    tree = ast.parse(src)
+    offenders = []
+    in_scope = 0
+
+    def reason_text(call: ast.Call) -> str:
+        for kw in call.keywords:
+            if kw.arg != "reason":
+                continue
+            # Literal, implicitly-concatenated, or f-string reason.
+            return "".join(
+                n.value for n in ast.walk(kw.value)
+                if isinstance(n, ast.Constant) and isinstance(n.value, str)
+            )
+        return ""
+
+    for node in ast.walk(tree):
+        if not (isinstance(node, ast.Call)
+                and isinstance(node.func, ast.Name)
+                and node.func.id == "GuardrailResult"):
+            continue
+        text = reason_text(node)
+        # Bare "guardrail_error:" (run_all's catch-all) as well as the
+        # per-guardrail "<name>_guardrail_error:" forms.
+        if "guardrail_error" not in text and "contract_violation" not in text:
+            continue
+        flagged = any(
+            kw.arg == "fail_safe"
+            and isinstance(kw.value, ast.Constant)
+            and kw.value.value is True
+            for kw in node.keywords
+        )
+        in_scope += 1
+        if not flagged:
+            offenders.append((node.lineno, text[:70]))
+
+    assert in_scope == 8, (
+        f"expected 8 fail-safe return sites, found {in_scope} — a site was "
+        "added or removed; update this count deliberately, do not let the "
+        "scan silently cover less than it did."
+    )
+    assert not offenders, (
+        "fail-safe GuardrailResult(s) missing fail_safe=True: " + repr(offenders)
+    )
