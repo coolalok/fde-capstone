@@ -418,6 +418,35 @@ def _format_passages(passages: list[Passage]) -> str:
     return "\n\n---\n\n".join(parts)
 
 
+# One citation marker as the generator writes it inline, e.g. "[DOC-ACCT-001]".
+# All 29 corpus doc_ids match this shape (checked against data/documentation.json).
+_RE_MARKER = re.compile(r"\[DOC-[A-Z]+-\d+\]")
+# A contiguous run of markers, optionally separated by spaces: "[A][A]", "[A] [B]".
+_RE_MARKER_RUN = re.compile(r"(?:\[DOC-[A-Z]+-\d+\][ \t]*){2,}")
+
+
+def _collapse_repeated_markers(answer: str) -> str:
+    """Collapse a run of adjacent inline citation markers to its distinct members.
+
+    Observed on DEV-0485: gpt-4o-mini emitted "...seven days.[DOC-ACCT-001]
+    [DOC-ACCT-001]" — the same marker twice in a row. llama-3.1-8b does it too,
+    so it is not a single-model artefact and is not fixable by swapping models.
+    PR-GENERATE-01 says a marker sits after the sentence relying on it; two
+    copies of one marker still means one source, so the duplicate carries no
+    information and just reads as a defect to the customer.
+
+    Only exact repeats inside one run are dropped. "[DOC-A][DOC-B]" is two
+    genuine sources and is left alone, as is the same marker cited again later
+    in the answer after intervening prose.
+    """
+    def _dedupe(match: "re.Match[str]") -> str:
+        seen = dict.fromkeys(_RE_MARKER.findall(match.group(0)))
+        trailing = " " if match.group(0).endswith((" ", "\t")) else ""
+        return "".join(seen) + trailing
+
+    return _RE_MARKER_RUN.sub(_dedupe, answer)
+
+
 def _parse_response(raw: str) -> GeneratedResponse:
     """Parse and validate the model's JSON output. Raises on any invalidity.
 
@@ -457,8 +486,13 @@ def _parse_response(raw: str) -> GeneratedResponse:
         raise ValueError(f"unknown must be bool: {type(unknown).__name__}")
 
     return GeneratedResponse(
-        answer=answer,
-        citations=list(citations),
+        answer=_collapse_repeated_markers(answer),
+        # Dedupe, preserving order. Models emit the same doc_id repeatedly
+        # and staple the markers together ('...[DOC-A][DOC-A]'), against
+        # PR-GENERATE-01's rule that a marker sits after the sentence that
+        # relies on it. Observed on llama-3.1-8b AND gpt-4o-mini, so it is
+        # not a single-model artefact. citations is the SET of documents used.
+        citations=list(dict.fromkeys(citations)),
         confidence=confidence,
         unknown=unknown,
         retries=0,

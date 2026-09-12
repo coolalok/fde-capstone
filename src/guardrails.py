@@ -189,15 +189,43 @@ _RE_PHONE = re.compile(
     """,
     re.VERBOSE,
 )
+# Inline citation markers the generator writes, e.g. "[DOC-ACCT-001]". All 29
+# corpus doc_ids match this shape.
+_RE_CITATION_MARKER = re.compile(r"\[DOC-[A-Z]+-\d+\]")
+
+
+def _mask_citation_markers(text: str) -> str:
+    """Blank out inline citation markers before the PII regex pass.
+
+    DEV-0485 was blocked as account_number PII because "[DOC-ACCT-001]"
+    contains "ACCT-001", which is exactly the CloudServe account-ID shape
+    _RE_ACCOUNT looks for. The marker is a system-generated reference to a
+    public help article from a closed 29-document corpus — it is never
+    customer data, so matching it is a pure false positive, and a blocking
+    one: every answer citing a DOC-ACCT-* article would be withheld.
+
+    Each marker is replaced by the same number of spaces rather than removed,
+    so match.start() still indexes correctly into the original answer.
+    """
+    return _RE_CITATION_MARKER.sub(lambda m: " " * len(m.group(0)), text)
+
+
 # CloudServe-style account IDs + bank / card digit sequences.
 _RE_ACCOUNT = re.compile(
     r"""
     (?:
         \b(?:CUST|ACC|ACCT)-\d{2,}
-      | \b\d{13,19}\b
+        # Card-shaped: grouped digits. A BARE \b\d{13,19}\b used to live here
+        # and matched ANY long digit run, so it fired on ordinary identifiers in
+        # a draft — 2 of 20 blocks in the OpenAI run were this false positive
+        # (VAL-0008, VAL-0019). Grouping or an explicit label is what makes a
+        # digit run an account number rather than just a number.
+      | \b\d{4}[\s-]\d{4}[\s-]\d{4}[\s-]\d{2,4}\b
+        # Labelled: "account number 1234567890123456"
+      | \b(?:account|acct|card)\s*(?:number|no\.?|\#)?\s*:?\s*\d{10,19}\b
     )
     """,
-    re.VERBOSE,
+    re.VERBOSE | re.IGNORECASE,
 )
 
 # Persona-shift + injection patterns for FR-18. These are detection
@@ -315,13 +343,16 @@ class PIIGuardrail:
         detections: list[dict] = []
 
         # ── Pass 1: regex ─────────────────────────────────────
+        # Citation markers are masked first — see _mask_citation_markers.
+        # Indices are preserved, so start_index still points into answer.
+        scan_text = _mask_citation_markers(response.answer)
         for category, pattern in [
             ("email", _RE_EMAIL),
             ("api_key", _RE_API_KEY),
             ("phone", _RE_PHONE),
             ("account_number", _RE_ACCOUNT),
         ]:
-            for match in pattern.finditer(response.answer):
+            for match in pattern.finditer(scan_text):
                 text = match.group(0)
                 # Skip obvious placeholders wrapped in <> or SHOUTING_SNAKE_CASE.
                 if _looks_like_placeholder(text):
@@ -503,34 +534,8 @@ class GroundingGuardrail:
                 answer=response.answer,
                 citations=json.dumps(response.citations),
             )
-            # ── TEMP DEBUG (remove after diagnosis) ──────────────────
-            logger.info(
-                "DEBUG.grounding.request",
-                extra={
-                    "ticket_id": context.ticket.ticket_id,
-                    "prompt_version": _GROUNDING_PROMPT_VERSION,
-                    "n_passages": len(context.passages),
-                    "cited": response.citations,
-                    "answer": response.answer,
-                    "passages_block_chars": len(_format_passages(context.passages)),
-                    "user_prompt_chars": len(user),
-                    "system_prompt_chars": len(_GROUNDING_PROMPT.system),
-                },
-            )
             raw = caller(_GROUNDING_PROMPT.system, user, 0)
-            logger.info("DEBUG.grounding.raw_response",
-                        extra={"ticket_id": context.ticket.ticket_id, "raw": raw})
             data = _parse_json_verdict(raw)
-            logger.info(
-                "DEBUG.grounding.parsed",
-                extra={
-                    "ticket_id": context.ticket.ticket_id,
-                    "parsed_passed": data.get("passed"),
-                    "parsed_n_claims": len(data.get("unsupported_claims") or []),
-                    "parsed_keys": sorted(data.keys()),
-                },
-            )
-            # ── END TEMP DEBUG ───────────────────────────────────────
         except Exception as exc:  # broad — fail SAFE per A11
             MODEL_CALL_FAILURES.labels(
                 stage="guardrail:grounding", error_type=type(exc).__name__
@@ -553,18 +558,18 @@ class GroundingGuardrail:
         # Filter to real claim dicts (guard against schema slop).
         unsupported = [c for c in unsupported if isinstance(c, dict) and c.get("claim")]
         passed = data.get("passed")
-        # ── TEMP DEBUG (remove after diagnosis) ──────────────────────
-        logger.info(
-            "DEBUG.grounding.after_filter",
+        # Counts only, at DEBUG. The scaffolding this replaces logged the
+        # full answer and raw verdict at INFO — too noisy for a run, and it
+        # put customer-facing answer text into the log for every ticket.
+        logger.debug(
+            "guardrails.grounding.verdict",
             extra={
                 "ticket_id": context.ticket.ticket_id,
                 "passed_field": passed,
-                "n_after_filter": len(unsupported),
-                "claims": [c.get("claim", "")[:160] for c in unsupported],
-                "reasons": [c.get("why_not_supported", "")[:160] for c in unsupported],
+                "n_unsupported": len(unsupported),
+                "prompt_version": _GROUNDING_PROMPT_VERSION,
             },
         )
-        # ── END TEMP DEBUG ───────────────────────────────────────────
 
         # ── Contract enforcement (fail-open guard) ────────────────────
         # PR-GUARDRAIL-GROUNDING-01 §Output schema requires passed and
@@ -598,12 +603,6 @@ class GroundingGuardrail:
                 },
             )
 
-        logger.info(
-            "DEBUG.grounding.decision_point",
-            extra={"ticket_id": context.ticket.ticket_id,
-                   "contract_violation": contract_violation,
-                   "will_block": bool(unsupported)},
-        )  # TEMP DEBUG
         if unsupported:
             summary = "; ".join(
                 f"{c.get('claim', '?')[:80]!r}: {c.get('why_not_supported', '?')[:80]}"

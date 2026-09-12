@@ -16,7 +16,12 @@ import sqlite3
 
 import pytest
 
-from src.generate import _structural_critic, generate
+from src.generate import (
+    _collapse_repeated_markers,
+    _parse_response,
+    _structural_critic,
+    generate,
+)
 from src.schema import GeneratedResponse, Passage, Ticket
 
 
@@ -466,3 +471,52 @@ def test_structural_critic_flags_non_unknown_with_empty_answer():
     result = _structural_critic(resp, _passages("DOC-A"))
     assert result.passed is False
     assert any("answer must be non-empty" in c for c in result.unsupported_claims)
+
+
+# --- B-11 follow-up: duplicate inline citation markers (DEV-0485) -------------
+# Both llama-3.1-8b and gpt-4o-mini emit the same marker twice in a row. The
+# parser collapses the run; citations stays the distinct set of doc_ids used.
+
+
+@pytest.mark.parametrize(
+    "answer, expected",
+    [
+        # The DEV-0485 case, verbatim shape.
+        ("Invitations expire after seven days.[DOC-ACCT-001][DOC-ACCT-001]",
+         "Invitations expire after seven days.[DOC-ACCT-001]"),
+        # Space-separated repeat.
+        ("See the guide. [DOC-AUTH-001] [DOC-AUTH-001]",
+         "See the guide. [DOC-AUTH-001]"),
+        # Two genuine sources in one run are BOTH kept — this is the case the
+        # fix must not break.
+        ("Both apply.[DOC-AUTH-001][DOC-ACCT-001]",
+         "Both apply.[DOC-AUTH-001][DOC-ACCT-001]"),
+        # Three-in-a-row reduces to the two distinct ones, in first-seen order.
+        ("x [DOC-B-002][DOC-A-001][DOC-B-002]", "x [DOC-B-002][DOC-A-001]"),
+        # The same marker cited again after intervening prose is not a run.
+        ("First.[DOC-AUTH-001] Then second.[DOC-AUTH-001]",
+         "First.[DOC-AUTH-001] Then second.[DOC-AUTH-001]"),
+        # A single marker is untouched.
+        ("Only one.[DOC-AUTH-001]", "Only one.[DOC-AUTH-001]"),
+        # Nothing that looks like a marker is invented.
+        ("No citations here at all.", "No citations here at all."),
+    ],
+)
+def test_collapse_repeated_markers(answer, expected):
+    assert _collapse_repeated_markers(answer) == expected
+
+
+def test_parse_response_collapses_markers_and_dedupes_citations():
+    """End of the parser path: answer text and citations list both deduped."""
+    raw = json.dumps(
+        {
+            "answer": "Invitations expire after seven days."
+                      "[DOC-ACCT-001][DOC-ACCT-001]",
+            "citations": ["DOC-ACCT-001", "DOC-ACCT-001", "DOC-AUTH-001"],
+            "confidence": 0.9,
+            "unknown": False,
+        }
+    )
+    result = _parse_response(raw)
+    assert result.answer.endswith("seven days.[DOC-ACCT-001]")
+    assert result.citations == ["DOC-ACCT-001", "DOC-AUTH-001"]

@@ -939,3 +939,75 @@ def test_run_all_now_returns_five_guardrails(grounded_response, context, db):
         "tone_scope",
         "confidence_floor",
     ]
+
+
+# ─── account-number regex precision (2026-09-12) ─────────────────────
+
+
+@pytest.mark.parametrize("text,expected,why", [
+    ("your reference is CUST-1234", True, "CloudServe customer id"),
+    ("card 4111 1111 1111 1111", True, "card-shaped, grouped digits"),
+    ("account number 1234567890123456", True, "explicitly labelled"),
+    ("see ACCT-99 on the billing page", True, "acct prefix"),
+    # The regression. A bare \b\d{13,19}\b matched ANY long digit run and cost
+    # 2 of 20 blocks in the OpenAI run (VAL-0008, VAL-0019) on drafts that had
+    # no account number in them at all.
+    ("the org identifier is 1234567890123", False, "bare digit run"),
+    ("build 20260912174805123 completed", False, "long build id"),
+    ("the effective permissions view shows roles", False, "ordinary prose"),
+])
+def test_account_number_regex_needs_grouping_or_a_label(text, expected, why):
+    from src.guardrails import _RE_ACCOUNT
+
+    assert bool(_RE_ACCOUNT.search(text)) is expected, why
+
+
+# ─── citation markers are not PII (DEV-0485, 2026-09-13) ─────────────
+# "[DOC-ACCT-001]" contains "ACCT-001", the CloudServe account-ID shape.
+# Unmasked, every answer citing a DOC-ACCT-* article blocks as a PII leak.
+
+
+def test_pii_does_not_flag_its_own_citation_marker(context):
+    """FR-16: a citation marker is a reference to a public help article,
+    not customer data. DEV-0485 blocked on exactly this.
+    """
+    response = GeneratedResponse(
+        answer=(
+            "Pending invitations expire after seven days.[DOC-ACCT-001]"
+        ),
+        citations=["DOC-ACCT-001"],
+        confidence=0.9,
+        unknown=False,
+    )
+    stub = _stub_returning({"passed": True, "detections": []})
+    g = PIIGuardrail(call_model=stub)
+    result = g.check(response, context)
+    assert result.passed is True, result.reason
+
+
+def test_pii_still_blocks_a_real_account_id_next_to_a_marker(context):
+    """Masking markers must not blind the check to PII beside one — the
+    guard that stops the DEV-0485 fix from becoming a hole.
+    """
+    response = GeneratedResponse(
+        answer="Your reference is CUST-4471.[DOC-ACCT-001]",
+        citations=["DOC-ACCT-001"],
+        confidence=0.9,
+        unknown=False,
+    )
+    stub = _stub_returning({"passed": True, "detections": []})
+    g = PIIGuardrail(call_model=stub)
+    result = g.check(response, context)
+    assert result.passed is False
+    assert "account_number" in result.reason
+
+
+def test_mask_citation_markers_preserves_indices():
+    """start_index in a detection must still point into the ORIGINAL answer."""
+    from src.guardrails import _mask_citation_markers
+
+    text = "See this.[DOC-ACCT-001] Your id is CUST-4471."
+    masked = _mask_citation_markers(text)
+    assert len(masked) == len(text)
+    assert "ACCT-001" not in masked
+    assert masked.index("CUST-4471") == text.index("CUST-4471")
