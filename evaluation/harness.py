@@ -45,7 +45,7 @@ from pathlib import Path
 from typing import Any, Optional
 
 from src.classify import classify
-from src.config import CONFIDENCE_THRESHOLD, MODEL_NAME
+from src.config import CONFIDENCE_THRESHOLD, GUARDRAIL_MODEL, MODEL_NAME
 from src.generate import generate
 from src.guardrails import run_all
 from src.ingest import normalise_any
@@ -211,6 +211,10 @@ def build_metrics(rows: list[dict], truth: dict[str, dict], *,
     metrics: dict[str, Any] = {
         "run_id": run_id,
         "model_name": MODEL_NAME,
+        # Recorded separately: the guardrails judge with a different model on
+        # purpose (D-07/Bug 5), so a reader cannot tell which model produced a
+        # verdict from model_name alone.
+        "guardrail_model": GUARDRAIL_MODEL if not skip_guardrails else None,
         "confidence_threshold": CONFIDENCE_THRESHOLD,
         "guardrails_enabled": not skip_guardrails,
         "labels_available": bool(truth),

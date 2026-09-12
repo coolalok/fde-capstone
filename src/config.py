@@ -15,6 +15,19 @@ load_dotenv()
 OPENROUTER_API_KEY: str = os.environ.get("OPENROUTER_API_KEY", "")
 MODEL_NAME: str = os.environ.get("MODEL_NAME", "meta-llama/llama-3.1-8b-instruct")
 
+# Provider endpoint and key. Both default to OpenRouter, so a clean checkout
+# behaves exactly as D-01 specifies and the cost-nothing rule holds — the
+# assessor runs this on their own machine and must not need a paid account.
+#
+# They are overridable ONLY so a paid endpoint can be pointed at for DIAGNOSIS
+# (e.g. separating a model-capability failure from a free-tier rate limit,
+# which the free tier cannot answer on its own). Results from another provider
+# are a SEPARATE experiment, not an update to the llama-3.1-8b measurements
+# that D-05b, B-16 and B-21 rest on — label them as such or the report ends up
+# mixing two systems.
+MODEL_BASE_URL: str = os.environ.get("MODEL_BASE_URL", "https://openrouter.ai/api/v1")
+MODEL_API_KEY: str = os.environ.get("MODEL_API_KEY", "") or OPENROUTER_API_KEY
+
 # Judge model for the LLM-backed guardrails (PII, grounding, tone/scope).
 #
 # Deliberately NOT MODEL_NAME. The 8B generator model cannot perform claim-level
@@ -90,8 +103,9 @@ LOG_FILE: str = os.environ.get("LOG_FILE", "")
 
 def require_key() -> str:
     """Fail loudly if the model provider key is missing."""
-    if not OPENROUTER_API_KEY:
+    if not MODEL_API_KEY:
         raise RuntimeError(
-            "OPENROUTER_API_KEY is not set. Copy .env.example to .env and fill it in."
+            "No model provider key set. Copy .env.example to .env and fill in "
+            "OPENROUTER_API_KEY (or MODEL_API_KEY if pointing at another provider)."
         )
-    return OPENROUTER_API_KEY
+    return MODEL_API_KEY

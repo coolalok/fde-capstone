@@ -55,7 +55,8 @@ from src.config import (
     MODEL_MAX_RETRIES,
     MODEL_NAME,
     MODEL_TIMEOUT_SECONDS,
-    OPENROUTER_API_KEY,
+    MODEL_API_KEY,
+    MODEL_BASE_URL,
     require_key,
 )
 from src.logging_store import log_decision
@@ -110,8 +111,8 @@ def _openrouter_call(system: str, user: str, seed: int = 0) -> str:
     # retries, so one unresponsive call can occupy ~30 minutes and stall an
     # unattended run (A9). See MODEL_TIMEOUT_SECONDS in src/config.py.
     client = OpenAI(
-        api_key=OPENROUTER_API_KEY,
-        base_url="https://openrouter.ai/api/v1",
+        api_key=MODEL_API_KEY,
+        base_url=MODEL_BASE_URL,
         timeout=MODEL_TIMEOUT_SECONDS,
         max_retries=MODEL_MAX_RETRIES,
     )
@@ -125,6 +126,14 @@ def _openrouter_call(system: str, user: str, seed: int = 0) -> str:
         seed=seed,
         response_format={"type": "json_object"},
     )
+    # OpenRouter can answer 200 with choices=None when the upstream provider
+    # errors. Subscripting that raised "TypeError: 'NoneType' object is not
+    # subscriptable" from inside the caller's broad except, which recorded the
+    # symptom rather than the cause. Raise the cause instead — the fail-safe
+    # cascade is unchanged, but the reason string and MODEL_CALL_FAILURES say
+    # what actually happened.
+    if not getattr(completion, "choices", None):
+        raise ValueError(f"provider returned no choices (model={MODEL_NAME})")
     return completion.choices[0].message.content or ""
 
 
