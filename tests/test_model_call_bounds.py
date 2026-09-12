@@ -372,11 +372,52 @@ def test_call_sites_read_the_configured_endpoint(module, monkeypatch):
             raise RuntimeError("stop after construction")
 
     monkeypatch.setattr(openai, "OpenAI", _FakeOpenAI)
-    monkeypatch.setattr(mod, "MODEL_BASE_URL", "https://example.test/v1", raising=False)
-    monkeypatch.setattr(mod, "MODEL_API_KEY", "test-key", raising=False)
-    monkeypatch.setattr(mod, "require_key", lambda: "test-key", raising=False)
+    # The judge reads its OWN endpoint and key, so it can sit on a different
+    # provider from the generator — independence (D-07/Bug 5) can require a
+    # different provider, not just a different model name. Everything else
+    # reads the generator's.
+    if module == "src.guardrails":
+        prefix = "GUARDRAIL"
+    else:
+        prefix = "MODEL"
+        monkeypatch.setattr(mod, "require_key", lambda: "test-key", raising=False)
+    monkeypatch.setattr(mod, f"{prefix}_BASE_URL", "https://example.test/v1",
+                        raising=False)
+    monkeypatch.setattr(mod, f"{prefix}_API_KEY", "test-key", raising=False)
 
     with pytest.raises(RuntimeError):
         mod._openrouter_call("system", "user", 0)
     assert captured.get("base_url") == "https://example.test/v1"
     assert captured.get("api_key") == "test-key"
+
+
+def test_judge_endpoint_defaults_to_the_generators():
+    """An unset GUARDRAIL_BASE_URL/KEY must behave exactly as before the split,
+    so existing .env files keep working untouched.
+    """
+    import os
+
+    from src.config import (
+        GUARDRAIL_API_KEY,
+        GUARDRAIL_BASE_URL,
+        MODEL_API_KEY,
+        MODEL_BASE_URL,
+    )
+
+    if os.environ.get("GUARDRAIL_BASE_URL") or os.environ.get("GUARDRAIL_API_KEY"):
+        pytest.skip("judge endpoint overridden in this environment")
+    assert GUARDRAIL_BASE_URL == MODEL_BASE_URL
+    assert GUARDRAIL_API_KEY == MODEL_API_KEY
+
+
+def test_guardrails_refuses_to_run_without_a_judge_key(monkeypatch):
+    """require_key() checks the GENERATOR's key. Since the judge can now be on
+    another provider, that check can pass while the judge has no credentials —
+    every guardrail would then fail safe and block the run without the log
+    naming why.
+    """
+    import src.guardrails as g
+
+    monkeypatch.setattr(g, "GUARDRAIL_API_KEY", "", raising=False)
+    with pytest.raises(RuntimeError, match="No judge key set"):
+        g._openrouter_call("system", "user", 0)

@@ -373,21 +373,28 @@ def main(argv: Optional[list[str]] = None) -> int:
     truth = {t["ticket_id"]: t["labels"] for t in tickets if "labels" in t}
 
     run_id = set_run_id(new_run_id("harness"))
-    print(f"[harness] run_id={run_id}")
+    print(f"[harness] run_id={run_id}", flush=True)
     print(f"[harness] input={input_path} tickets={len(tickets)} "
-          f"labels={'yes' if truth else 'no'} guardrails={not args.skip_guardrails}")
+          f"labels={'yes' if truth else 'no'} guardrails={not args.skip_guardrails}",
+          flush=True)
 
     started = time.perf_counter()
     rows = []
-    for i, raw in enumerate(tickets, 1):
-        rows.append(process_ticket(raw, skip_guardrails=args.skip_guardrails))
-        if i % 10 == 0 or i == len(tickets):
-            print(f"[harness]   {i}/{len(tickets)} ({time.perf_counter() - started:.0f}s)")
-
     results_path = output_dir / "results.jsonl"
+    # Stream each row as it completes and flush. An 80-ticket run takes ~40
+    # minutes against a live provider; buffering everything to the end means a
+    # kill, a crash, or an exhausted quota at ticket 79 destroys the whole run.
+    # That happened — a 40-minute B-21 run was lost with an empty results file.
+    # Partial output from an interrupted run is still evidence; nothing is.
     with results_path.open("w", encoding="utf-8") as fh:
-        for r in rows:
-            fh.write(json.dumps(r) + "\n")
+        for i, raw in enumerate(tickets, 1):
+            row = process_ticket(raw, skip_guardrails=args.skip_guardrails)
+            rows.append(row)
+            fh.write(json.dumps(row) + "\n")
+            fh.flush()
+            if i % 10 == 0 or i == len(tickets):
+                print(f"[harness]   {i}/{len(tickets)} "
+                      f"({time.perf_counter() - started:.0f}s)", flush=True)
 
     metrics = build_metrics(rows, truth, run_id=run_id,
                             skip_guardrails=args.skip_guardrails)

@@ -28,6 +28,23 @@ MODEL_NAME: str = os.environ.get("MODEL_NAME", "meta-llama/llama-3.1-8b-instruct
 MODEL_BASE_URL: str = os.environ.get("MODEL_BASE_URL", "https://openrouter.ai/api/v1")
 MODEL_API_KEY: str = os.environ.get("MODEL_API_KEY", "") or OPENROUTER_API_KEY
 
+# Endpoint and key for the JUDGE, separate from the generator's.
+#
+# Both default to the generator's values, so an unset config behaves exactly as
+# before. They exist because the judge must be independent of the generator
+# (D-07/Bug 5) and independence can require a different PROVIDER, not just a
+# different model name — OpenRouter's free tier caps :free models at 50
+# requests/day, which is 16 tickets' worth of guardrail calls and cannot carry
+# an 80-ticket gate run. Without this split the only way to get a working judge
+# was to move the generator too, which would invalidate every measurement taken
+# on llama-3.1-8b.
+GUARDRAIL_BASE_URL: str = (
+    os.environ.get("GUARDRAIL_BASE_URL", "") or MODEL_BASE_URL
+)
+GUARDRAIL_API_KEY: str = (
+    os.environ.get("GUARDRAIL_API_KEY", "") or MODEL_API_KEY
+)
+
 # Judge model for the LLM-backed guardrails (PII, grounding, tone/scope).
 #
 # Deliberately NOT MODEL_NAME. The 8B generator model cannot perform claim-level

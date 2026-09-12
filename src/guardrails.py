@@ -65,13 +65,12 @@ from typing import Callable, Optional, Protocol
 
 from src.config import (
     CONFIDENCE_THRESHOLD,
-    MODEL_MAX_RETRIES,
+    GUARDRAIL_API_KEY,
+    GUARDRAIL_BASE_URL,
     GUARDRAIL_MODEL,
+    MODEL_MAX_RETRIES,
     MODEL_NAME,
     MODEL_TIMEOUT_SECONDS,
-    MODEL_API_KEY,
-    MODEL_BASE_URL,
-    require_key,
 )
 from src.logging_store import log_decision
 from src.metrics import MODEL_CALL_FAILURES
@@ -109,13 +108,22 @@ def _openrouter_call(system: str, user: str, seed: int = 0) -> str:
     """
     from openai import OpenAI  # lazy import so tests don't need the pkg
 
-    require_key()
+    # Guard the key this function actually uses. require_key() checks
+    # MODEL_API_KEY, which is the GENERATOR's; since the judge can now sit on a
+    # different provider, that check would pass while the judge has no
+    # credentials — and every guardrail would then fail safe and block the
+    # whole run for a reason the log would not name.
+    if not GUARDRAIL_API_KEY:
+        raise RuntimeError(
+            "No judge key set. GUARDRAIL_API_KEY is empty and MODEL_API_KEY "
+            "did not supply a fallback — see .env.example."
+        )
     # Bounded on purpose: the SDK default is a 600s read timeout with 2
     # retries, so one unresponsive call can occupy ~30 minutes and stall an
     # unattended run (A9). See MODEL_TIMEOUT_SECONDS in src/config.py.
     client = OpenAI(
-        api_key=MODEL_API_KEY,
-        base_url=MODEL_BASE_URL,
+        api_key=GUARDRAIL_API_KEY,
+        base_url=GUARDRAIL_BASE_URL,
         timeout=MODEL_TIMEOUT_SECONDS,
         max_retries=MODEL_MAX_RETRIES,
     )

@@ -15,6 +15,7 @@ import json
 import pytest
 
 from evaluation.harness import build_metrics, main, process_ticket
+from evaluation.harness import process_ticket as harness_process_ticket
 
 SMOKE_TICKETS = [
     {
@@ -221,3 +222,33 @@ def test_fail_safe_blocks_are_reported_apart_from_real_findings():
     assert gov["guardrail_fail_safe_blocks"] == {"grounding": 1, "pii": 1}
     # And a PII guardrail that ERRORED did not detect PII in a draft.
     assert gov["pii_detections"] == 1
+
+
+def test_rows_are_streamed_not_buffered_to_the_end(db, _no_retrieval, tmp_path,
+                                                   monkeypatch):
+    """An interrupted run must leave the rows it already finished.
+
+    A 40-minute B-21 run was killed at ~60 of 80 tickets and left an empty
+    results file, because rows were buffered in memory and written once at the
+    end. Partial evidence beats none.
+    """
+    inp = tmp_path / "t.json"
+    inp.write_text(json.dumps(SMOKE_TICKETS[:3]))
+    out = tmp_path / "res"
+
+    real = harness_process_ticket
+    seen: list[str] = []
+
+    def die_on_third(raw, **kw):
+        if len(seen) == 2:
+            raise KeyboardInterrupt("simulated kill mid-run")
+        seen.append(raw["ticket_id"])
+        return real(raw, **kw)
+
+    monkeypatch.setattr("evaluation.harness.process_ticket", die_on_third)
+    with pytest.raises(KeyboardInterrupt):
+        main(["--input", str(inp), "--output", str(out)])
+
+    written = (out / "results.jsonl").read_text().strip().splitlines()
+    assert len(written) == 2, "rows finished before the interrupt must survive"
+    assert [json.loads(w)["ticket_id"] for w in written] == seen
