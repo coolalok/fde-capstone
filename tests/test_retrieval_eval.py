@@ -8,11 +8,16 @@ import math
 import pytest
 
 from evaluation.retrieval_eval import (
+    THIN_MARGIN,
     aggregate,
+    article_overlap,
+    best_score_per_doc,
     by_intent,
     hit_at_k,
+    margin_by_intent,
     ndcg_at_k,
     reciprocal_rank,
+    score_margin,
     score_ticket,
     top1_confusions,
 )
@@ -109,3 +114,79 @@ def test_top1_confusions_records_what_displaced_the_expected_doc():
     assert got[(B, A)] == 2
     assert got[(C, A)] == 1 and got[(D, A)] == 1
     assert sum(got.values()) == 4
+
+
+# ─── separation diagnostics ─────────────────────────────────────────
+# Rank metrics say WHETHER the right article came first; the margin says by
+# how much. sso_configuration scored 1.000 on every rank metric on 13 Sep while
+# 9 of 15 tickets won by under 0.05.
+
+
+def test_best_score_per_doc_keeps_each_articles_highest_chunk():
+    got = best_score_per_doc([(A, 0.5), (A, 0.7), (B, 0.6), (B, -0.1)])
+    assert got == {A: 0.7, B: 0.6}
+
+
+def test_margin_positive_when_expected_article_leads():
+    margin, rival = score_margin({A: 0.7, B: 0.6, C: 0.2}, {A})
+    assert margin == pytest.approx(0.1)
+    assert rival == B
+
+
+def test_margin_negative_when_a_wrong_article_leads():
+    margin, rival = score_margin({A: 0.7, B: 0.6}, {B})
+    assert margin == pytest.approx(-0.1)
+    assert rival == A
+
+
+def test_margin_uses_the_best_expected_article_when_several_are_expected():
+    margin, rival = score_margin({A: 0.4, B: 0.8, C: 0.5}, {A, B})
+    assert margin == pytest.approx(0.3)
+    assert rival == C
+
+
+def test_margin_is_undefined_with_nothing_to_compare():
+    assert score_margin({A: 0.7}, {A}) == (None, None)       # no wrong article
+    assert score_margin({B: 0.7}, {A}) == (None, None)       # expected never scored
+
+
+def test_margin_by_intent_summarises_and_sorts_narrowest_first():
+    rows = [
+        {"intent": "sso_configuration", "margin": 0.02, "nearest_wrong_doc": B},
+        {"intent": "sso_configuration", "margin": 0.04, "nearest_wrong_doc": B},
+        {"intent": "sso_configuration", "margin": 0.30, "nearest_wrong_doc": C},
+        {"intent": "data_residency", "margin": 0.29, "nearest_wrong_doc": D},
+        {"intent": "data_residency", "margin": -0.10, "nearest_wrong_doc": D},
+        {"intent": "data_residency", "margin": None, "nearest_wrong_doc": None},
+    ]
+    got = margin_by_intent(rows)
+    assert list(got) == ["sso_configuration", "data_residency"]   # 0.04 < 0.095
+    sso = got["sso_configuration"]
+    assert sso["n"] == 3
+    assert sso["median_margin"] == pytest.approx(0.04)
+    assert sso["thin_margin_n"] == 2
+    assert sso["wrong_ranked_first_n"] == 0
+    assert (sso["nearest_wrong_doc"], sso["nearest_wrong_doc_n"]) == (B, 2)
+    res = got["data_residency"]
+    assert res["n"] == 2                                # the None row is excluded
+    assert res["min_margin"] == pytest.approx(-0.10)
+    assert res["wrong_ranked_first_n"] == 1
+    assert res["thin_margin_n"] == 1                    # a negative margin is thin too
+
+
+def test_thin_margin_threshold_is_the_documented_value():
+    assert THIN_MARGIN == 0.05
+
+
+def test_article_overlap_takes_the_closest_chunk_pair():
+    chunks = {
+        A: [[1.0, 0.0], [0.0, 1.0]],
+        B: [[0.0, 1.0]],               # identical to A's second chunk
+        C: [[-1.0, 0.0]],              # opposite A's first chunk, orthogonal to B
+    }
+    got = article_overlap(chunks)
+    assert len(got) == 3                                 # 3 choose 2
+    assert got[0] == (1.0, A, B)                         # most similar first
+    scores = {(a, b): s for s, a, b in got}
+    assert scores[(B, C)] == pytest.approx(0.0)
+    assert scores[(A, C)] == pytest.approx(0.0)          # max of -1 and 0

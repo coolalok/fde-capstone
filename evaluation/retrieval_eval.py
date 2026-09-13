@@ -17,9 +17,27 @@ top_k, same relevance threshold as the harness), then broken down by intent.
 An empty result (nothing cleared the threshold) scores 0 on every metric —
 that is what production returned, so it is what gets measured.
 
+Rank metrics alone cannot show whether the embedding model STRUGGLES to tell
+two topics apart. An intent scoring hit@1 = 1.000 may be winning every ticket
+by a hair. Two diagnostics measure that directly:
+
+  margin   per ticket: best score of any expected article minus best score of
+           any other article, over the FULL ranking (every chunk, no threshold,
+           no top_k — this is a model diagnostic, not a production metric).
+           Negative means a wrong article outscored every right one. Reported
+           per intent as median, minimum, and how many tickets fall under
+           THIN_MARGIN, with the rival article that comes closest most often.
+           Measured 13 Sep: sso_configuration scored 1.000 on every rank
+           metric while 9 of its 15 tickets won by under 0.05.
+
+  article overlap
+           corpus level: for each pair of articles, the cosine similarity of
+           their closest pair of chunks, using the index's stored embeddings.
+           High overlap names the topics a query can fall between before any
+           query is run.
+
 The confusion table answers "when the top chunk is wrong, what did it pick
-instead?" — e.g. whether data_residency queries land on the data-export
-article. Only rank-1 misses are counted: that chunk is the one most likely to
+instead?". Only rank-1 misses are counted: that chunk is the one most likely to
 steer the generated answer.
 
 No model calls; runs on the local embedding index. Deterministic.
@@ -32,7 +50,10 @@ from __future__ import annotations
 import argparse
 import json
 import math
+import statistics
+import warnings
 from collections import Counter, defaultdict
+from itertools import combinations
 from pathlib import Path
 
 _ROOT = Path(__file__).parent.parent
@@ -40,6 +61,11 @@ GT_PATH = _ROOT / "data" / "ground_truth_responses.json"
 TICKETS_PATH = _ROOT / "data" / "development_tickets.json"
 DOCS_PATH = _ROOT / "data" / "documentation.json"
 K_VALUES = (1, 3, 5)
+
+# A correct article winning by less than this is a near miss. Correct-article
+# top scores had a median of 0.558 on the 13 Sep gate run, so 0.05 is under a
+# tenth of the signal separating right from wrong.
+THIN_MARGIN = 0.05
 
 
 def first_relevant_rank(ranked: list[str], expected: set[str]) -> int | None:
@@ -114,11 +140,79 @@ def top1_confusions(rows: list[dict]) -> Counter:
     return pairs
 
 
+# ─── separation diagnostics ─────────────────────────────────────────
+
+
+def best_score_per_doc(hits: list[tuple[str, float]]) -> dict[str, float]:
+    """Collapse chunk-level (doc_id, score) hits to each article's best score."""
+    best: dict[str, float] = {}
+    for doc_id, score in hits:
+        if score > best.get(doc_id, float("-inf")):
+            best[doc_id] = score
+    return best
+
+
+def score_margin(best: dict[str, float],
+                 expected: set[str]) -> tuple[float | None, str | None]:
+    """(best expected score - best other score, the closest other article).
+
+    None when there is nothing to compare: no expected article was scored, or
+    every scored article is expected.
+    """
+    right = [s for d, s in best.items() if d in expected]
+    wrong = [(s, d) for d, s in best.items() if d not in expected]
+    if not right or not wrong:
+        return None, None
+    wrong_score, wrong_doc = max(wrong)
+    return max(right) - wrong_score, wrong_doc
+
+
+def margin_by_intent(rows: list[dict]) -> dict[str, dict]:
+    """Per-intent separation, narrowest median first."""
+    groups: dict[str, list[dict]] = defaultdict(list)
+    for r in rows:
+        if r.get("margin") is not None:
+            groups[r["intent"]].append(r)
+    out: dict[str, dict] = {}
+    for intent, g in groups.items():
+        margins = [r["margin"] for r in g]
+        rival, rival_n = Counter(r["nearest_wrong_doc"] for r in g).most_common(1)[0]
+        out[intent] = {
+            "n": len(g),
+            "median_margin": round(statistics.median(margins), 4),
+            "min_margin": round(min(margins), 4),
+            "thin_margin_n": sum(1 for m in margins if m < THIN_MARGIN),
+            "wrong_ranked_first_n": sum(1 for m in margins if m < 0),
+            "nearest_wrong_doc": rival,
+            "nearest_wrong_doc_n": rival_n,
+        }
+    return dict(sorted(out.items(), key=lambda kv: kv[1]["median_margin"]))
+
+
+def _cosine(a: list[float], b: list[float]) -> float:
+    dot = sum(x * y for x, y in zip(a, b))
+    norm = math.sqrt(sum(x * x for x in a)) * math.sqrt(sum(y * y for y in b))
+    return dot / norm if norm else 0.0
+
+
+def article_overlap(chunks_by_doc: dict[str, list[list[float]]]) -> list[tuple[float, str, str]]:
+    """Every article pair scored by its closest chunk pair, most similar first."""
+    pairs = [
+        (round(max(_cosine(x, y) for x in chunks_by_doc[a] for y in chunks_by_doc[b]), 4), a, b)
+        for a, b in combinations(sorted(chunks_by_doc), 2)
+    ]
+    return sorted(pairs, reverse=True)
+
+
 def main(argv: list[str] | None = None) -> int:
     ap = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     ap.add_argument("--output", default="evaluation/results/retrieval_eval")
     args = ap.parse_args(argv)
 
+    from langchain_community.embeddings import HuggingFaceEmbeddings
+    from langchain_community.vectorstores import Chroma
+
+    from src.config import CHROMA_PATH, EMBEDDING_MODEL
     from src.ingest import normalise_any
     from src.logging_config import configure_logging
     from src.logging_store import new_run_id, set_run_id
@@ -130,6 +224,13 @@ def main(argv: list[str] | None = None) -> int:
     tickets = [t for t in json.loads(TICKETS_PATH.read_text()) if t["ticket_id"] in gt]
     titles = {d["doc_id"]: d["title"] for d in json.loads(DOCS_PATH.read_text())}
 
+    # A second handle on the same persisted index, for the full ranking and the
+    # stored embeddings. Production retrieval still goes through retrieve().
+    store = Chroma(persist_directory=str(CHROMA_PATH),
+                   embedding_function=HuggingFaceEmbeddings(model_name=EMBEDDING_MODEL))
+    stored = store.get(include=["embeddings", "metadatas"])
+    n_chunks = len(stored["ids"])
+
     out = Path(args.output)
     out.mkdir(parents=True, exist_ok=True)
     rows: list[dict] = []
@@ -137,15 +238,30 @@ def main(argv: list[str] | None = None) -> int:
         for raw in tickets:
             tid = raw["ticket_id"]
             ticket = normalise_any(raw)
+            expected = gt[tid]["expected_doc_ids"]
             # Same query text the harness sends, so this measures production.
             ranked = [p.doc_id for p in retrieve(ticket.body, ticket_id=tid)]
+            # Full ranking for the margin. The least similar chunks score just
+            # below 0, and LangChain then warns with the ENTIRE result list —
+            # megabytes per ticket. Comparing gaps is unaffected, so silence it.
+            with warnings.catch_warnings():
+                warnings.simplefilter("ignore", UserWarning)
+                full = store.similarity_search_with_relevance_scores(ticket.body, k=n_chunks)
+            margin, rival = score_margin(
+                best_score_per_doc([(d.metadata["doc_id"], s) for d, s in full]), set(expected))
             row = {"ticket_id": tid, "intent": gt[tid]["intent"],
-                   "expected_doc_ids": gt[tid]["expected_doc_ids"],
-                   "retrieved_doc_ids": ranked,
-                   **score_ticket(ranked, gt[tid]["expected_doc_ids"])}
+                   "expected_doc_ids": expected, "retrieved_doc_ids": ranked,
+                   "margin": None if margin is None else round(margin, 4),
+                   "nearest_wrong_doc": rival,
+                   **score_ticket(ranked, expected)}
             rows.append(row)
             fh.write(json.dumps(row) + "\n")
             fh.flush()
+
+    chunks_by_doc: dict[str, list[list[float]]] = defaultdict(list)
+    for emb, meta in zip(stored["embeddings"], stored["metadatas"]):
+        chunks_by_doc[meta["doc_id"]].append(list(emb))
+    overlap = article_overlap(chunks_by_doc)
 
     intents = by_intent(rows)
     confusions = top1_confusions(rows)
@@ -160,6 +276,14 @@ def main(argv: list[str] | None = None) -> int:
              "retrieved": g, "retrieved_title": titles.get(g, ""), "count": n}
             for (e, g), n in confusions.most_common()
         ],
+        "thin_margin_threshold": THIN_MARGIN,
+        "by_intent_margin": margin_by_intent(rows),
+        "article_overlap_median": overlap[len(overlap) // 2][0] if overlap else None,
+        "article_overlap_top": [
+            {"similarity": s, "a": a, "a_title": titles.get(a, ""),
+             "b": b, "b_title": titles.get(b, "")}
+            for s, a, b in overlap[:15]
+        ],
     }
     (out / "report.json").write_text(json.dumps(report, indent=2))
 
@@ -171,10 +295,20 @@ def main(argv: list[str] | None = None) -> int:
     for intent, s in list(report["by_intent"].items())[:6]:
         print(f"   {intent:26} n={s['n']:>3}  hit@1={s['hit@1']:.3f}  "
               f"MRR={s['mrr']:.3f}  NDCG@5={s['ndcg@5']:.3f}")
+    print(f"[retrieval] narrowest separation (margin over the closest wrong article, "
+          f"thin < {THIN_MARGIN}):")
+    for intent, s in list(report["by_intent_margin"].items())[:6]:
+        print(f"   {intent:26} n={s['n']:>3}  median={s['median_margin']:+.3f}  "
+              f"thin={s['thin_margin_n']:>2}  wrong-first={s['wrong_ranked_first_n']}  "
+              f"rival={s['nearest_wrong_doc']}")
     print("[retrieval] top-1 confusions (expected -> retrieved instead):")
     for c in report["top1_confusions"][:8]:
         print(f"   {c['count']:>3}x  {c['expected']} {c['expected_title'][:30]!r} -> "
               f"{c['retrieved']} {c['retrieved_title'][:30]!r}")
+    print(f"[retrieval] most overlapping articles (median pair "
+          f"{report['article_overlap_median']}):")
+    for p in report["article_overlap_top"][:5]:
+        print(f"   {p['similarity']:.3f}  {p['a']} <-> {p['b']}")
     print(f"[retrieval] wrote {out / 'report.json'}")
     return 0
 

@@ -1,5 +1,5 @@
 {
-  "run_id": "retrieval-eval-20260913T175744Z-e45a0fed",
+  "run_id": "retrieval-eval-20260913T181154Z-44874a83",
   "source": "data/ground_truth_responses.json expected_doc_ids",
   "overall": {
     "n": 200,
@@ -249,6 +249,297 @@
       "retrieved": "DOC-SEC-002",
       "retrieved_title": "Handling exposed secrets and credential rotation",
       "count": 1
+    }
+  ],
+  "thin_margin_threshold": 0.05,
+  "by_intent_margin": {
+    "security_incident": {
+      "n": 9,
+      "median_margin": 0.0177,
+      "min_margin": -0.0099,
+      "thin_margin_n": 5,
+      "wrong_ranked_first_n": 1,
+      "nearest_wrong_doc": "DOC-SEC-003",
+      "nearest_wrong_doc_n": 4
+    },
+    "compliance_request": {
+      "n": 10,
+      "median_margin": 0.0247,
+      "min_margin": -0.1005,
+      "thin_margin_n": 9,
+      "wrong_ranked_first_n": 4,
+      "nearest_wrong_doc": "DOC-DATA-001",
+      "nearest_wrong_doc_n": 5
+    },
+    "sso_configuration": {
+      "n": 15,
+      "median_margin": 0.0454,
+      "min_margin": 0.0423,
+      "thin_margin_n": 9,
+      "wrong_ranked_first_n": 0,
+      "nearest_wrong_doc": "DOC-AUTH-002",
+      "nearest_wrong_doc_n": 10
+    },
+    "api_key_issue": {
+      "n": 6,
+      "median_margin": 0.0481,
+      "min_margin": 0.0268,
+      "thin_margin_n": 3,
+      "wrong_ranked_first_n": 0,
+      "nearest_wrong_doc": "DOC-INT-001",
+      "nearest_wrong_doc_n": 2
+    },
+    "configuration_help": {
+      "n": 4,
+      "median_margin": 0.0685,
+      "min_margin": 0.0685,
+      "thin_margin_n": 0,
+      "wrong_ranked_first_n": 0,
+      "nearest_wrong_doc": "DOC-SEC-002",
+      "nearest_wrong_doc_n": 3
+    },
+    "onboarding": {
+      "n": 15,
+      "median_margin": 0.1075,
+      "min_margin": -0.4267,
+      "thin_margin_n": 6,
+      "wrong_ranked_first_n": 6,
+      "nearest_wrong_doc": "DOC-DEPLOY-001",
+      "nearest_wrong_doc_n": 5
+    },
+    "authentication_failure": {
+      "n": 7,
+      "median_margin": 0.1133,
+      "min_margin": 0.0912,
+      "thin_margin_n": 0,
+      "wrong_ranked_first_n": 0,
+      "nearest_wrong_doc": "DOC-SEC-001",
+      "nearest_wrong_doc_n": 6
+    },
+    "rate_limit": {
+      "n": 7,
+      "median_margin": 0.1441,
+      "min_margin": 0.0247,
+      "thin_margin_n": 2,
+      "wrong_ranked_first_n": 0,
+      "nearest_wrong_doc": "DOC-AUTH-004",
+      "nearest_wrong_doc_n": 4
+    },
+    "account_access": {
+      "n": 7,
+      "median_margin": 0.1656,
+      "min_margin": -0.0307,
+      "thin_margin_n": 2,
+      "wrong_ranked_first_n": 2,
+      "nearest_wrong_doc": "DOC-SEC-002",
+      "nearest_wrong_doc_n": 3
+    },
+    "rollback_request": {
+      "n": 13,
+      "median_margin": 0.2051,
+      "min_margin": 0.0833,
+      "thin_margin_n": 0,
+      "wrong_ranked_first_n": 0,
+      "nearest_wrong_doc": "DOC-DEPLOY-003",
+      "nearest_wrong_doc_n": 8
+    },
+    "integration_help": {
+      "n": 7,
+      "median_margin": 0.2061,
+      "min_margin": -0.4753,
+      "thin_margin_n": 3,
+      "wrong_ranked_first_n": 3,
+      "nearest_wrong_doc": "DOC-INT-002",
+      "nearest_wrong_doc_n": 3
+    },
+    "performance_degradation": {
+      "n": 7,
+      "median_margin": 0.2208,
+      "min_margin": 0.0239,
+      "thin_margin_n": 1,
+      "wrong_ranked_first_n": 0,
+      "nearest_wrong_doc": "DOC-API-001",
+      "nearest_wrong_doc_n": 3
+    },
+    "quota_or_overage": {
+      "n": 13,
+      "median_margin": 0.2238,
+      "min_margin": -0.1194,
+      "thin_margin_n": 2,
+      "wrong_ranked_first_n": 2,
+      "nearest_wrong_doc": "DOC-BILL-002",
+      "nearest_wrong_doc_n": 11
+    },
+    "data_export": {
+      "n": 17,
+      "median_margin": 0.2308,
+      "min_margin": 0.1355,
+      "thin_margin_n": 0,
+      "wrong_ranked_first_n": 0,
+      "nearest_wrong_doc": "DOC-DEPLOY-002",
+      "nearest_wrong_doc_n": 11
+    },
+    "database_issue": {
+      "n": 7,
+      "median_margin": 0.2388,
+      "min_margin": -0.2949,
+      "thin_margin_n": 2,
+      "wrong_ranked_first_n": 2,
+      "nearest_wrong_doc": "DOC-DEPLOY-001",
+      "nearest_wrong_doc_n": 4
+    },
+    "deployment_failure": {
+      "n": 12,
+      "median_margin": 0.2414,
+      "min_margin": -0.3824,
+      "thin_margin_n": 2,
+      "wrong_ranked_first_n": 2,
+      "nearest_wrong_doc": "DOC-ONB-001",
+      "nearest_wrong_doc_n": 10
+    },
+    "billing_query": {
+      "n": 11,
+      "median_margin": 0.2416,
+      "min_margin": 0.1588,
+      "thin_margin_n": 0,
+      "wrong_ranked_first_n": 0,
+      "nearest_wrong_doc": "DOC-BILL-002",
+      "nearest_wrong_doc_n": 5
+    },
+    "webhook_issue": {
+      "n": 9,
+      "median_margin": 0.245,
+      "min_margin": 0.0156,
+      "thin_margin_n": 1,
+      "wrong_ranked_first_n": 0,
+      "nearest_wrong_doc": "DOC-INT-002",
+      "nearest_wrong_doc_n": 6
+    },
+    "data_residency": {
+      "n": 11,
+      "median_margin": 0.2878,
+      "min_margin": 0.1581,
+      "thin_margin_n": 0,
+      "wrong_ranked_first_n": 0,
+      "nearest_wrong_doc": "DOC-SEC-003",
+      "nearest_wrong_doc_n": 6
+    },
+    "api_usage_question": {
+      "n": 13,
+      "median_margin": 0.312,
+      "min_margin": 0.0834,
+      "thin_margin_n": 0,
+      "wrong_ranked_first_n": 0,
+      "nearest_wrong_doc": "DOC-DATA-001",
+      "nearest_wrong_doc_n": 7
+    }
+  },
+  "article_overlap_median": 0.2524,
+  "article_overlap_top": [
+    {
+      "similarity": 0.7958,
+      "a": "DOC-PERF-001",
+      "a_title": "Diagnosing elevated response latency",
+      "b": "DOC-PERF-002",
+      "b_title": "Autoscaling behaviour and instance limits"
+    },
+    {
+      "similarity": 0.7166,
+      "a": "DOC-SEC-001",
+      "a_title": "Responding to a suspected account compromise",
+      "b": "DOC-SEC-002",
+      "b_title": "Handling exposed secrets and credential rotation"
+    },
+    {
+      "similarity": 0.6786,
+      "a": "DOC-DATA-001",
+      "a_title": "Exporting account data and scheduled extracts",
+      "b": "DOC-SEC-003",
+      "b_title": "Audit logging and compliance evidence"
+    },
+    {
+      "similarity": 0.6404,
+      "a": "DOC-INT-001",
+      "a_title": "Connecting continuous integration pipelines",
+      "b": "DOC-SEC-002",
+      "b_title": "Handling exposed secrets and credential rotation"
+    },
+    {
+      "similarity": 0.6172,
+      "a": "DOC-BILL-001",
+      "a_title": "Understanding your invoice and usage breakdown",
+      "b": "DOC-BILL-003",
+      "b_title": "Usage limits, overage and spend controls"
+    },
+    {
+      "similarity": 0.6026,
+      "a": "DOC-DEPLOY-001",
+      "a_title": "Container deployments failing during the health check phase",
+      "b": "DOC-DEPLOY-002",
+      "b_title": "Rolling back a failed release"
+    },
+    {
+      "similarity": 0.5853,
+      "a": "DOC-DEPLOY-004",
+      "a_title": "Configuring environment variables and secrets",
+      "b": "DOC-SEC-002",
+      "b_title": "Handling exposed secrets and credential rotation"
+    },
+    {
+      "similarity": 0.5832,
+      "a": "DOC-SEC-001",
+      "a_title": "Responding to a suspected account compromise",
+      "b": "DOC-SEC-003",
+      "b_title": "Audit logging and compliance evidence"
+    },
+    {
+      "similarity": 0.5812,
+      "a": "DOC-AUTH-004",
+      "a_title": "API key rotation and scope management",
+      "b": "DOC-SEC-002",
+      "b_title": "Handling exposed secrets and credential rotation"
+    },
+    {
+      "similarity": 0.5774,
+      "a": "DOC-BILL-001",
+      "a_title": "Understanding your invoice and usage breakdown",
+      "b": "DOC-BILL-002",
+      "b_title": "Changing plans, and how proration is calculated"
+    },
+    {
+      "similarity": 0.5628,
+      "a": "DOC-DEPLOY-002",
+      "a_title": "Rolling back a failed release",
+      "b": "DOC-DEPLOY-003",
+      "b_title": "Build failures caused by dependency resolution"
+    },
+    {
+      "similarity": 0.5519,
+      "a": "DOC-DEPLOY-001",
+      "a_title": "Container deployments failing during the health check phase",
+      "b": "DOC-ONB-001",
+      "b_title": "First deployment: a walkthrough"
+    },
+    {
+      "similarity": 0.5484,
+      "a": "DOC-ACCT-001",
+      "a_title": "Managing team members, roles and permissions",
+      "b": "DOC-SEC-001",
+      "b_title": "Responding to a suspected account compromise"
+    },
+    {
+      "similarity": 0.5462,
+      "a": "DOC-BILL-002",
+      "a_title": "Changing plans, and how proration is calculated",
+      "b": "DOC-BILL-003",
+      "b_title": "Usage limits, overage and spend controls"
+    },
+    {
+      "similarity": 0.5361,
+      "a": "DOC-API-001",
+      "a_title": "Understanding API rate limits and quota tiers",
+      "b": "DOC-BILL-003",
+      "b_title": "Usage limits, overage and spend controls"
     }
   ]
 }
