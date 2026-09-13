@@ -1,0 +1,272 @@
+[
+ {
+  "ticket_id": "VAL-0001",
+  "answerable": true,
+  "old_decision": "auto_respond",
+  "relevance_passed": true,
+  "fail_safe": false,
+  "reason": "reply addresses the question asked",
+  "question_asked": "How to handle a production key that is returning 401 errors?"
+ },
+ {
+  "ticket_id": "VAL-0002",
+  "answerable": false,
+  "old_decision": "auto_respond",
+  "relevance_passed": false,
+  "fail_safe": false,
+  "reason": "reply does not address the question asked: The reply addresses an issue with logs not arriving at a destination, which was not mentioned in the custom",
+  "question_asked": "The customer is asking for an update on a previous message."
+ },
+ {
+  "ticket_id": "VAL-0004",
+  "answerable": false,
+  "old_decision": "block",
+  "relevance_passed": true,
+  "fail_safe": false,
+  "reason": "reply addresses the question asked",
+  "question_asked": "Why are my authenticator app codes being rejected?"
+ },
+ {
+  "ticket_id": "VAL-0005",
+  "answerable": true,
+  "old_decision": "block",
+  "relevance_passed": true,
+  "fail_safe": false,
+  "reason": "reply addresses the question asked",
+  "question_asked": "Is there an expiry we should be handling for our cursor during long iterations?"
+ },
+ {
+  "ticket_id": "VAL-0006",
+  "answerable": true,
+  "old_decision": "block",
+  "relevance_passed": true,
+  "fail_safe": false,
+  "reason": "reply addresses the question asked",
+  "question_asked": "Why is my MFA code being rejected when I try to sign in?"
+ },
+ {
+  "ticket_id": "VAL-0008",
+  "answerable": true,
+  "old_decision": "auto_respond",
+  "relevance_passed": true,
+  "fail_safe": false,
+  "reason": "reply addresses the question asked",
+  "question_asked": "How does group membership interact with directly assigned roles?"
+ },
+ {
+  "ticket_id": "VAL-0009",
+  "answerable": true,
+  "old_decision": "block",
+  "relevance_passed": true,
+  "fail_safe": false,
+  "reason": "reply addresses the question asked",
+  "question_asked": "The customer needs to know if read access to customer records is logged in the audit log."
+ },
+ {
+  "ticket_id": "VAL-0010",
+  "answerable": true,
+  "old_decision": "auto_respond",
+  "relevance_passed": true,
+  "fail_safe": false,
+  "reason": "reply addresses the question asked",
+  "question_asked": "Why is the invoice this month higher than usual?"
+ },
+ {
+  "ticket_id": "VAL-0011",
+  "answerable": true,
+  "old_decision": "auto_respond",
+  "relevance_passed": true,
+  "fail_safe": false,
+  "reason": "reply addresses the question asked",
+  "question_asked": "How can I quickly revert to the previous revision after a problematic release?"
+ },
+ {
+  "ticket_id": "VAL-0012",
+  "answerable": true,
+  "old_decision": "auto_respond",
+  "relevance_passed": true,
+  "fail_safe": false,
+  "reason": "reply addresses the question asked",
+  "question_asked": "How do I revert to an earlier revision due to errors from the latest release?"
+ },
+ {
+  "ticket_id": "VAL-0013",
+  "answerable": true,
+  "old_decision": "auto_respond",
+  "relevance_passed": true,
+  "fail_safe": false,
+  "reason": "reply addresses the question asked",
+  "question_asked": "What do the charges on our invoice relate to?"
+ },
+ {
+  "ticket_id": "VAL-0014",
+  "answerable": false,
+  "old_decision": "auto_respond",
+  "relevance_passed": true,
+  "fail_safe": false,
+  "reason": "reply addresses the question asked",
+  "question_asked": "How can we quickly roll back a bad release that broke checkout for some customers?"
+ },
+ {
+  "ticket_id": "VAL-0063",
+  "answerable": true,
+  "old_decision": "block",
+  "relevance_passed": false,
+  "fail_safe": false,
+  "reason": "reply does not address the question asked: The reply discusses effective permissions and group memberships but does not directly address the issue of ",
+  "question_asked": "Why are permission changes not taking effect for a developer?"
+ },
+ {
+  "ticket_id": "VAL-0064",
+  "answerable": true,
+  "old_decision": "block",
+  "relevance_passed": true,
+  "fail_safe": false,
+  "reason": "reply addresses the question asked",
+  "question_asked": "How to efficiently pull a very large extract without getting rejected or taking too long?"
+ },
+ {
+  "ticket_id": "VAL-0065",
+  "answerable": true,
+  "old_decision": "auto_respond",
+  "relevance_passed": true,
+  "fail_safe": false,
+  "reason": "reply addresses the question asked",
+  "question_asked": "What do the charges on our invoice relate to?"
+ },
+ {
+  "ticket_id": "VAL-0066",
+  "answerable": false,
+  "old_decision": "auto_respond",
+  "relevance_passed": true,
+  "fail_safe": false,
+  "reason": "reply addresses the question asked",
+  "question_asked": "The customer needs confirmation of where their data is physically stored to share with their customer."
+ },
+ {
+  "ticket_id": "VAL-0067",
+  "answerable": true,
+  "old_decision": "block",
+  "relevance_passed": true,
+  "fail_safe": false,
+  "reason": "reply addresses the question asked",
+  "question_asked": "The customer needs help with suspicious activity in their audit log and resources created by an unknown address."
+ },
+ {
+  "ticket_id": "VAL-0068",
+  "answerable": true,
+  "old_decision": "block",
+  "relevance_passed": true,
+  "fail_safe": false,
+  "reason": "reply addresses the question asked",
+  "question_asked": "The customer is concerned about suspicious activity in their audit log from an unrecognized address and resources created by unknown users."
+ },
+ {
+  "ticket_id": "VAL-0069",
+  "answerable": true,
+  "old_decision": "auto_respond",
+  "relevance_passed": true,
+  "fail_safe": false,
+  "reason": "reply addresses the question asked",
+  "question_asked": "Why is the staging environment using production configuration values?"
+ },
+ {
+  "ticket_id": "VAL-0070",
+  "answerable": false,
+  "old_decision": "auto_respond",
+  "relevance_passed": true,
+  "fail_safe": false,
+  "reason": "reply addresses the question asked",
+  "question_asked": "Why does single sign-on work for the engineering group but not for the finance group?"
+ },
+ {
+  "ticket_id": "VAL-0071",
+  "answerable": false,
+  "old_decision": "auto_respond",
+  "relevance_passed": true,
+  "fail_safe": false,
+  "reason": "reply addresses the question asked",
+  "question_asked": "How do we change our spend cap to avoid being throttled during traffic increases?"
+ },
+ {
+  "ticket_id": "VAL-0072",
+  "answerable": false,
+  "old_decision": "auto_respond",
+  "relevance_passed": true,
+  "fail_safe": false,
+  "reason": "reply addresses the question asked",
+  "question_asked": "What are the charges on my invoice for a service I do not believe we use?"
+ },
+ {
+  "ticket_id": "VAL-0073",
+  "answerable": true,
+  "old_decision": "auto_respond",
+  "relevance_passed": true,
+  "fail_safe": false,
+  "reason": "reply addresses the question asked",
+  "question_asked": "The customer is asking for an explanation of why their bill is higher than expected."
+ },
+ {
+  "ticket_id": "VAL-0074",
+  "answerable": true,
+  "old_decision": "auto_respond",
+  "relevance_passed": true,
+  "fail_safe": false,
+  "reason": "reply addresses the question asked",
+  "question_asked": "How does group membership interact with directly assigned roles?"
+ },
+ {
+  "ticket_id": "VAL-0075",
+  "answerable": true,
+  "old_decision": "auto_respond",
+  "relevance_passed": true,
+  "fail_safe": false,
+  "reason": "reply addresses the question asked",
+  "question_asked": "Why is my API key returning a permission error for write operations despite having full access?"
+ },
+ {
+  "ticket_id": "VAL-0076",
+  "answerable": true,
+  "old_decision": "block",
+  "relevance_passed": true,
+  "fail_safe": false,
+  "reason": "reply addresses the question asked",
+  "question_asked": "The customer needs to know how to check the region where their data is stored to ensure it remains within the EU."
+ },
+ {
+  "ticket_id": "VAL-0077",
+  "answerable": true,
+  "old_decision": "auto_respond",
+  "relevance_passed": true,
+  "fail_safe": false,
+  "reason": "reply addresses the question asked",
+  "question_asked": "Is the billing period expected to match the calendar month?"
+ },
+ {
+  "ticket_id": "VAL-0078",
+  "answerable": true,
+  "old_decision": "block",
+  "relevance_passed": false,
+  "fail_safe": false,
+  "reason": "reply does not address the question asked: The reply acknowledges the issue of the database restore taking hours but fails to provide a relevant respo",
+  "question_asked": "Why is my database restore taking hours and why am I getting a connection not available error after scaling up the service?"
+ },
+ {
+  "ticket_id": "VAL-0079",
+  "answerable": true,
+  "old_decision": "auto_respond",
+  "relevance_passed": true,
+  "fail_safe": false,
+  "reason": "reply addresses the question asked",
+  "question_asked": "The customer needs written confirmation of where their data is physically stored."
+ },
+ {
+  "ticket_id": "VAL-0080",
+  "answerable": true,
+  "old_decision": "auto_respond",
+  "relevance_passed": true,
+  "fail_safe": false,
+  "reason": "reply addresses the question asked",
+  "question_asked": "Why are our builds failing during dependency resolution despite no code changes?"
+ }
+]
