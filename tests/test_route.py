@@ -266,3 +266,57 @@ def test_escalation_log_row_has_non_empty_sources_used(db):
             "WHERE ticket_id = 'T-ESC'").fetchone()
     assert action == ESCALATE
     assert "DOC-AUTH-001" in sources
+
+
+# ─── abstention: an unidentifiable ticket is never auto-answered ──────
+# VAL-0002, 13 Sep: "Following up on my previous message. Any update?"
+# classified as unknown, and a reply inventing a log-forwarding problem the
+# customer had never mentioned was auto-sent with all five guardrails passing.
+
+
+def test_unknown_intent_never_auto_responds(db):
+    """The classifier could not tell what the ticket is about. Answering it
+    anyway is the failure that reached a customer.
+    """
+    r = _route(classification=_classification(intent="unknown", confidence=0.99))
+    assert r.decision == ESCALATE
+    assert r.trigger == "never_auto_respond_intent"
+
+
+def test_unknown_outranks_high_confidence(db):
+    """Confidence is about the label, not about whether the ticket was
+    understood. A confident 'I don't know' is still 'I don't know'.
+    """
+    for conf in (0.90, 0.95, 0.99, 1.0):
+        r = _route(classification=_classification(intent="unknown", confidence=conf))
+        assert r.decision == ESCALATE, f"auto-responded at confidence {conf}"
+
+
+def test_unknown_still_carries_an_escalation_bundle(db):
+    """A human picking this up gets the passages and alternatives, per FR-11 —
+    escalating must not mean discarding the work already done.
+    """
+    r = _route(classification=_classification(intent="unknown"))
+    assert r.bundle is not None
+    assert r.bundle.passages, "retrieved passages must travel to the human"
+
+
+def test_the_four_labelled_intents_are_unchanged(db):
+    """'unknown' is an orthogonal rule, not a revision of the D-07 derivation.
+    It never appears as a labelled intent in either dataset, so the
+    precision 1.000 / recall 1.000 result against must_not_auto_respond still
+    rests on exactly these four.
+    """
+    assert NEVER_AUTO_RESPOND == {
+        "compliance_request",
+        "security_incident",
+        "feature_request",
+        "unclear_request",
+        "unknown",
+    }
+
+
+def test_a_normal_intent_still_auto_responds(db):
+    """The guard that stops this widening into 'escalate everything'."""
+    r = _route()
+    assert r.decision == AUTO_RESPOND

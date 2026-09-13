@@ -56,14 +56,34 @@ ESCALATE = "escalate"
 BLOCK = "block"
 
 # D-07 — intents that never auto-answer, whatever the confidence.
-# Reproduces labels.must_not_auto_respond at precision 1.000 / recall 1.000
-# on the 500-ticket dev set (87/87) and the 80-ticket validation set (14/14).
+# The first four reproduce labels.must_not_auto_respond at precision 1.000 /
+# recall 1.000 on the 500-ticket dev set (87/87) and the 80-ticket validation
+# set (14/14).
+#
+# "unknown" is a different KIND of entry and does not affect that derivation:
+# it never appears as a labelled intent in either dataset (checked), because it
+# is not a category of ticket at all. It is the fallback src/classify.py
+# returns when classification FAILED — bad JSON, an unrecognised code, a dead
+# provider. The system is saying it could not tell what the ticket is about.
+#
+# Auto-answering that is indefensible, and it was not hypothetical: on 13 Sep
+# VAL-0002 ("Following up on my previous message. Any update?") classified as
+# unknown, and a reply inventing a log-forwarding problem the customer had
+# never mentioned was sent, with all five guardrails passing. The same ticket
+# on an earlier run classified as unclear_request and was correctly escalated
+# by this list — so the only thing separating a fabrication from a customer
+# was which fallback the classifier happened to land on.
+#
+# This is the abstention principle applied at the classification stage: a
+# system that cannot identify the question must not answer it. See the RAG
+# triad note in D-07 for the complementary check on the generated answer.
 NEVER_AUTO_RESPOND: frozenset[str] = frozenset(
     {
         "compliance_request",
         "security_incident",
         "feature_request",
         "unclear_request",
+        "unknown",
     }
 )
 
