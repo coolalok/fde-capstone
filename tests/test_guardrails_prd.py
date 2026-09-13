@@ -27,6 +27,7 @@ import sqlite3
 import pytest
 
 from src.guardrails import (
+    AnswerRelevanceGuardrail,
     ConfidenceFloorGuardrail,
     GroundingGuardrail,
     InstructionIntegrityGuardrail,
@@ -531,10 +532,10 @@ def test_run_all_writes_a_decision_log_row(grounded_response, context, db):
     assert stage == "guardrails"
     assert action == "pass"
     parsed = json.loads(guardrail_results)
-    assert len(parsed) == 5
+    assert len(parsed) == 6
     assert {r["name"] for r in parsed} == {
         "pii", "grounding", "instruction_integrity", "tone_scope",
-        "confidence_floor",
+        "answer_relevance", "confidence_floor",
     }
 
 
@@ -921,22 +922,26 @@ def test_tonescope_contract_violation_passed_false_empty_list_blocks(
     assert "tonescope_guardrail_contract_violation" in result.reason
 
 
-def test_run_all_now_returns_five_guardrails(grounded_response, context, db):
-    """run_all() returns all five guardrails in a fixed order — tone/scope
-    sits between instruction_integrity and confidence_floor.
+def test_run_all_now_returns_six_guardrails(grounded_response, context, db):
+    """run_all() returns all six guardrails in a fixed order.
+
+    answer_relevance sits after tone_scope and before confidence_floor: it is
+    the last content check, and confidence_floor stays last because it reads a
+    number rather than the reply.
     """
     stub = _stub_returning(
         {"passed": True, "detections": [], "unsupported_claims": [],
          "commitments": []}
     )
     results = run_all(grounded_response, context, call_model=stub)
-    assert len(results) == 5
+    assert len(results) == 6
     names = [r.name for r in results]
     assert names == [
         "pii",
         "grounding",
         "instruction_integrity",
         "tone_scope",
+        "answer_relevance",
         "confidence_floor",
     ]
 
@@ -1092,11 +1097,129 @@ def test_every_fail_safe_return_site_sets_the_flag():
         if not flagged:
             offenders.append((node.lineno, text[:70]))
 
-    assert in_scope == 8, (
-        f"expected 8 fail-safe return sites, found {in_scope} — a site was "
+    assert in_scope == 10, (
+        f"expected 10 fail-safe return sites, found {in_scope} — a site was "
         "added or removed; update this count deliberately, do not let the "
         "scan silently cover less than it did."
     )
     assert not offenders, (
         "fail-safe GuardrailResult(s) missing fail_safe=True: " + repr(offenders)
     )
+
+
+# ─── answer relevance: the third check of the RAG triad (2026-09-13) ──
+# Groundedness compares the answer to the PASSAGES. This compares it to the
+# QUESTION, and is not given the passages at all.
+
+
+def test_relevance_blocks_a_grounded_reply_to_a_question_never_asked(context):
+    """VAL-0002, the case this guardrail was built for. The reply was fully
+    grounded — every claim really was in DOC-INT-002 — and answered a problem
+    the customer never described.
+    """
+    response = GeneratedResponse(
+        answer=("We're still investigating the issue with your logs not "
+                "arriving at the external destination."),
+        citations=["DOC-INT-002"],
+        confidence=0.7,
+        unknown=False,
+    )
+    stub = _stub_returning({
+        "passed": False,
+        "question_asked": "The customer is chasing an update on a prior message.",
+        "reason": "The ticket mentions no logs or destination; the reply "
+                  "invented the problem.",
+    })
+    g = AnswerRelevanceGuardrail(call_model=stub)
+    result = g.check(response, context)
+    assert result.passed is False
+    assert result.blocking is True
+    assert result.fail_safe is False
+    assert "does not address the question" in result.reason
+
+
+def test_relevance_passes_a_reply_that_addresses_the_ticket(
+    grounded_response, context
+):
+    stub = _stub_returning({
+        "passed": True,
+        "question_asked": "Why are sign-ins failing?",
+        "reason": "The reply explains account lockout and how to check it.",
+    })
+    g = AnswerRelevanceGuardrail(call_model=stub)
+    result = g.check(grounded_response, context)
+    assert result.passed is True
+    assert result.details["question_asked"] == "Why are sign-ins failing?"
+
+
+def test_relevance_does_not_punish_abstention(context):
+    """An unknown response is the CORRECT behaviour on an unanswerable
+    ticket. Blocking it would invert the metric this guardrail improves.
+    """
+    def must_not_be_called(system, user, seed):  # pragma: no cover
+        raise AssertionError("no model call should be made for an abstention")
+
+    response = GeneratedResponse(answer="", citations=[], confidence=0.0,
+                                 unknown=True)
+    g = AnswerRelevanceGuardrail(call_model=must_not_be_called)
+    result = g.check(response, context)
+    assert result.passed is True
+    assert "abstention" in result.reason
+
+
+def test_relevance_never_receives_the_passages(grounded_response, context):
+    """Structural: if this check could see the passages it would drift into
+    re-checking groundedness and stop catching a well-grounded reply to the
+    wrong question. It must see only the ticket and the reply.
+    """
+    seen = {}
+
+    def capture(system, user, seed):
+        seen["user"] = user
+        return json.dumps({"passed": True, "question_asked": "q", "reason": "r"})
+
+    g = AnswerRelevanceGuardrail(call_model=capture)
+    g.check(grounded_response, context)
+    for p in context.passages:
+        assert p.text not in seen["user"], "passage text leaked into the prompt"
+        assert p.doc_id not in seen["user"], "doc_id leaked into the prompt"
+
+
+def test_relevance_never_receives_the_segment_fields(grounded_response, context):
+    """FR-04 fairness: the same reply to the same ticket must get the same
+    verdict whichever customer sent it.
+    """
+    seen = {}
+
+    def capture(system, user, seed):
+        seen["user"] = user
+        return json.dumps({"passed": True, "question_asked": "q", "reason": "r"})
+
+    g = AnswerRelevanceGuardrail(call_model=capture)
+    g.check(grounded_response, context)
+    for field in (context.ticket.customer_tier, context.ticket.customer_region,
+                  context.ticket.language_fluency, context.ticket.customer_name):
+        if field:
+            assert field not in seen["user"], f"{field!r} leaked into the prompt"
+
+
+def test_relevance_fails_safe_when_the_judge_raises(grounded_response, context):
+    def exploding(system, user, seed):
+        raise TimeoutError("provider unreachable")
+
+    g = AnswerRelevanceGuardrail(call_model=exploding)
+    result = g.check(grounded_response, context)
+    assert result.passed is False
+    assert result.fail_safe is True
+
+
+def test_relevance_non_boolean_verdict_is_not_a_pass(grounded_response, context):
+    """The judge did not answer the question it was asked. That is not a
+    clean pass — it is a contract violation, and it blocks.
+    """
+    stub = _stub_returning({"passed": "yes", "question_asked": "q", "reason": "r"})
+    g = AnswerRelevanceGuardrail(call_model=stub)
+    result = g.check(grounded_response, context)
+    assert result.passed is False
+    assert result.fail_safe is True
+    assert "contract_violation" in result.reason

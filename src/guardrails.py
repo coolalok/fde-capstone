@@ -72,6 +72,7 @@ from src.config import (
     MODEL_NAME,
     MODEL_TIMEOUT_SECONDS,
 )
+from src.generate import strip_citation_markers
 from src.logging_store import log_decision
 from src.metrics import MODEL_CALL_FAILURES
 from src.prompt_loader import load_prompt
@@ -90,9 +91,13 @@ logger = logging.getLogger(__name__)
 _PII_PROMPT = load_prompt("PR-GUARDRAIL-PII-01")
 _GROUNDING_PROMPT = load_prompt("PR-GUARDRAIL-GROUNDING-01")
 _TONESCOPE_PROMPT = load_prompt("PR-GUARDRAIL-TONESCOPE-01")
+_RELEVANCE_PROMPT = load_prompt("PR-GUARDRAIL-RELEVANCE-01")
 _PII_PROMPT_VERSION = f"PR-GUARDRAIL-PII-01@{_PII_PROMPT.version}"
 _GROUNDING_PROMPT_VERSION = f"PR-GUARDRAIL-GROUNDING-01@{_GROUNDING_PROMPT.version}"
 _TONESCOPE_PROMPT_VERSION = f"PR-GUARDRAIL-TONESCOPE-01@{_TONESCOPE_PROMPT.version}"
+_RELEVANCE_PROMPT_VERSION = (
+    f"PR-GUARDRAIL-RELEVANCE-01@{_RELEVANCE_PROMPT.version}"
+)
 
 
 # ─── model call seam ────────────────────────────────────────────────
@@ -866,6 +871,140 @@ class ToneScopeGuardrail:
         return result
 
 
+# ─── Answer-relevance guardrail (RAG triad, third check) ─────────────
+
+
+@dataclass
+class AnswerRelevanceGuardrail:
+    """Sixth blocking guardrail — blocks replies that do not address the
+    question the customer asked.
+
+    This is the third check of the RAG triad (TruLens/TruEra: context
+    relevance, groundedness, answer relevance). Only groundedness was
+    implemented; this completes the pair that matters at generation time.
+
+    The distinction from GroundingGuardrail is the whole point, and it is
+    structural rather than a matter of degree: grounding compares the answer
+    against the PASSAGES, this compares the answer against the QUESTION, and
+    it is not given the passages at all. A reply can be perfectly grounded in
+    real documentation and still answer a question nobody asked — grounding
+    passes it every time, because every individual claim genuinely is
+    supported.
+
+    Traceability: FR-14 (the unknown/abstain contract — this enforces it on
+    the output side) and R-01 (confidently incorrect answers). PR-GENERATE-01
+    already tells the generator "groundedness is necessary but not
+    sufficient; the answer must also address what was asked". This guardrail
+    checks the instruction was followed — prompts are requests, code is
+    control.
+
+    Measured need, 13 Sep gate run: 6 of 10 tickets whose answers are not in
+    the documentation received a confident automatic reply, with all five
+    existing guardrails passing. Retrieval cannot fix it — top-score
+    distributions for answerable (median 0.558) and unanswerable (median
+    0.481) tickets overlap almost entirely, so no threshold separates them.
+
+    Fail-safe and contract-violation semantics are identical to the grounding
+    and PII guardrails.
+    """
+
+    name: str = "answer_relevance"
+    blocking: bool = True
+    call_model: Optional[ModelCall] = None
+
+    def check(
+        self, response: GeneratedResponse, context: GuardrailContext
+    ) -> GuardrailResult:
+        # An abstention is the CORRECT behaviour for an unanswerable ticket,
+        # not an irrelevance failure. Blocking it would punish the system for
+        # doing the right thing and invert the metric this guardrail exists
+        # to improve.
+        if response.unknown or not response.answer.strip():
+            return GuardrailResult(
+                name=self.name,
+                passed=True,
+                blocking=self.blocking,
+                reason="no answer drafted — abstention is not an irrelevance",
+            )
+
+        caller = self.call_model or _openrouter_call
+        try:
+            # The judge sees the CUSTOMER-FACING reply, markers stripped.
+            # Two reasons. It is the right question to ask — "does what the
+            # customer receives address what they asked?" — and it keeps the
+            # passage doc_ids out of a check that must not see the passages;
+            # otherwise this drifts into re-checking groundedness and stops
+            # catching a well-grounded reply to the wrong question.
+            user = _RELEVANCE_PROMPT.render_user(
+                channel=context.ticket.channel,
+                subject=context.ticket.subject,
+                body=context.ticket.body,
+                answer=strip_citation_markers(response.answer),
+            )
+            raw = caller(_RELEVANCE_PROMPT.system, user, 0)
+            data = _parse_json_verdict(raw)
+        except Exception as exc:  # broad — fail SAFE per A11
+            MODEL_CALL_FAILURES.labels(
+                stage="guardrail:answer_relevance", error_type=type(exc).__name__
+            ).inc()
+            logger.warning(
+                "guardrails.relevance.llm_failure",
+                extra={"ticket_id": context.ticket.ticket_id, "error": str(exc),
+                       "error_type": type(exc).__name__},
+            )
+            return GuardrailResult(
+                name=self.name,
+                passed=False,
+                blocking=self.blocking,
+                reason=f"relevance_guardrail_error: {type(exc).__name__}: {exc}",
+                fail_safe=True,
+            )
+
+        passed = data.get("passed")
+        question = data.get("question_asked", "")
+        why = data.get("reason", "")
+
+        # Contract enforcement, as on the other LLM guardrails: `passed` must
+        # be a real boolean. A missing or non-boolean verdict is not a pass —
+        # the judge did not answer the question it was asked.
+        if not isinstance(passed, bool):
+            logger.warning(
+                "guardrails.relevance.contract_violation",
+                extra={"ticket_id": context.ticket.ticket_id, "passed": passed},
+            )
+            return GuardrailResult(
+                name=self.name,
+                passed=False,
+                blocking=self.blocking,
+                reason=(
+                    f"relevance_guardrail_contract_violation: "
+                    f"passed={passed!r} is not a boolean"
+                ),
+                fail_safe=True,
+                details={"contract_violation": True, "raw_passed": passed},
+            )
+
+        if not passed:
+            return GuardrailResult(
+                name=self.name,
+                passed=False,
+                blocking=self.blocking,
+                reason=(
+                    f"reply does not address the question asked: "
+                    f"{str(why)[:200]}"
+                ),
+                details={"question_asked": question, "why": why},
+            )
+
+        return GuardrailResult(
+            name=self.name,
+            passed=True,
+            blocking=self.blocking,
+            reason="reply addresses the question asked",
+            details={"question_asked": question},
+        )
+
+
 # ─── FR-19: confidence-floor guardrail ──────────────────────────────
 
 
@@ -941,6 +1080,7 @@ def run_all(
             GroundingGuardrail(call_model=call_model),
             InstructionIntegrityGuardrail(),
             ToneScopeGuardrail(call_model=call_model),
+            AnswerRelevanceGuardrail(call_model=call_model),
             ConfidenceFloorGuardrail(),
         ]
 
@@ -1000,7 +1140,7 @@ def _write_decision_log(
         alternatives=[],
         prompt_version=(
             f"{_PII_PROMPT_VERSION};{_GROUNDING_PROMPT_VERSION};"
-            f"{_TONESCOPE_PROMPT_VERSION}"
+            f"{_TONESCOPE_PROMPT_VERSION};{_RELEVANCE_PROMPT_VERSION}"
         ),
         requirement_ids=["FR-16", "FR-17", "FR-18", "FR-19"],
         model_name=MODEL_NAME,
