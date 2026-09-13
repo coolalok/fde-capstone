@@ -1,0 +1,254 @@
+{
+  "run_id": "retrieval-eval-20260913T175744Z-e45a0fed",
+  "source": "data/ground_truth_responses.json expected_doc_ids",
+  "overall": {
+    "n": 200,
+    "hit@1": 0.89,
+    "hit@3": 0.955,
+    "hit@5": 0.97,
+    "mrr": 0.9224,
+    "ndcg@5": 0.8713
+  },
+  "empty_results": 0,
+  "by_intent": {
+    "integration_help": {
+      "n": 7,
+      "hit@1": 0.5714,
+      "hit@3": 0.5714,
+      "hit@5": 0.5714,
+      "mrr": 0.5714,
+      "ndcg@5": 0.3504
+    },
+    "onboarding": {
+      "n": 15,
+      "hit@1": 0.6,
+      "hit@3": 0.8667,
+      "hit@5": 0.9333,
+      "mrr": 0.7244,
+      "ndcg@5": 0.6226
+    },
+    "database_issue": {
+      "n": 7,
+      "hit@1": 0.7143,
+      "hit@3": 0.7143,
+      "hit@5": 0.8571,
+      "mrr": 0.75,
+      "ndcg@5": 0.6477
+    },
+    "compliance_request": {
+      "n": 10,
+      "hit@1": 0.6,
+      "hit@3": 1.0,
+      "hit@5": 1.0,
+      "mrr": 0.8,
+      "ndcg@5": 0.8524
+    },
+    "deployment_failure": {
+      "n": 12,
+      "hit@1": 0.8333,
+      "hit@3": 0.8333,
+      "hit@5": 0.9167,
+      "mrr": 0.85,
+      "ndcg@5": 0.7564
+    },
+    "account_access": {
+      "n": 7,
+      "hit@1": 0.7143,
+      "hit@3": 1.0,
+      "hit@5": 1.0,
+      "mrr": 0.8571,
+      "ndcg@5": 0.8946
+    },
+    "quota_or_overage": {
+      "n": 13,
+      "hit@1": 0.8462,
+      "hit@3": 1.0,
+      "hit@5": 1.0,
+      "mrr": 0.8974,
+      "ndcg@5": 0.8515
+    },
+    "security_incident": {
+      "n": 9,
+      "hit@1": 0.8889,
+      "hit@3": 1.0,
+      "hit@5": 1.0,
+      "mrr": 0.9444,
+      "ndcg@5": 0.916
+    },
+    "rollback_request": {
+      "n": 13,
+      "hit@1": 1.0,
+      "hit@3": 1.0,
+      "hit@5": 1.0,
+      "mrr": 1.0,
+      "ndcg@5": 1.0
+    },
+    "authentication_failure": {
+      "n": 7,
+      "hit@1": 1.0,
+      "hit@3": 1.0,
+      "hit@5": 1.0,
+      "mrr": 1.0,
+      "ndcg@5": 0.8895
+    },
+    "data_export": {
+      "n": 17,
+      "hit@1": 1.0,
+      "hit@3": 1.0,
+      "hit@5": 1.0,
+      "mrr": 1.0,
+      "ndcg@5": 1.0
+    },
+    "sso_configuration": {
+      "n": 15,
+      "hit@1": 1.0,
+      "hit@3": 1.0,
+      "hit@5": 1.0,
+      "mrr": 1.0,
+      "ndcg@5": 1.0
+    },
+    "api_key_issue": {
+      "n": 6,
+      "hit@1": 1.0,
+      "hit@3": 1.0,
+      "hit@5": 1.0,
+      "mrr": 1.0,
+      "ndcg@5": 0.8954
+    },
+    "api_usage_question": {
+      "n": 13,
+      "hit@1": 1.0,
+      "hit@3": 1.0,
+      "hit@5": 1.0,
+      "mrr": 1.0,
+      "ndcg@5": 0.881
+    },
+    "rate_limit": {
+      "n": 7,
+      "hit@1": 1.0,
+      "hit@3": 1.0,
+      "hit@5": 1.0,
+      "mrr": 1.0,
+      "ndcg@5": 1.0
+    },
+    "billing_query": {
+      "n": 11,
+      "hit@1": 1.0,
+      "hit@3": 1.0,
+      "hit@5": 1.0,
+      "mrr": 1.0,
+      "ndcg@5": 0.9436
+    },
+    "data_residency": {
+      "n": 11,
+      "hit@1": 1.0,
+      "hit@3": 1.0,
+      "hit@5": 1.0,
+      "mrr": 1.0,
+      "ndcg@5": 1.0
+    },
+    "webhook_issue": {
+      "n": 9,
+      "hit@1": 1.0,
+      "hit@3": 1.0,
+      "hit@5": 1.0,
+      "mrr": 1.0,
+      "ndcg@5": 1.0
+    },
+    "performance_degradation": {
+      "n": 7,
+      "hit@1": 1.0,
+      "hit@3": 1.0,
+      "hit@5": 1.0,
+      "mrr": 1.0,
+      "ndcg@5": 0.8719
+    },
+    "configuration_help": {
+      "n": 4,
+      "hit@1": 1.0,
+      "hit@3": 1.0,
+      "hit@5": 1.0,
+      "mrr": 1.0,
+      "ndcg@5": 0.8066
+    }
+  },
+  "top1_confusions": [
+    {
+      "expected": "DOC-ONB-001",
+      "expected_title": "First deployment: a walkthrough",
+      "retrieved": "DOC-AUTH-001",
+      "retrieved_title": "Resolving invalid credential errors on login",
+      "count": 4
+    },
+    {
+      "expected": "DOC-SEC-003",
+      "expected_title": "Audit logging and compliance evidence",
+      "retrieved": "DOC-DATA-002",
+      "retrieved_title": "Backups, retention and point-in-time restore",
+      "count": 4
+    },
+    {
+      "expected": "DOC-INT-001",
+      "expected_title": "Connecting continuous integration pipelines",
+      "retrieved": "DOC-INT-002",
+      "retrieved_title": "Third party monitoring and log forwarding",
+      "count": 3
+    },
+    {
+      "expected": "DOC-ONB-002",
+      "expected_title": "Migrating an existing application to CloudServe",
+      "retrieved": "DOC-AUTH-001",
+      "retrieved_title": "Resolving invalid credential errors on login",
+      "count": 3
+    },
+    {
+      "expected": "DOC-DEPLOY-001",
+      "expected_title": "Container deployments failing during the health check phase",
+      "retrieved": "DOC-DEPLOY-003",
+      "retrieved_title": "Build failures caused by dependency resolution",
+      "count": 2
+    },
+    {
+      "expected": "DOC-ACCT-001",
+      "expected_title": "Managing team members, roles and permissions",
+      "retrieved": "DOC-AUTH-004",
+      "retrieved_title": "API key rotation and scope management",
+      "count": 2
+    },
+    {
+      "expected": "DOC-BILL-003",
+      "expected_title": "Usage limits, overage and spend controls",
+      "retrieved": "DOC-BILL-001",
+      "retrieved_title": "Understanding your invoice and usage breakdown",
+      "count": 2
+    },
+    {
+      "expected": "DOC-ONB-001",
+      "expected_title": "First deployment: a walkthrough",
+      "retrieved": "DOC-ONB-002",
+      "retrieved_title": "Migrating an existing application to CloudServe",
+      "count": 2
+    },
+    {
+      "expected": "DOC-PERF-003",
+      "expected_title": "Database connection pool exhaustion",
+      "retrieved": "DOC-DATA-002",
+      "retrieved_title": "Backups, retention and point-in-time restore",
+      "count": 2
+    },
+    {
+      "expected": "DOC-API-001",
+      "expected_title": "Understanding API rate limits and quota tiers",
+      "retrieved": "DOC-BILL-001",
+      "retrieved_title": "Understanding your invoice and usage breakdown",
+      "count": 1
+    },
+    {
+      "expected": "DOC-SEC-001",
+      "expected_title": "Responding to a suspected account compromise",
+      "retrieved": "DOC-SEC-002",
+      "retrieved_title": "Handling exposed secrets and credential rotation",
+      "count": 1
+    }
+  ]
+}
