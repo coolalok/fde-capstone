@@ -158,7 +158,17 @@ def process_ticket(raw: dict, *, skip_guardrails: bool = False,
              # A block because the JUDGE failed, not because the answer did.
              # Both block; they mean opposite things to a reader.
              "fail_safe": g.fail_safe,
-             "reason": g.reason[:200]}
+             # Full reason, not a 200-char prefix. The truncation cut the
+             # judge's argument mid-sentence — on VAL-0004 it left
+             # "The passage states that device clock drift of more than thirty
+             # seconds invalidat", which read as the judge contradicting
+             # itself when it was actually making a precise point about the
+             # draft over-claiming "the most common cause". A debug record
+             # that cuts off the reasoning is not a debug record.
+             "reason": g.reason,
+             # The structured verdict: which claims, and why each failed.
+             # This is what distinguishes a good block from a bad one.
+             "details": g.details}
             for g in guardrail_results
         ]
 
