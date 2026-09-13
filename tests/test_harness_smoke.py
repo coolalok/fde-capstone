@@ -11,10 +11,12 @@ reconciling, the gate run produces a plausible-looking report that is wrong.
 from __future__ import annotations
 
 import json
+import re
 
 import pytest
 
 from evaluation.harness import build_metrics, main, process_ticket
+from src.generate import strip_citation_markers
 from evaluation.harness import process_ticket as harness_process_ticket
 
 SMOKE_TICKETS = [
@@ -295,10 +297,11 @@ def test_pre_and_post_guardrail_responses_are_both_recorded(db, _no_retrieval):
     assert pre["answer"] == row["answer"]
     assert set(post) == {
         "answer", "sent_to_customer", "withheld_by",
-        "withheld_reason", "modified_from_draft",
+        "withheld_reason", "modified_from_draft", "markers_stripped",
     }
     if post["sent_to_customer"]:
-        assert post["answer"] == pre["answer"], "no rewriting step exists yet"
+        # The reply is the draft minus its internal citation markers.
+        assert post["answer"] == strip_citation_markers(pre["answer"])
         assert post["withheld_by"] == []
     else:
         assert post["answer"] == "", "a withheld draft must not appear as sent"
@@ -341,3 +344,59 @@ def test_degraded_ticket_still_carries_the_debug_fields(
     assert row["request"]["raw"]["ticket_id"] == SMOKE_TICKETS[0]["ticket_id"]
     assert row["response_pre_guardrail"]["answer"] == ""
     assert row["response_post_guardrail"]["sent_to_customer"] is False
+
+
+# ─── internal citation markers must not reach the customer (2026-09-13) ──
+# None of the 200 senior-agent reference replies contains a [DOC-ID] marker;
+# 15 of 20 auto-sent replies on the 13 Sep gate run did.
+
+
+MARKER = re.compile(r"\[DOC-[A-Z]+-\d+\]")
+
+
+def test_sent_reply_carries_no_internal_document_ids(db, _no_retrieval,
+                                                     monkeypatch):
+    """The customer-facing string must be free of [DOC-ID] markers."""
+    from src.schema import GeneratedResponse
+
+    drafted = ("Rotate the key first, then revoke the old one.[DOC-AUTH-004] "
+               "Check the scopes [DOC-AUTH-002] before you deploy.")
+
+    def fake_generate(ticket, passages, **kw):
+        return GeneratedResponse(answer=drafted,
+                                 citations=["DOC-AUTH-004", "DOC-AUTH-002"],
+                                 confidence=0.95, unknown=False)
+
+    monkeypatch.setattr("evaluation.harness.generate", fake_generate)
+    monkeypatch.setattr("evaluation.harness.run_all", lambda r, c, **k: [])
+    row = process_ticket(SMOKE_TICKETS[0])
+
+    post = row["response_post_guardrail"]
+    assert post["sent_to_customer"] is True
+    assert not MARKER.search(post["answer"]), post["answer"]
+    assert post["markers_stripped"] is True
+    assert post["modified_from_draft"] is True
+    # The sources are not lost — they live in the structured field.
+    assert row["citations"] == ["DOC-AUTH-004", "DOC-AUTH-002"]
+    # ...and the original draft is still inspectable for debugging.
+    assert MARKER.search(row["response_pre_guardrail"]["answer"])
+
+
+def test_escalated_draft_keeps_its_markers_for_the_human_reviewer(
+    db, _no_retrieval, monkeypatch
+):
+    """A withheld draft goes to a person, who benefits from seeing which
+    article each claim came from. Stripping is a customer-facing step only.
+    """
+    from src.schema import GuardrailResult
+
+    monkeypatch.setattr(
+        "evaluation.harness.run_all",
+        lambda r, c, **k: [GuardrailResult(name="pii", passed=False,
+                                           blocking=True, reason="PII")],
+    )
+    row = process_ticket(SMOKE_TICKETS[0])
+    assert row["decision"] == "block"
+    assert row["response_post_guardrail"]["answer"] == ""
+    # The draft retains whatever the generator produced.
+    assert row["response_pre_guardrail"]["answer"] == row["answer"]

@@ -447,6 +447,42 @@ def _collapse_repeated_markers(answer: str) -> str:
     return _RE_MARKER_RUN.sub(_dedupe, answer)
 
 
+def strip_citation_markers(answer: str) -> str:
+    """Remove inline [DOC-ID] markers from text that is about to reach a customer.
+
+    PR-GENERATE-01 asks the model to put a marker after each sentence that
+    relies on a passage, and the grounding guardrail uses them to tie a claim
+    to the passage it came from. That is an INTERNAL mechanism. None of the
+    200 senior-agent reference replies in data/ground_truth_responses.json
+    contains one; they record sources in expected_doc_ids, exactly as our
+    GeneratedResponse.citations does. Measured on the 13 Sep gate run, 15 of
+    20 auto-sent replies carried at least one marker.
+
+    So this is applied at the point of delivery, NOT at generation:
+
+      - the generator still emits markers (the prompt is unchanged, and every
+        measurement taken against that prompt stays valid);
+      - the guardrails still see them, so grounding keeps its per-claim anchor;
+      - the ESCALATION path keeps them too — a human reviewing a withheld
+        draft benefits from seeing which article each claim came from;
+      - only the customer-facing string has them removed.
+
+    Whitespace is closed up so removal leaves no trace: a marker glued to a
+    full stop ("...key.[DOC-A]") and one sitting mid-sentence ("...key [DOC-A]
+    rotates...") both read correctly afterwards. citations is untouched and
+    remains the machine-readable record of what was used.
+    """
+    if not answer:
+        return answer
+    # Consume any whitespace BEFORE the marker, so "key.[DOC-A] Next" and
+    # "key. [DOC-A] Next" both become "key. Next" rather than leaving a
+    # double space or a space before punctuation.
+    stripped = re.sub(r"[ \t]*" + _RE_MARKER.pattern, "", answer)
+    # A marker alone on a line can leave a blank line behind.
+    stripped = re.sub(r"\n[ \t]*\n[ \t]*\n+", "\n\n", stripped)
+    return stripped.strip()
+
+
 def _parse_response(raw: str) -> GeneratedResponse:
     """Parse and validate the model's JSON output. Raises on any invalidity.
 

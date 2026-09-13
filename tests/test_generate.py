@@ -21,6 +21,7 @@ from src.generate import (
     _parse_response,
     _structural_critic,
     generate,
+    strip_citation_markers,
 )
 from src.schema import GeneratedResponse, Passage, Ticket
 
@@ -520,3 +521,49 @@ def test_parse_response_collapses_markers_and_dedupes_citations():
     result = _parse_response(raw)
     assert result.answer.endswith("seven days.[DOC-ACCT-001]")
     assert result.citations == ["DOC-ACCT-001", "DOC-AUTH-001"]
+
+
+# --- markers are internal, not customer-facing (2026-09-13) ------------------
+
+
+@pytest.mark.parametrize(
+    "draft, expected",
+    [
+        # The exact VAL-0001 shape that reached a customer on the gate run.
+        ("…then revoke the old key.[DOC-AUTH-004]", "…then revoke the old key."),
+        # Space before the marker must not survive as a double space.
+        ("See the guide. [DOC-A-001] Then restart.",
+         "See the guide. Then restart."),
+        # Mid-sentence marker.
+        ("The key [DOC-A-001] rotates nightly.", "The key rotates nightly."),
+        ("[DOC-A-001] Leading marker.", "Leading marker."),
+        ("Two in a row.[DOC-A-001][DOC-B-002]", "Two in a row."),
+        ("No markers at all.", "No markers at all."),
+        ("", ""),
+    ],
+)
+def test_strip_citation_markers(draft, expected):
+    assert strip_citation_markers(draft) == expected
+
+
+def test_strip_leaves_bracketed_text_that_is_not_a_doc_id():
+    """Only [DOC-*] markers go. Ordinary brackets are the customer's words or
+    the model's prose and must survive.
+    """
+    text = "Check the console [the admin area] and note the 404 [sic]."
+    assert strip_citation_markers(text) == text
+
+
+def test_stripping_does_not_touch_the_citations_list():
+    """The sources are still recorded — they move to the structured field,
+    they are not discarded.
+    """
+    raw = json.dumps({
+        "answer": "Rotate first.[DOC-AUTH-004]",
+        "citations": ["DOC-AUTH-004"],
+        "confidence": 0.9,
+        "unknown": False,
+    })
+    parsed = _parse_response(raw)
+    assert parsed.citations == ["DOC-AUTH-004"]
+    assert strip_citation_markers(parsed.answer) == "Rotate first."

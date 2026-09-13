@@ -46,7 +46,7 @@ from typing import Any, Optional
 
 from src.classify import classify
 from src.config import CONFIDENCE_THRESHOLD, GUARDRAIL_MODEL, MODEL_NAME
-from src.generate import generate
+from src.generate import generate, strip_citation_markers
 from src.guardrails import run_all
 from src.ingest import normalise_any
 from src.logging_config import configure_logging
@@ -191,13 +191,25 @@ def process_ticket(raw: dict, *, skip_guardrails: bool = False,
             g.name for g in guardrail_results if g.blocking and not g.passed
         ]
         sent = decision.decision == AUTO_RESPOND
+        # Inline [DOC-ID] markers are an internal mechanism (grounding uses
+        # them to anchor each claim). They are removed here, at the delivery
+        # point, so the generator prompt and every measurement against it stay
+        # unchanged, the guardrails keep their anchors, and an escalated draft
+        # still shows a human where each claim came from.
+        customer_text = strip_citation_markers(response.answer) if sent else ""
         row["response_post_guardrail"] = {
-            "answer": response.answer if sent else "",
+            "answer": customer_text,
             "sent_to_customer": sent,
             "withheld_by": withheld_by,
             "withheld_reason": decision.reason if not sent else "",
+            # True once anything rewrites the reply between drafting and
+            # sending. Marker stripping is the first such step, so on the
+            # auto_respond path this now reports whether markers were present.
             "modified_from_draft": (
-                sent and response.answer != row["response_pre_guardrail"]["answer"]
+                sent and customer_text != row["response_pre_guardrail"]["answer"]
+            ),
+            "markers_stripped": (
+                sent and len(response.answer) != len(customer_text)
             ),
         }
 
