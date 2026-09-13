@@ -252,3 +252,92 @@ def test_rows_are_streamed_not_buffered_to_the_end(db, _no_retrieval, tmp_path,
     written = (out / "results.jsonl").read_text().strip().splitlines()
     assert len(written) == 2, "rows finished before the interrupt must survive"
     assert [json.loads(w)["ticket_id"] for w in written] == seen
+
+
+# ─── debug trail: request in, response before and after guardrails ───
+
+
+def test_row_captures_the_inbound_request_for_every_channel(db, _no_retrieval):
+    """Until now only LENGTHS were logged (input_summary='body_len=310'),
+    which cannot explain a misclassification or an ingest bug. Both the raw
+    payload and the normalised ticket are kept — a difference between them
+    IS the ingest bug.
+    """
+    for ticket in SMOKE_TICKETS:
+        row = process_ticket(ticket)
+        req = row["request"]
+        assert req["raw"]["ticket_id"] == ticket["ticket_id"]
+        assert req["normalised"]["channel"] == row["channel"]
+        # The text itself, not a length.
+        assert isinstance(req["normalised"]["body"], str)
+        assert isinstance(req["normalised"]["original_body"], str)
+
+
+def test_request_capture_never_contains_evaluation_labels(db, _no_retrieval):
+    """Labels are ground truth. A production-shaped record must not carry
+    them, or the trail becomes useless for judging real behaviour.
+    """
+    labelled = dict(SMOKE_TICKETS[0])
+    labelled["labels"] = {"intent": "billing_query", "answerable_from_docs": True}
+    row = process_ticket(labelled)
+    assert "labels" not in row["request"]["raw"]
+    assert "billing_query" not in json.dumps(row["request"])
+
+
+def test_pre_and_post_guardrail_responses_are_both_recorded(db, _no_retrieval):
+    """The point of the pair is to show what the guardrails changed. Today
+    they only permit or withhold, never rewrite — so recording the equality
+    is recording a claim that can later break.
+    """
+    row = process_ticket(SMOKE_TICKETS[0])
+    pre, post = row["response_pre_guardrail"], row["response_post_guardrail"]
+
+    assert pre["answer"] == row["answer"]
+    assert set(post) == {
+        "answer", "sent_to_customer", "withheld_by",
+        "withheld_reason", "modified_from_draft",
+    }
+    if post["sent_to_customer"]:
+        assert post["answer"] == pre["answer"], "no rewriting step exists yet"
+        assert post["withheld_by"] == []
+    else:
+        assert post["answer"] == "", "a withheld draft must not appear as sent"
+
+
+def test_a_blocked_draft_is_kept_but_marked_not_sent(
+    db, _no_retrieval, monkeypatch
+):
+    """The draft survives for review; the post-guardrail record shows it was
+    never sent and names which guardrail withheld it.
+    """
+    from src.schema import GuardrailResult
+
+    def one_block(response, ctx, **kw):
+        return [GuardrailResult(name="pii", passed=False, blocking=True,
+                                reason="PII detected (email=1)")]
+
+    monkeypatch.setattr("evaluation.harness.run_all", one_block)
+    row = process_ticket(SMOKE_TICKETS[0])
+
+    assert row["decision"] == "block"
+    assert row["response_post_guardrail"]["sent_to_customer"] is False
+    assert row["response_post_guardrail"]["answer"] == ""
+    assert row["response_post_guardrail"]["withheld_by"] == ["pii"]
+    # ...but the draft is still inspectable.
+    assert row["response_pre_guardrail"]["answer"] == row["answer"]
+
+
+def test_degraded_ticket_still_carries_the_debug_fields(
+    db, _no_retrieval, monkeypatch
+):
+    """A crashed ticket is the one you most want to inspect."""
+    def boom(*a, **kw):
+        raise RuntimeError("classifier exploded")
+
+    monkeypatch.setattr("evaluation.harness.classify", boom)
+    row = process_ticket(SMOKE_TICKETS[0])
+
+    assert row["degraded"] is True
+    assert row["request"]["raw"]["ticket_id"] == SMOKE_TICKETS[0]["ticket_id"]
+    assert row["response_pre_guardrail"]["answer"] == ""
+    assert row["response_post_guardrail"]["sent_to_customer"] is False

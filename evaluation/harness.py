@@ -81,6 +81,32 @@ def process_ticket(raw: dict, *, skip_guardrails: bool = False,
         ticket = normalise_any(raw)
         row["channel"] = ticket.channel
         row["warnings"] = ticket.warnings
+        # ── The inbound request, as received and as normalised ────────────
+        # Every field the pipeline was given, for all four channels. Until
+        # now only LENGTHS were recorded (input_summary="body_len=310"),
+        # which is useless for debugging: you cannot tell why a ticket was
+        # misclassified, why retrieval missed, or whether ingest mangled the
+        # text, without the text. `raw` is the payload exactly as it arrived
+        # (channel-specific keys differ per channel); `normalised` is what the
+        # pipeline actually saw after ingest. Keeping both is the point — a
+        # difference between them IS the ingest bug.
+        #
+        # Labels are deliberately excluded: they are evaluation ground truth
+        # and must never appear in a production-shaped record.
+        row["request"] = {
+            "raw": {k: v for k, v in raw.items() if k != "labels"},
+            "normalised": {
+                "channel": ticket.channel,
+                "subject": ticket.subject,
+                "body": ticket.body,
+                "original_body": ticket.original_body,
+                "received_at": ticket.received_at,
+                "customer_id": ticket.customer_id,
+                "customer_tier": ticket.customer_tier,
+                "customer_region": ticket.customer_region,
+                "language_fluency": ticket.language_fluency,
+            },
+        }
 
         classification = classify(ticket, call_model=call_model)
         row["intent"] = classification.intent
@@ -110,6 +136,16 @@ def process_ticket(raw: dict, *, skip_guardrails: bool = False,
         row["answer"] = response.answer
         row["generator_error"] = response.error
         row["retries"] = response.retries
+        # ── The response BEFORE the guardrails ────────────────────────────
+        # The draft exactly as the generator produced it. This is what every
+        # guardrail is handed and what their verdicts refer to. `answer` above
+        # is the same string, kept because existing analysis and tests read it.
+        row["response_pre_guardrail"] = {
+            "answer": response.answer,
+            "citations": response.citations,
+            "confidence": response.confidence,
+            "unknown": response.unknown,
+        }
 
         guardrail_results = []
         if not skip_guardrails:
@@ -133,6 +169,27 @@ def process_ticket(raw: dict, *, skip_guardrails: bool = False,
         row["trigger"] = decision.trigger
         row["reason"] = decision.reason
         row["bundle_present"] = decision.bundle is not None
+        # ── The response AFTER the guardrails ─────────────────────────────
+        # What the customer actually receives. Today the guardrails only
+        # permit or withhold — they never rewrite — so on the auto_respond
+        # path this equals the draft, and everywhere else it is empty. That
+        # equality is worth recording rather than assuming: it is the claim
+        # "nothing modified the reply between drafting and sending", and if a
+        # rewriting step is ever added (stripping inline [DOC-ID] markers is
+        # the obvious candidate) this field is where the difference shows up.
+        withheld_by = [
+            g.name for g in guardrail_results if g.blocking and not g.passed
+        ]
+        sent = decision.decision == AUTO_RESPOND
+        row["response_post_guardrail"] = {
+            "answer": response.answer if sent else "",
+            "sent_to_customer": sent,
+            "withheld_by": withheld_by,
+            "withheld_reason": decision.reason if not sent else "",
+            "modified_from_draft": (
+                sent and response.answer != row["response_pre_guardrail"]["answer"]
+            ),
+        }
 
     except Exception as exc:  # FR-23 — one bad ticket must not end the run
         logger.error(
@@ -148,6 +205,21 @@ def process_ticket(raw: dict, *, skip_guardrails: bool = False,
             trigger="degraded",
             reason=f"degraded: {type(exc).__name__}: {exc}",
         )
+        # A ticket that crashed is the one you most want to inspect, so the
+        # debug fields must exist on every row rather than only the happy
+        # path — otherwise reading the file means guarding every access. The
+        # request may already have been captured before the failure; whatever
+        # stage was not reached stays empty.
+        row.setdefault("request", {"raw": {k: v for k, v in raw.items()
+                                           if k != "labels"},
+                                   "normalised": {}})
+        row.setdefault("response_pre_guardrail",
+                       {"answer": "", "citations": [], "confidence": 0.0,
+                        "unknown": True})
+        row.setdefault("response_post_guardrail",
+                       {"answer": "", "sent_to_customer": False,
+                        "withheld_by": [], "modified_from_draft": False,
+                        "withheld_reason": f"degraded: {type(exc).__name__}"})
 
     row["latency_seconds"] = round(time.perf_counter() - started, 3)
     return row
