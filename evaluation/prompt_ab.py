@@ -48,13 +48,17 @@ held-out run). Amendments may only make the rule stricter.
   2. S2 gains marker_as_reference — replies that use a doc_id inside a
      sentence — measured on the raw draft, at most +1 like the other
      diagnostics.
-  3. Scope, not a tolerance: the A/B runs with gpt-4o-mini drafting and gpt-4o
-     judging, both on OpenAI, chosen by the maintainer because the OpenRouter
-     account has no credit. The verdict applies to that pair, not to the
-     documented meta-llama/llama-3.1-8b-instruct setup. Judge and generator
-     share a model family, which the prompt-writer guidance advises against;
-     both prompt versions face the same pair, so the paired comparison is
-     affected less than absolute scores. summary.json records both models.
+  3. Scope, not a tolerance: the A/B runs with gpt-4o-mini drafting and
+     gpt-4.1-mini judging, both on OpenAI, chosen by the maintainer: no
+     OpenRouter credit, and gpt-4.1-mini over gpt-4o on cost (~$2.20 against
+     ~$11.80 for the full run). The verdict applies to that pair, not to the
+     documented meta-llama/llama-3.1-8b-instruct setup. gpt-4.1-mini is a
+     different model from the drafter but the same family, which the
+     prompt-writer guidance advises against, and it has not been validated as a
+     judge in this project (gpt-4o was, in the 5-ticket tune smoke run: 55/55
+     calls, no fail-safe blocks). Both prompt versions face the same pair, so the
+     paired comparison is affected less than absolute scores. summary.json
+     records both models.
 
 Scoring follows evaluation/gt_response_check.py (RAGAS-compatible formulas,
 implemented directly). An abstention on an answerable held-out ticket scores 0
