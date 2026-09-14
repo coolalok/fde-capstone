@@ -48,6 +48,19 @@ def resolve_api_key(explicit: str, fallback_key: str, base_url: str,
     return fallback_key if same_host else ""
 
 
+# Providers whose OpenAI-compatible endpoint REJECTS the `seed` parameter with
+# HTTP 400 rather than ignoring it. Observed 14 Sep: Gemini answered
+# 400 "Unknown name \"seed\": Cannot find field." A judge there failed every call,
+# so every guardrail would have failed safe and blocked every reply. A deny-list,
+# not an allow-list, so providers that honour seed (OpenAI, OpenRouter) keep it
+# and determinism is not weakened where it works.
+_SEED_REJECTING_HOSTS = frozenset({"generativelanguage.googleapis.com"})
+
+
+def accepts_seed(base_url: str) -> bool:
+    return urlparse(base_url).netloc.lower() not in _SEED_REJECTING_HOSTS
+
+
 MODEL_BASE_URL: str = os.environ.get("MODEL_BASE_URL", _OPENROUTER_BASE_URL)
 MODEL_API_KEY: str = resolve_api_key(
     os.environ.get("MODEL_API_KEY", ""), OPENROUTER_API_KEY, MODEL_BASE_URL, _OPENROUTER_BASE_URL

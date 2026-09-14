@@ -64,6 +64,7 @@ from dataclasses import dataclass
 from typing import Callable, Optional, Protocol
 
 from src.config import (
+    accepts_seed,
     CONFIDENCE_THRESHOLD,
     GUARDRAIL_API_KEY,
     GUARDRAIL_BASE_URL,
@@ -139,7 +140,8 @@ def _openrouter_call(system: str, user: str, seed: int = 0) -> str:
             {"role": "user", "content": user},
         ],
         temperature=0.0,
-        seed=seed,
+        # Only where the provider accepts it; see config.accepts_seed.
+        **({"seed": seed} if accepts_seed(GUARDRAIL_BASE_URL) else {}),
         response_format={"type": "json_object"},
     )
     # OpenRouter can answer 200 with choices=None when the upstream provider

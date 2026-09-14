@@ -50,6 +50,7 @@ from dataclasses import dataclass
 from typing import Callable, Optional
 
 from src.config import (
+    accepts_seed,
     GENERATE_MAX_RETRIES,
     GENERATE_TEMPERATURE,
     MODEL_MAX_RETRIES,
@@ -123,7 +124,8 @@ def _openrouter_call(system: str, user: str, seed: int = 0) -> str:
             {"role": "user", "content": user},
         ],
         temperature=GENERATE_TEMPERATURE,
-        seed=seed,
+        # Only where the provider accepts it; see config.accepts_seed.
+        **({"seed": seed} if accepts_seed(MODEL_BASE_URL) else {}),
         response_format={"type": "json_object"},
     )
     # OpenRouter can answer 200 with choices=None when the upstream provider
