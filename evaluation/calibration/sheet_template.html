@@ -1,0 +1,118 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>B-18 calibration scoring sheet</title>
+<style>
+:root{--bg:#f7f6f2;--card:#fff;--ink:#1d1d1b;--muted:#6b6a65;--line:#dedcd4;--accent:#2f5d8a;--done:#2e7d4f;--warn:#9a5b00}
+@media (prefers-color-scheme:dark){:root{--bg:#171716;--card:#222220;--ink:#ecebe6;--muted:#a3a29b;--line:#3a3936;--accent:#7fb0e0;--done:#6cc393;--warn:#e0a44d}}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.5 system-ui,-apple-system,Segoe UI,sans-serif}
+header{position:sticky;top:0;z-index:2;background:var(--card);border-bottom:1px solid var(--line);padding:10px 18px;display:flex;flex-wrap:wrap;gap:10px;align-items:center}
+header h1{font-size:15px;margin:0 12px 0 0}.bar{flex:1;min-width:160px;height:8px;background:var(--line);border-radius:4px;overflow:hidden}.bar i{display:block;height:100%;background:var(--done);width:0}
+button{font:inherit;border:1px solid var(--line);background:var(--card);color:var(--ink);border-radius:6px;padding:5px 11px;cursor:pointer}button:hover{border-color:var(--accent)}
+button.primary{background:var(--accent);border-color:var(--accent);color:#fff}
+main{display:grid;grid-template-columns:minmax(0,1.6fr) minmax(300px,1fr);gap:16px;padding:16px 18px;max-width:1500px;margin:0 auto}
+@media (max-width:900px){main{grid-template-columns:1fr}}
+.card{background:var(--card);border:1px solid var(--line);border-radius:8px;padding:14px 16px;margin-bottom:14px}
+.card h2{font-size:13px;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);margin:0 0 8px}
+.kv{color:var(--muted);font-size:13px}.body,.reply{white-space:pre-wrap;word-wrap:break-word}
+.reply{font-size:15.5px}details{border-top:1px solid var(--line);padding:6px 0}summary{cursor:pointer;font-weight:600}
+pre.passage{white-space:pre-wrap;word-wrap:break-word;font:13px/1.45 ui-monospace,Menlo,Consolas,monospace;background:var(--bg);padding:8px 10px;border-radius:6px;margin:6px 0 0}
+aside{position:sticky;top:64px;align-self:start;max-height:calc(100vh - 80px);overflow:auto}
+.dim{margin:10px 0 14px}.dim b{display:block;margin-bottom:5px}.scores{display:flex;gap:6px}
+.scores button{width:44px;height:38px;font-weight:600}.scores button.on{background:var(--accent);border-color:var(--accent);color:#fff}
+textarea{width:100%;min-height:64px;font:inherit;background:var(--bg);color:var(--ink);border:1px solid var(--line);border-radius:6px;padding:6px}
+.rubric h3{font-size:14px;margin:12px 0 4px}.rubric ul{margin:0 0 6px;padding-left:18px}.rubric li,.rubric p{font-size:13px;margin:2px 0}
+.status{font-size:13px;color:var(--muted)}.status.ok{color:var(--done)}.status.todo{color:var(--warn)}
+.hint{font-size:12px;color:var(--muted)}
+</style></head><body>
+<header>
+  <h1>B-18 &middot; judge calibration</h1>
+  <button id="prev">&larr; Prev</button><span id="pos" class="status"></span><button id="next">Next &rarr;</button>
+  <button id="nextTodo">Next unscored</button>
+  <div class="bar"><i id="barFill"></i></div><span id="count" class="status"></span>
+  <button id="download" class="primary">Download scores</button>
+</header>
+<main>
+  <section>
+    <div class="card"><h2>Customer ticket</h2><div id="meta" class="kv"></div><div id="subject" style="font-weight:600;margin:6px 0"></div><div id="body" class="body"></div></div>
+    <div class="card"><h2>Reply to score</h2><div id="reply" class="reply"></div></div>
+    <div class="card"><h2>Retrieved passages</h2><div id="passages"></div></div>
+  </section>
+  <aside>
+    <div class="card">
+      <h2>Your scores</h2>
+      <div id="dims"></div>
+      <b>Notes (optional)</b><textarea id="notes" placeholder="Anything that made this hard to score"></textarea>
+      <p class="hint">Keys: 1&ndash;5 set the highlighted dimension, Tab/Shift+Tab moves between dimensions, &larr;/&rarr; change item. Scores save automatically in this browser.</p>
+      <p id="itemStatus" class="status"></p>
+    </div>
+    <div class="card rubric"><h2>Rubric (identical to the judge's)</h2>%%RUBRIC%%</div>
+  </aside>
+</main>
+<script type="application/json" id="data">%%DATA%%</script>
+<script>
+(function(){
+var D=JSON.parse(document.getElementById('data').textContent);
+var KEY='b18-scores-'+D.fixture_id, LABEL={context_relevance:'Context relevance',groundedness:'Groundedness',answer_relevance:'Answer relevance'};
+var state={}; try{state=JSON.parse(localStorage.getItem(KEY)||'{}')||{}}catch(e){state={}}
+var idx=0, focusDim=0;
+try{var last=parseInt(localStorage.getItem(KEY+'-pos'),10);if(last>=0&&last<D.items.length)idx=last}catch(e){}
+function save(){try{localStorage.setItem(KEY,JSON.stringify(state));localStorage.setItem(KEY+'-pos',String(idx))}catch(e){}}
+function entry(id){if(!state[id])state[id]={notes:''};return state[id]}
+function complete(id){var s=state[id];return !!s&&D.dimensions.every(function(d){return Number.isInteger(s[d])})}
+function el(tag,cls,text){var n=document.createElement(tag);if(cls)n.className=cls;if(text!=null)n.textContent=text;return n}
+function renderDims(item){
+  var box=document.getElementById('dims');box.innerHTML='';
+  D.dimensions.forEach(function(d,di){
+    var wrap=el('div','dim');var lab=el('b',null,LABEL[d]+(di===focusDim?'  ◀':''));wrap.appendChild(lab);
+    var row=el('div','scores');
+    for(var v=1;v<=5;v++){(function(v){
+      var b=el('button',null,String(v));if(entry(item.item_id)[d]===v)b.classList.add('on');
+      b.onclick=function(){entry(item.item_id)[d]=v;focusDim=Math.min(di+1,D.dimensions.length-1);save();render()};row.appendChild(b)})(v)}
+    wrap.appendChild(row);box.appendChild(wrap)});
+}
+function render(){
+  var item=D.items[idx], t=item.ticket;
+  document.getElementById('pos').textContent=item.item_id+'  ('+(idx+1)+' of '+D.items.length+')';
+  document.getElementById('meta').textContent='Channel: '+t.channel;
+  document.getElementById('subject').textContent=t.subject||'(no subject)';
+  document.getElementById('body').textContent=t.body;
+  document.getElementById('reply').textContent=item.reply;
+  var ps=document.getElementById('passages');ps.innerHTML='';
+  item.passages.forEach(function(p,i){var det=el('details');det.open=true;
+    det.appendChild(el('summary',null,'['+(i+1)+'] '+p.doc_id+' — '+p.title+' ('+p.category+')'));
+    det.appendChild(el('pre','passage',p.text));ps.appendChild(det)});
+  renderDims(item);
+  var notes=document.getElementById('notes');notes.value=entry(item.item_id).notes||'';
+  var done=D.items.filter(function(it){return complete(it.item_id)}).length;
+  document.getElementById('count').textContent=done+' / '+D.items.length+' scored';
+  document.getElementById('barFill').style.width=(100*done/D.items.length)+'%';
+  var st=document.getElementById('itemStatus');
+  if(complete(item.item_id)){st.textContent='This item is fully scored.';st.className='status ok'}
+  else{st.textContent='Not yet fully scored.';st.className='status todo'}
+  save();
+}
+function go(n){idx=(n+D.items.length)%D.items.length;focusDim=0;render();window.scrollTo(0,0)}
+document.getElementById('prev').onclick=function(){go(idx-1)};
+document.getElementById('next').onclick=function(){go(idx+1)};
+document.getElementById('nextTodo').onclick=function(){
+  for(var k=1;k<=D.items.length;k++){var j=(idx+k)%D.items.length;if(!complete(D.items[j].item_id)){go(j);return}}
+  alert('All items are fully scored. Download your scores.')};
+document.getElementById('notes').oninput=function(e){entry(D.items[idx].item_id).notes=e.target.value;save()};
+document.addEventListener('keydown',function(e){
+  if(e.target.tagName==='TEXTAREA')return;
+  if(e.key>='1'&&e.key<='5'){entry(D.items[idx].item_id)[D.dimensions[focusDim]]=parseInt(e.key,10);
+    focusDim=Math.min(focusDim+1,D.dimensions.length-1);save();render();e.preventDefault()}
+  else if(e.key==='Tab'){focusDim=(focusDim+(e.shiftKey?D.dimensions.length-1:1))%D.dimensions.length;render();e.preventDefault()}
+  else if(e.key==='ArrowRight')go(idx+1); else if(e.key==='ArrowLeft')go(idx-1)});
+document.getElementById('download').onclick=function(){
+  var done=D.items.filter(function(it){return complete(it.item_id)}).length;
+  if(done<D.items.length&&!confirm(done+' of '+D.items.length+' items are fully scored. Download anyway? You can import a partial file and add the rest later.'))return;
+  var out={fixture_id:D.fixture_id,prompt_id:D.prompt_id,downloaded_at:new Date().toISOString(),scores:state};
+  var blob=new Blob([JSON.stringify(out,null,1)],{type:'application/json'});
+  var a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='judge_calibration_scores.json';
+  document.body.appendChild(a);a.click();setTimeout(function(){URL.revokeObjectURL(a.href);a.remove()},500)};
+render();
+})();
+</script>
+</body></html>
