@@ -222,3 +222,55 @@ def test_marker_as_reference_ignores_a_trailing_marker(raw):
 def test_decide_counts_the_raw_diagnostic():
     two = {"diagnostics": {k: (2 if k == "marker_as_reference" else 0) for k in ALL_DIAGNOSTICS}}
     assert decide(*_summaries(held_c=two))["adopt_candidate"] is False
+
+
+# ─── amendment 4: infrastructure failures (laptop sleep) ─────────────
+
+
+@pytest.mark.parametrize("msg, infra", [
+    ("APIConnectionError: Connection error.", True),
+    ("guardrail_error: InternalServerError: 500", True),
+    ("RateLimitError: 429", True),
+    ("APITimeoutError: Request timed out.", False),   # a longer prompt can cause it
+    ("ValueError: model output cut off at the provider's length limit", False),
+    ("JSONDecodeError: Unterminated string", False),
+    (None, False),
+])
+def test_infrastructure_error_classification(msg, infra):
+    from evaluation.prompt_ab import is_infrastructure_error
+    assert is_infrastructure_error(msg) is infra
+
+
+def test_score_variant_flags_a_connection_failure_in_a_guardrail():
+    resp = GeneratedResponse(answer="Use the cursor.", citations=["DOC-API-002"],
+                             confidence=0.9, unknown=False)
+    results = [GuardrailResult(name="grounding", passed=False, fail_safe=True,
+                               reason="grounding_guardrail_error: APIConnectionError: x")]
+    assert score_variant(resp, results, _route("block"), None, None)["infra_error"] is True
+
+
+def test_summarise_excludes_infrastructure_failures_from_both_arms():
+    ok = {"error": None, "unknown": False, "decision": "auto_respond",
+          "prompt_sensitive_blocks": [], "fail_safe_blocks": [], "infra_error": False,
+          "diagnostics": {k: False for k in ALL_DIAGNOSTICS}}
+    broken = ok | {"error": "APIConnectionError: x", "unknown": True,
+                   "decision": "escalate", "infra_error": True}
+    rows = [{"baseline": ok, "candidate": ok, "infra_failure": False},
+            {"baseline": broken, "candidate": ok, "infra_failure": True}]
+    s = summarise(rows)
+    assert (s["n"], s["n_attempted"], s["infra_failure_tickets"]) == (1, 2, 1)
+    assert s["baseline"]["generator_errors"] == 0   # the failed ticket is not counted
+
+
+def test_decide_is_inconclusive_when_infrastructure_failures_exceed_the_limit():
+    held, unans = _summaries()
+    held = held | {"n_attempted": 100, "infra_failure_tickets": 6}
+    v = decide(held, unans)
+    assert v["adopt_candidate"] is False and v["inconclusive"] is True
+
+
+def test_decide_accepts_a_small_infrastructure_failure_share():
+    held, unans = _summaries()
+    held = held | {"n_attempted": 100, "infra_failure_tickets": 5}
+    v = decide(held, unans)
+    assert v["inconclusive"] is False and v["adopt_candidate"] is True

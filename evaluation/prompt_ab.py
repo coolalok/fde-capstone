@@ -59,6 +59,19 @@ held-out run). Amendments may only make the rule stricter.
      calls, no fail-safe blocks). Both prompt versions face the same pair, so the
      paired comparison is affected less than absolute scores. summary.json
      records both models.
+  4. Infrastructure failures (added after the first full attempt was stopped
+     part-way). The laptop slept repeatedly during that attempt; connection
+     errors hit about 40% of held-out pairs, and a failed classification
+     silently escalated both drafts. A ticket whose classification, drafting
+     or any guardrail failed with a CONNECTION-LEVEL provider error
+     (APIConnectionError, InternalServerError, RateLimitError) is excluded from
+     BOTH arms and counted. Timeouts, cut-off output and malformed JSON are not
+     infrastructure: they stay as errors against the prompt. New check V1: if
+     more than 5% of either pool's tickets hit an infrastructure failure, the
+     verdict is inconclusive, never adopt. Disclosure: the stopped attempt
+     printed per-arm counts of errors, abstentions, auto-sends and fail-safe
+     blocks for its first 25 held-out and 17 unanswerable tickets; no quality
+     metric was computed or viewed. The rerun starts from scratch.
 
 Scoring follows evaluation/gt_response_check.py (RAGAS-compatible formulas,
 implemented directly). An abstention on an answerable held-out ticket scores 0
@@ -110,6 +123,18 @@ UNKNOWN_RATE_TOLERANCE = 0.05
 CORRECTNESS_DROP_TOLERANCE = 0.02
 BLOCK_TOLERANCE = 3
 ERROR_TOLERANCE = 2
+INFRA_FAILURE_LIMIT = 0.05
+# Connection-level provider failures. They say nothing about a prompt, so a
+# ticket hitting one is excluded from both arms. Deliberately NOT included:
+# APITimeoutError (a longer prompt can genuinely cause it), cut-off output, and
+# JSON errors — those stay as errors against the prompt.
+INFRA_ERROR_TYPES = ("APIConnectionError", "InternalServerError", "RateLimitError")
+
+
+def is_infrastructure_error(message: Optional[str]) -> bool:
+    return bool(message) and any(t in message for t in INFRA_ERROR_TYPES)
+
+
 # The prompt cannot change the classifier's confidence.
 PROMPT_INSENSITIVE_GUARDRAILS = frozenset({"confidence_floor"})
 
@@ -205,6 +230,10 @@ def score_variant(response, guardrail_results, decision, truth: Optional[dict],
             g.name for g in blocks
             if g.name not in PROMPT_INSENSITIVE_GUARDRAILS and not g.fail_safe),
         "fail_safe_blocks": sorted(g.name for g in blocks if g.fail_safe),
+        "infra_error": (
+            is_infrastructure_error(response.error)
+            or any(g.fail_safe and is_infrastructure_error(g.reason) for g in blocks)
+        ),
         "diagnostics": diagnostics(text, response.answer),
     }
     if truth is None:
@@ -235,7 +264,10 @@ def score_variant(response, guardrail_results, decision, truth: Optional[dict],
 
 
 def summarise(rows: list[dict]) -> dict:
-    out: dict = {"n": len(rows)}
+    infra = [r for r in rows if r.get("infra_failure")]
+    rows = [r for r in rows if not r.get("infra_failure")]
+    out: dict = {"n": len(rows), "n_attempted": len(rows) + len(infra),
+                 "infra_failure_tickets": len(infra)}
     has_truth = bool(rows) and "coverage" in rows[0]["baseline"]
     for variant in VARIANTS:
         rs = [r[variant] for r in rows]
@@ -283,6 +315,14 @@ def decide(heldout: dict, unanswerable: dict) -> dict:
     def rate(summary: dict, n: int) -> float:
         return round(summary["unknown"] / n, 4) if n else 0.0
 
+    for pool, summary in (("held-out", heldout), ("unanswerable", unanswerable)):
+        attempted = summary.get("n_attempted", summary["n"])
+        failed = summary.get("infra_failure_tickets", 0)
+        share = round(failed / attempted, 4) if attempted else 0.0
+        add(f"V1 {pool} infrastructure failures at most {INFRA_FAILURE_LIMIT:.0%} of tickets",
+            share <= INFRA_FAILURE_LIMIT, None, {"failed": failed, "attempted": attempted,
+                                                 "share": share})
+
     add("S1 held-out prohibited-claim replies do not increase",
         hc["prohibited_claim_tickets"] <= hb["prohibited_claim_tickets"],
         hb["prohibited_claim_tickets"], hc["prohibited_claim_tickets"])
@@ -315,7 +355,9 @@ def decide(heldout: dict, unanswerable: dict) -> dict:
     ec = hc["generator_errors"] + uc["generator_errors"]
     add(f"O1 generator errors rise by at most {ERROR_TOLERANCE}",
         ec <= eb + ERROR_TOLERANCE, eb, ec)
-    return {"adopt_candidate": all(c["passed"] for c in checks), "checks": checks}
+    adopt = all(c["passed"] for c in checks)
+    inconclusive = any(c["rule"].startswith("V1") and not c["passed"] for c in checks)
+    return {"adopt_candidate": adopt, "inconclusive": inconclusive, "checks": checks}
 
 
 @contextmanager
@@ -406,6 +448,11 @@ def run(pool: str, output: Path, limit: int) -> int:
                 results = run_all(response, ctx)
                 decision = route(ticket, classification, passages, response, results)
                 row[variant] = score_variant(response, results, decision, truth, sim)
+            row["classifier_error"] = classification.error
+            row["infra_failure"] = (
+                is_infrastructure_error(classification.error)
+                or any(row[v]["infra_error"] for v in VARIANTS)
+            )
             rows.append(row)
             fh.write(json.dumps(row) + "\n")
             fh.flush()
