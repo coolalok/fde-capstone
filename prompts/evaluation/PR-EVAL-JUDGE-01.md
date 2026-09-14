@@ -1,6 +1,6 @@
 ---
 id: PR-EVAL-JUDGE-01
-version: 1.0
+version: 1.1
 component: evaluation
 purpose: Score one drafted support reply on three independent 1-5 dimensions — context relevance, groundedness, answer relevance.
 requirement: NFR-01a, NFR-01b, NFR-01c, NFR-05
@@ -162,7 +162,7 @@ Passages (excerpt: passages 1-2 of 5 shown; DOC-BILL-002 and DOC-BILL-003 omitte
 Reply: "It sounds like the charges on your invoice may be due to a resource that was left running in a non-production environment, or usage-based charges that accrued beyond your plan allowance. To better understand these charges, I recommend opening the usage breakdown for the period, which itemises charges by service and by environment. This will help you identify any resources that may be incurring costs unexpectedly [DOC-BILL-001]."
 
 ```json
-{"reasoning": "DOC-BILL-001 lists 'Charges appear for a service that is not in use' as a symptom, which is exactly this ticket, and gives both causes and a resolution. Both causes in the reply and the usage breakdown step are stated in that article almost word for word; the last sentence only restates what an itemised breakdown is for. The customer asked what the charges relate to, and the reply names the documented causes and the one place that shows them, with nothing unrequested.", "context_relevance": {"score": 5, "supporting_evidence": "DOC-BILL-001: 'Charges appear for a service that is not in use'"}, "groundedness": {"score": 5, "unsupported_claims": []}, "answer_relevance": {"score": 5, "notes": "The customer wants to know what unfamiliar invoice charges relate to."}}
+{"reasoning": "DOC-BILL-001 lists 'Charges appear for a service that is not in use' as a symptom, which is exactly this ticket, and gives both causes and a resolution. Both causes in the reply and the usage breakdown step are stated in that article almost word for word; the last sentence only restates what an itemised breakdown is for. Judged against the ticket alone, the customer asked what the charges relate to; the reply gives two likely causes and tells them where to see what each charge is for, with nothing they did not ask about.", "context_relevance": {"score": 5, "supporting_evidence": "DOC-BILL-001: 'Charges appear for a service that is not in use'"}, "groundedness": {"score": 5, "unsupported_claims": []}, "answer_relevance": {"score": 5, "notes": "The customer wants to know what unfamiliar invoice charges relate to."}}
 ```
 
 ### Example 2 — weak on all three (VAL-0036, data/validation_tickets.json)
@@ -237,7 +237,7 @@ Repeated lockouts within a short period usually indicate an automated process st
 Reply: "It seems you are experiencing issues with invalid credentials while trying to sign in. This can happen for several reasons. First, please check if your account is locked; you can do this by looking at the security page of the console. A locked account will display a red banner and will unlock automatically after thirty minutes. Additionally, if you are using a password manager, ensure that it is not caching an old password. You might also want to clear cookies for the CloudServe domain or try logging in through a private browsing window. If you are using the CLI and facing authentication failures, you can run `cloudserve auth logout` followed by `cloudserve auth login` to discard any cached tokens. If the problem persists, please let us know for further assistance.[DOC-AUTH-001]"
 
 ```json
-{"reasoning": "DOC-AUTH-001 covers 'Invalid credentials despite a correct password' with causes and a resolution, so the context is right. Almost every claim matches it, but the passages say a client cached an old password after a change elsewhere, not a password manager, so that sentence is a minor extrapolation that adds a step rather than changing the advice. The reply addresses the sign-in failure well, but adds a CLI step the customer never mentioned and misses the note that repeated lockouts point to an automated process using an old password, which fits their situation.", "context_relevance": {"score": 5, "supporting_evidence": "DOC-AUTH-001: 'The console returns 'Invalid credentials' despite a correct password'"}, "groundedness": {"score": 4, "unsupported_claims": ["if you are using a password manager, ensure that it is not caching an old password"]}, "answer_relevance": {"score": 4, "notes": "The customer gets 'invalid credentials' for two hours despite a correct password from a password manager."}}
+{"reasoning": "DOC-AUTH-001 covers 'Invalid credentials despite a correct password' with causes and a resolution, so the context is right. Almost every claim matches it, but the passages say a client cached an old password after a change elsewhere, not a password manager, so that sentence is a minor extrapolation that adds a step rather than changing the advice. Judged against the ticket alone, the reply addresses the sign-in failure directly, but adds a CLI step for a tool the customer never mentioned, which is material they did not ask for.", "context_relevance": {"score": 5, "supporting_evidence": "DOC-AUTH-001: 'The console returns 'Invalid credentials' despite a correct password'"}, "groundedness": {"score": 4, "unsupported_claims": ["if you are using a password manager, ensure that it is not caching an old password"]}, "answer_relevance": {"score": 4, "notes": "The customer gets 'invalid credentials' for two hours despite a correct password from a password manager."}}
 ```
 
 ## User (template)
@@ -288,7 +288,7 @@ injected sentence either ignored or listed as unsupported.
 
 ## Notes for the runner (evaluation/judge.py)
 
-- Load by ID with `load_prompt("PR-EVAL-JUDGE-01")`; record `PR-EVAL-JUDGE-01@1.0` with
+- Load by ID with `load_prompt("PR-EVAL-JUDGE-01")`; record `PR-EVAL-JUDGE-01@1.1` with
   every score so a result can be traced to the rubric that produced it.
 - Never send an empty reply. An abstention has no content to score; count abstentions
   separately.
@@ -303,3 +303,14 @@ injected sentence either ignored or listed as unsupported.
 - v1.0 (2026-09-14) — initial (B-17). Worked examples VAL-0013, VAL-0036 and VAL-0006,
   checked claim by claim against the full retrieved passages, and excluded from the B-18
   calibration set.
+- v1.1 (2026-09-14) — worked-example reasoning made consistent with the rubric, before any human
+  or judge score existed on the calibration set. The rubric says answer_relevance is scored
+  WITHOUT the passages (NFR-01c: "response quality checked without reference to retrieved
+  content"), but Example 3 lowered it partly because the reply "misses the note that repeated
+  lockouts point to an automated process" — a passage note — and Example 1 justified its score
+  by "the documented causes". A judge copies its examples closely, so it could have marked
+  replies down for omitting passage content while a human following the rubric would not,
+  depressing B-18 agreement for a reason that is the prompt's fault. Both reasons now judge the
+  reply against the ticket only. Scores are unchanged (Example 3 stays 4, for the unrequested
+  CLI step), and the Scoring rubric section, tickets, passages and replies are byte-identical,
+  so the B-18 scoring sheet is unchanged.
