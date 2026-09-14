@@ -75,6 +75,12 @@ GT_PATH = _ROOT / "data" / "ground_truth_responses.json"
 TICKETS_PATH = _ROOT / "data" / "development_tickets.json"
 
 # "the issue has been fixed on our side" — a claim about work WE have done.
+# Deliberately narrow: it matches claims that a FIX happened. Two broader
+# branches used to live here — "we are investigating / working on it" and
+# "we have checked / reviewed / looked at" — and both are claims about
+# activity, not about a fix. "We have reviewed your request" was scored as the
+# prohibition "the issue has been fixed on our side", which would penalise a
+# reply for a claim it never made.
 # The other two prohibitions already have tested detectors in the tone/scope
 # guardrail, so only this one is new.
 _RE_FIXED_OUR_SIDE = re.compile(
@@ -83,8 +89,6 @@ _RE_FIXED_OUR_SIDE = re.compile(
         (?:we|our\ team|engineering)\ (?:have|has|'ve)\ (?:now\ )?
             (?:fixed|resolved|corrected|repaired|patched|deployed\ a\ fix)
       | (?:this|the\ issue|it)\ (?:has\ been|was|is\ now)\ (?:fixed|resolved|corrected)
-      | (?:we|our\ team)\ (?:are|'re)\ (?:working\ on|investigating)\ (?:it|this|the\ issue)
-      | (?:we|our\ team)\ (?:have|has|'ve)\ (?:checked|reviewed|looked\ at)
     )\b
     """,
     re.VERBOSE | re.IGNORECASE,
@@ -135,6 +139,75 @@ CLAIM_DETECTORS = {
 }
 
 
+# ── must_mention matching ───────────────────────────────────────────────────
+# Plain substring matching was wrong in both directions:
+#   - false negatives: "raw body" is required on 9 tickets, but the help
+#     article says "raw request body"; "account lock" is required but the
+#     articles say "account is locked". A correct, grounded reply failed.
+#   - false positives: "port" is required on 12 tickets and is a substring of
+#     "support", which appears in most replies.
+# Matching is therefore on whole words, in order, allowing a little slack.
+
+# A phrase may not span sentence-ending punctuation.
+_BARRIER = "|"
+# At most this many other words between consecutive words of a phrase:
+# "raw request body" satisfies "raw body"; "account remains locked" satisfies
+# "account lock".
+_MAX_GAP = 2
+# Regular inflections a required word may carry: cursor/cursors, lock/locked.
+# "port" must not match "portal", so only these endings are allowed.
+_INFLECTION = re.compile(r"(?:s|es|d|ed|ing)")
+
+
+def _mention_words(text: str, hyphen: str) -> list[str]:
+    lowered = text.lower().replace("-", hyphen)
+    lowered = re.sub(r"[.!?;:]+", f" {_BARRIER} ", lowered)
+    return re.findall(r"[a-z0-9]+|\|", lowered)
+
+
+def _word_matches(word: str, required: str) -> bool:
+    if word == required:
+        return True
+    return word.startswith(required) and bool(_INFLECTION.fullmatch(word[len(required):]))
+
+
+def _next_match(words: list[str], pos: int, required: str) -> int | None:
+    for nxt in range(pos + 1, min(pos + 2 + _MAX_GAP, len(words))):
+        if words[nxt] == _BARRIER:
+            return None
+        if _word_matches(words[nxt], required):
+            return nxt
+    return None
+
+
+def _in_order(words: list[str], required: list[str]) -> bool:
+    for start, word in enumerate(words):
+        if not _word_matches(word, required[0]):
+            continue
+        pos: int | None = start
+        for req in required[1:]:
+            pos = _next_match(words, pos, req)
+            if pos is None:
+                break
+        else:
+            return True
+    return False
+
+
+def mentions(answer: str, phrase: str) -> bool:
+    """True when the answer contains the required phrase as whole words.
+
+    Tried twice — hyphens as spaces ("per-organisation" -> "per organisation")
+    and hyphens removed ("back-off" -> "backoff") — because the articles and
+    the must_mention lists do not hyphenate consistently.
+    """
+    for hyphen in (" ", ""):
+        required = [w for w in _mention_words(phrase, hyphen) if w != _BARRIER]
+        if required and _in_order(_mention_words(answer, hyphen), required):
+            return True
+    return False
+
+
 def check_answer(answer: str, must_not_claim: list[str],
                  must_mention: list[str]) -> dict:
     """Pure function so it is testable without a model call."""
@@ -144,8 +217,7 @@ def check_answer(answer: str, must_not_claim: list[str],
         if (pattern := CLAIM_DETECTORS.get(claim)) is not None
         and (m := pattern.search(answer)) is not None
     ]
-    lowered = answer.lower()
-    missing = [p for p in must_mention if p.lower() not in lowered]
+    missing = [p for p in must_mention if not mentions(answer, p)]
     return {
         "violations": violations,
         "must_mention_total": len(must_mention),

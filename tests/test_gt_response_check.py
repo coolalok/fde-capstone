@@ -12,6 +12,7 @@ import pytest
 
 from evaluation.gt_response_check import (
     CLAIM_DETECTORS,
+    mentions,
     _W_FACTUAL,
     _W_SIMILARITY,
     answer_correctness,
@@ -165,3 +166,77 @@ def test_every_ground_truth_prohibition_has_a_detector():
     prohibitions = {c for g in gt for c in g["must_not_claim"]}
     undetected = prohibitions - set(CLAIM_DETECTORS)
     assert not undetected, f"no detector for: {undetected}"
+
+
+# ─── must_mention matching (2026-09-14) ──────────────────────────────
+# Substring matching failed correct replies ("raw request body" vs "raw body")
+# and passed irrelevant ones ("port" inside "support").
+
+
+@pytest.mark.parametrize("answer, phrase", [
+    ("Compute the signature over the raw request body.", "raw body"),   # DOC-API-003 wording
+    ("Your account is locked after five attempts.", "account lock"),
+    ("The account remains locked until an admin releases it.", "account lock"),
+    ("Pass the next cursors in order.", "cursor"),
+    ("Retry with exponential back-off.", "backoff"),
+    ("Limits apply per-organisation.", "per organisation"),
+    ("Keep page size at or below two hundred.", "page size"),
+    ("Make the handler Idempotent.", "idempotent"),
+    ("Expose the port the application listens on.", "port"),
+])
+def test_mentions_accepts_real_wording(answer, phrase):
+    assert mentions(answer, phrase), (answer, phrase)
+
+
+@pytest.mark.parametrize("answer, phrase", [
+    ("Please contact support if this continues.", "port"),    # substring, not the word
+    ("Open the portal and check again.", "port"),             # not an inflection
+    ("The raw data sent in the request message body.", "raw body"),  # too far apart
+    ("Open the next page. Size limits also apply.", "page size"),    # across a sentence
+    ("Lock the account first.", "account lock"),              # wrong order
+    ("", "cursor"),
+])
+def test_mentions_rejects_near_misses(answer, phrase):
+    assert not mentions(answer, phrase), (answer, phrase)
+
+
+def test_check_answer_credits_article_wording_for_a_required_fact():
+    out = check_answer(
+        answer="Compute the signature over the raw request body before parsing.",
+        must_not_claim=[], must_mention=["raw body"],
+    )
+    assert out["must_mention_missing"] == []
+
+
+def test_every_must_mention_term_is_reachable_from_the_help_articles():
+    """A required fact the articles cannot supply can never be scored by a
+    grounded reply, so it would silently depress coverage.
+    """
+    gt = json.load(open("data/ground_truth_responses.json"))
+    articles = " ".join(d["content"] for d in json.load(open("data/documentation.json")))
+    terms = {t for g in gt for t in g["must_mention"]}
+    unreachable = sorted(t for t in terms if not mentions(articles, t))
+    assert not unreachable, f"no article wording satisfies: {unreachable}"
+
+
+# ─── "fixed on our side" matches a FIX, not activity (2026-09-14) ────
+
+
+@pytest.mark.parametrize("text", [
+    "We have fixed the issue.",
+    "This has been resolved.",
+    "Our team has deployed a fix.",
+    "The issue is now corrected.",
+])
+def test_fixed_on_our_side_detects_fix_claims(text):
+    assert CLAIM_DETECTORS["the issue has been fixed on our side"].search(text), text
+
+
+@pytest.mark.parametrize("text", [
+    "We have reviewed your request.",
+    "We are investigating this.",
+    "We have checked the documentation for you.",
+    "If this does not help, reply with what you observed at each step.",
+])
+def test_fixed_on_our_side_ignores_activity_claims(text):
+    assert not CLAIM_DETECTORS["the issue has been fixed on our side"].search(text), text
