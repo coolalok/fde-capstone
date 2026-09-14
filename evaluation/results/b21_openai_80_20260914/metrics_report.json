@@ -1,0 +1,205 @@
+{
+  "run_id": "harness-20260914T110618Z-b41ccaf1",
+  "model_name": "gpt-4o-mini",
+  "guardrail_model": "gpt-4o",
+  "confidence_threshold": 0.85,
+  "guardrails_enabled": true,
+  "labels_available": true,
+  "counts": {
+    "tickets_processed": 80,
+    "auto_respond": 49,
+    "escalate": 6,
+    "block": 25,
+    "degraded": 0,
+    "generator_unknown": 8,
+    "empty_retrieval": 7
+  },
+  "business_metrics": {
+    "fcr_proxy": 0.6125,
+    "fcr_correct_proxy": 0.425,
+    "escalation_rate": 0.3875,
+    "repeat_contact_proxy": 0.1,
+    "ttr_seconds_median": 7.889
+  },
+  "technical_metrics": {
+    "latency_p50_seconds": 7.889,
+    "latency_p95_seconds": 11.214,
+    "latency_max_seconds": 24.801,
+    "classifier_failures": 0,
+    "generator_failures": 0,
+    "retrieval_hit_at_3": 0.9811,
+    "retrieval_answerable_n": 53,
+    "intent_per_class": {
+      "account_access": {
+        "support": 4,
+        "precision": 0.5,
+        "recall": 0.25
+      },
+      "api_key_issue": {
+        "support": 6,
+        "precision": 1.0,
+        "recall": 1.0
+      },
+      "api_usage_question": {
+        "support": 4,
+        "precision": 0.6,
+        "recall": 0.75
+      },
+      "authentication_failure": {
+        "support": 3,
+        "precision": 1.0,
+        "recall": 0.6667
+      },
+      "billing_query": {
+        "support": 10,
+        "precision": 1.0,
+        "recall": 1.0
+      },
+      "compliance_request": {
+        "support": 1,
+        "precision": 1.0,
+        "recall": 1.0
+      },
+      "configuration_help": {
+        "support": 3,
+        "precision": 1.0,
+        "recall": 1.0
+      },
+      "data_export": {
+        "support": 1,
+        "precision": 1.0,
+        "recall": 1.0
+      },
+      "data_residency": {
+        "support": 6,
+        "precision": 1.0,
+        "recall": 1.0
+      },
+      "database_issue": {
+        "support": 1,
+        "precision": 1.0,
+        "recall": 1.0
+      },
+      "deployment_failure": {
+        "support": 5,
+        "precision": 1.0,
+        "recall": 1.0
+      },
+      "feature_request": {
+        "support": 3,
+        "precision": 1.0,
+        "recall": 1.0
+      },
+      "integration_help": {
+        "support": 3,
+        "precision": 0.0,
+        "recall": 0.0
+      },
+      "onboarding": {
+        "support": 4,
+        "precision": 1.0,
+        "recall": 1.0
+      },
+      "performance_degradation": {
+        "support": 3,
+        "precision": 0.75,
+        "recall": 1.0
+      },
+      "quota_or_overage": {
+        "support": 2,
+        "precision": 1.0,
+        "recall": 1.0
+      },
+      "rate_limit": {
+        "support": 1,
+        "precision": 0.0,
+        "recall": 0.0
+      },
+      "rollback_request": {
+        "support": 6,
+        "precision": 1.0,
+        "recall": 1.0
+      },
+      "security_incident": {
+        "support": 4,
+        "precision": 1.0,
+        "recall": 1.0
+      },
+      "sso_configuration": {
+        "support": 1,
+        "precision": 0.25,
+        "recall": 1.0
+      },
+      "unclear_request": {
+        "support": 6,
+        "precision": 1.0,
+        "recall": 1.0
+      },
+      "webhook_issue": {
+        "support": 3,
+        "precision": 0.6,
+        "recall": 1.0
+      }
+    },
+    "intent_accuracy": 0.8875
+  },
+  "governance_metrics": {
+    "decisions_logged": 80,
+    "reconciles": true,
+    "missing_from_log": [],
+    "extra_in_log": [],
+    "guardrail_activations": {
+      "confidence_floor": 19,
+      "grounding": 8,
+      "answer_relevance": 1
+    },
+    "guardrail_fail_safe_blocks": {},
+    "pii_detections": 0,
+    "confidence_calibration": [
+      {
+        "bucket": "0.3-0.4",
+        "n": 3,
+        "stated_avg": 0.333,
+        "observed": 1.0,
+        "gap_pp": 66.7,
+        "sufficient_n": false
+      },
+      {
+        "bucket": "0.5-0.6",
+        "n": 3,
+        "stated_avg": 0.517,
+        "observed": 1.0,
+        "gap_pp": 48.3,
+        "sufficient_n": false
+      },
+      {
+        "bucket": "0.7-0.8",
+        "n": 10,
+        "stated_avg": 0.75,
+        "observed": 0.6,
+        "gap_pp": -15.0,
+        "sufficient_n": true
+      },
+      {
+        "bucket": "0.8-0.9",
+        "n": 53,
+        "stated_avg": 0.847,
+        "observed": 0.906,
+        "gap_pp": 5.8,
+        "sufficient_n": true
+      },
+      {
+        "bucket": "0.9-1.0",
+        "n": 11,
+        "stated_avg": 0.947,
+        "observed": 1.0,
+        "gap_pp": 5.3,
+        "sufficient_n": true
+      }
+    ],
+    "calibration_fallbacks_excluded": 0,
+    "max_calibration_gap_pp": 15.0,
+    "calibration_min_bucket_n": 5
+  },
+  "wall_clock_seconds": 640.1
+}
