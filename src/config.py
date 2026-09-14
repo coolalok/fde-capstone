@@ -7,6 +7,8 @@ from __future__ import annotations
 
 import os
 from pathlib import Path
+from urllib.parse import urlparse
+
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -25,8 +27,31 @@ MODEL_NAME: str = os.environ.get("MODEL_NAME", "meta-llama/llama-3.1-8b-instruct
 # are a SEPARATE experiment, not an update to the llama-3.1-8b measurements
 # that D-05b, B-16 and B-21 rest on — label them as such or the report ends up
 # mixing two systems.
-MODEL_BASE_URL: str = os.environ.get("MODEL_BASE_URL", "https://openrouter.ai/api/v1")
-MODEL_API_KEY: str = os.environ.get("MODEL_API_KEY", "") or OPENROUTER_API_KEY
+_OPENROUTER_BASE_URL = "https://openrouter.ai/api/v1"
+
+
+def resolve_api_key(explicit: str, fallback_key: str, base_url: str,
+                    fallback_base_url: str) -> str:
+    """The key for an endpoint: the one set for it, else a fallback key ONLY when
+    the fallback belongs to the same provider (same host).
+
+    A key must never travel to a provider it was not issued by. On 14 Sep the
+    judge was pointed at api.openai.com with no OpenAI key set; the old
+    unconditional fallback filled the gap with the OpenRouter key, and 36
+    guardrail calls sent it to OpenAI, which answered 401. Returning "" here
+    instead makes the call site raise its own "no key set" error before any
+    request leaves the machine.
+    """
+    if explicit:
+        return explicit
+    same_host = urlparse(base_url).netloc.lower() == urlparse(fallback_base_url).netloc.lower()
+    return fallback_key if same_host else ""
+
+
+MODEL_BASE_URL: str = os.environ.get("MODEL_BASE_URL", _OPENROUTER_BASE_URL)
+MODEL_API_KEY: str = resolve_api_key(
+    os.environ.get("MODEL_API_KEY", ""), OPENROUTER_API_KEY, MODEL_BASE_URL, _OPENROUTER_BASE_URL
+)
 
 # Endpoint and key for the JUDGE, separate from the generator's.
 #
@@ -41,8 +66,10 @@ MODEL_API_KEY: str = os.environ.get("MODEL_API_KEY", "") or OPENROUTER_API_KEY
 GUARDRAIL_BASE_URL: str = (
     os.environ.get("GUARDRAIL_BASE_URL", "") or MODEL_BASE_URL
 )
-GUARDRAIL_API_KEY: str = (
-    os.environ.get("GUARDRAIL_API_KEY", "") or MODEL_API_KEY
+# Falls back to the generator's key only when the judge is on the generator's
+# provider — see resolve_api_key.
+GUARDRAIL_API_KEY: str = resolve_api_key(
+    os.environ.get("GUARDRAIL_API_KEY", ""), MODEL_API_KEY, GUARDRAIL_BASE_URL, MODEL_BASE_URL
 )
 
 # Judge model for the LLM-backed guardrails (PII, grounding, tone/scope).
