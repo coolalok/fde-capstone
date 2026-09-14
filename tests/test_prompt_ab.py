@@ -6,7 +6,7 @@ from __future__ import annotations
 import pytest
 
 from evaluation.prompt_ab import (
-    DIAGNOSTICS,
+    ALL_DIAGNOSTICS,
     decide,
     diagnostics,
     generation_prompt,
@@ -124,7 +124,7 @@ def test_score_variant_excludes_prompt_insensitive_and_fail_safe_blocks():
 def _side(**over):
     base = {"generator_errors": 0, "unknown": 5, "auto_respond": 10,
             "prompt_sensitive_block_tickets": 10, "fail_safe_block_tickets": 0,
-            "diagnostics": {k: 0 for k in DIAGNOSTICS},
+            "diagnostics": {k: 0 for k in ALL_DIAGNOSTICS},
             "prohibited_claim_tickets": 0, "must_mention_coverage": 0.5,
             "mean_correctness": 0.6, "mean_similarity": 0.7}
     base.update(over)
@@ -170,8 +170,8 @@ def test_decide_keeps_baseline_without_a_measured_gain():
 
 
 def test_decide_tolerates_one_extra_diagnostic_hit_but_not_two():
-    one = {"diagnostics": {k: (1 if k == "internal_action" else 0) for k in DIAGNOSTICS}}
-    two = {"diagnostics": {k: (2 if k == "internal_action" else 0) for k in DIAGNOSTICS}}
+    one = {"diagnostics": {k: (1 if k == "internal_action" else 0) for k in ALL_DIAGNOSTICS}}
+    two = {"diagnostics": {k: (2 if k == "internal_action" else 0) for k in ALL_DIAGNOSTICS}}
     assert decide(*_summaries(held_c=one))["adopt_candidate"] is True
     assert decide(*_summaries(held_c=two))["adopt_candidate"] is False
 
@@ -179,7 +179,7 @@ def test_decide_tolerates_one_extra_diagnostic_hit_but_not_two():
 def test_summarise_pairs_only_error_free_tickets():
     ok = {"error": None, "unknown": False, "decision": "auto_respond",
           "prompt_sensitive_blocks": [], "fail_safe_blocks": [],
-          "diagnostics": {k: False for k in DIAGNOSTICS},
+          "diagnostics": {k: False for k in ALL_DIAGNOSTICS},
           "violations": [], "mentions_required": 1, "mentions_present": 1,
           "coverage": 1.0, "similarity": 0.8, "correctness": 0.9}
     bad = ok | {"error": "APIConnectionError", "correctness": 0.0, "coverage": 0.0}
@@ -197,3 +197,28 @@ def test_generation_prompt_restores_the_module_even_on_error():
         with generation_prompt(before[0]):
             raise RuntimeError("boom")
     assert (gen._PROMPT_01, gen._PROMPT_01_VERSION) == before
+
+
+# ─── amendment: doc_id used inside a sentence (raw draft) ────────────
+
+
+@pytest.mark.parametrize("raw", [
+    "To roll back, you can follow the steps in [DOC-DEPLOY-002].",   # v3.0, DEV-0009
+    "See [DOC-AUTH-001] for details.",
+    "As described in [DOC-API-003], compute the signature first.",
+])
+def test_marker_as_reference_fires_on_the_raw_draft(raw):
+    assert diagnostics("", raw)["marker_as_reference"], raw
+
+
+@pytest.mark.parametrize("raw", [
+    "Revoke the old key once traffic has moved.[DOC-AUTH-004]",
+    "The account unlocks after thirty minutes [DOC-AUTH-001]. Clear cookies next [DOC-AUTH-001].",
+])
+def test_marker_as_reference_ignores_a_trailing_marker(raw):
+    assert not diagnostics("", raw)["marker_as_reference"], raw
+
+
+def test_decide_counts_the_raw_diagnostic():
+    two = {"diagnostics": {k: (2 if k == "marker_as_reference" else 0) for k in ALL_DIAGNOSTICS}}
+    assert decide(*_summaries(held_c=two))["adopt_candidate"] is False

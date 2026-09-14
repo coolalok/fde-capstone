@@ -40,6 +40,22 @@ an unproven gain keeps the baseline.
         at most +3
     O1  generator errors over both pools: at most +2
 
+AMENDMENT (2026-09-14, after a 5-ticket smoke run on the TUNE pool, before any
+held-out run). Amendments may only make the rule stricter.
+  1. The candidate is PR-GENERATE-01 v3.1, not v3.0: the smoke run showed v3.0
+     using a doc_id as a noun ("the steps in [DOC-DEPLOY-002]"), which reads as
+     a broken sentence once markers are stripped for sending.
+  2. S2 gains marker_as_reference — replies that use a doc_id inside a
+     sentence — measured on the raw draft, at most +1 like the other
+     diagnostics.
+  3. Scope, not a tolerance: the A/B runs with gpt-4o-mini drafting and gpt-4o
+     judging, both on OpenAI, chosen by the maintainer because the OpenRouter
+     account has no credit. The verdict applies to that pair, not to the
+     documented meta-llama/llama-3.1-8b-instruct setup. Judge and generator
+     share a model family, which the prompt-writer guidance advises against;
+     both prompt versions face the same pair, so the paired comparison is
+     affected less than absolute scores. summary.json records both models.
+
 Scoring follows evaluation/gt_response_check.py (RAGAS-compatible formulas,
 implemented directly). An abstention on an answerable held-out ticket scores 0
 correctness and 0 coverage: declining an answerable ticket is not a free pass.
@@ -79,7 +95,7 @@ GT_PATH = _ROOT / "data" / "ground_truth_responses.json"
 TICKETS_PATH = _ROOT / "data" / "development_tickets.json"
 
 BASELINE_VERSION = "2.0"
-CANDIDATE_VERSION = "3.0"
+CANDIDATE_VERSION = "3.1"
 VARIANTS = ("baseline", "candidate")
 BOOTSTRAP_SEED = 20260914
 BOOTSTRAP_RESAMPLES = 2000
@@ -129,8 +145,24 @@ DIAGNOSTICS: dict[str, re.Pattern] = {
 }
 
 
-def diagnostics(text: str) -> dict[str, bool]:
-    return {name: bool(pattern.search(text)) for name, pattern in DIAGNOSTICS.items()}
+# Diagnostics that need the RAW draft, because citation markers are stripped
+# from the customer-facing text the others inspect.
+RAW_DIAGNOSTICS: dict[str, re.Pattern] = {
+    # "follow the steps in [DOC-DEPLOY-002]" becomes "follow the steps in." for
+    # the customer. Observed on v3.0 in the smoke run (DEV-0009).
+    "marker_as_reference": re.compile(
+        r"\b(?:in|see|per|from|at|following|described\s+in|outlined\s+in|"
+        r"refer\s+to|according\s+to)\s+\[DOC-[A-Z]+-\d+\]",
+        re.IGNORECASE),
+}
+ALL_DIAGNOSTICS = (*DIAGNOSTICS, *RAW_DIAGNOSTICS)
+
+
+def diagnostics(text: str, raw: str = "") -> dict[str, bool]:
+    """Customer-text diagnostics on `text`, raw-draft diagnostics on `raw`."""
+    out = {name: bool(pattern.search(text)) for name, pattern in DIAGNOSTICS.items()}
+    out.update({name: bool(pattern.search(raw)) for name, pattern in RAW_DIAGNOSTICS.items()})
+    return out
 
 
 def paired_bootstrap(diffs: list[float], resamples: int = BOOTSTRAP_RESAMPLES,
@@ -169,7 +201,7 @@ def score_variant(response, guardrail_results, decision, truth: Optional[dict],
             g.name for g in blocks
             if g.name not in PROMPT_INSENSITIVE_GUARDRAILS and not g.fail_safe),
         "fail_safe_blocks": sorted(g.name for g in blocks if g.fail_safe),
-        "diagnostics": diagnostics(text),
+        "diagnostics": diagnostics(text, response.answer),
     }
     if truth is None:
         return row
@@ -209,7 +241,8 @@ def summarise(rows: list[dict]) -> dict:
             "auto_respond": sum(1 for x in rs if x["decision"] == "auto_respond"),
             "prompt_sensitive_block_tickets": sum(1 for x in rs if x["prompt_sensitive_blocks"]),
             "fail_safe_block_tickets": sum(1 for x in rs if x["fail_safe_blocks"]),
-            "diagnostics": {k: sum(1 for x in rs if x["diagnostics"][k]) for k in DIAGNOSTICS},
+            "diagnostics": {k: sum(1 for x in rs if x["diagnostics"][k])
+                            for k in ALL_DIAGNOSTICS},
         }
         if has_truth:
             required = sum(x["mentions_required"] for x in rs)
@@ -249,7 +282,7 @@ def decide(heldout: dict, unanswerable: dict) -> dict:
     add("S1 held-out prohibited-claim replies do not increase",
         hc["prohibited_claim_tickets"] <= hb["prohibited_claim_tickets"],
         hb["prohibited_claim_tickets"], hc["prohibited_claim_tickets"])
-    for name in DIAGNOSTICS:
+    for name in ALL_DIAGNOSTICS:
         b = hb["diagnostics"][name] + ub["diagnostics"][name]
         c = hc["diagnostics"][name] + uc["diagnostics"][name]
         add(f"S2 {name} replies rise by at most {DIAG_TOLERANCE}", c <= b + DIAG_TOLERANCE, b, c)
@@ -376,8 +409,11 @@ def run(pool: str, output: Path, limit: int) -> int:
                 print(f"[ab]   {i + 1}/{len(items)}", flush=True)
 
     summary = summarise(rows)
+    from src.config import GUARDRAIL_MODEL, MODEL_NAME
+
     summary.update(pool=pool, run_id=run_id, limit=limit,
-                   baseline_version=baseline.version, candidate_version=candidate.version)
+                   baseline_version=baseline.version, candidate_version=candidate.version,
+                   model_name=MODEL_NAME, guardrail_model=GUARDRAIL_MODEL)
     (output / "summary.json").write_text(json.dumps(summary, indent=2))
     print(json.dumps(summary, indent=2), flush=True)
     return 0
@@ -399,6 +435,10 @@ def main(argv: Optional[list[str]] = None) -> int:
         return run(args.pool, Path(args.output), args.limit)
     held = json.loads((Path(args.heldout) / "summary.json").read_text())
     unans = json.loads((Path(args.unanswerable) / "summary.json").read_text())
+    if (held.get("model_name"), held.get("guardrail_model")) != (
+            unans.get("model_name"), unans.get("guardrail_model")):
+        raise SystemExit("held-out and unanswerable runs used different models; "
+                         "their results cannot be combined")
     for summary, pool in ((held, "heldout"), (unans, "unanswerable")):
         if summary.get("pool") != pool or summary.get("limit"):
             raise SystemExit(f"{pool} summary is not a full {pool} run: {summary.get('pool')}, "
