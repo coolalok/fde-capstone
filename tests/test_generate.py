@@ -567,3 +567,56 @@ def test_stripping_does_not_touch_the_citations_list():
     parsed = _parse_response(raw)
     assert parsed.citations == ["DOC-AUTH-004"]
     assert strip_citation_markers(parsed.answer) == "Rotate first."
+
+
+# --- why a draft failed must be recorded (2026-09-14) ------------------------
+# v3.0 failed on DEV-0012 with "Unterminated string" and nothing recorded
+# whether the model's output had been cut off or was malformed.
+
+
+def test_output_cut_off_by_the_provider_is_named(monkeypatch):
+    import openai
+
+    import src.generate as gen
+
+    class _Choice:
+        finish_reason = "length"
+
+        class message:
+            content = '{"answer": "First paragraph. Second parag'
+
+    class _Completion:
+        choices = [_Choice()]
+
+    class _FakeOpenAI:
+        def __init__(self, **kwargs):
+            self.chat = self
+
+        @property
+        def completions(self):
+            return self
+
+        def create(self, **kwargs):
+            return _Completion()
+
+    monkeypatch.setattr(openai, "OpenAI", _FakeOpenAI)
+    monkeypatch.setattr(gen, "require_key", lambda: "k")
+    with pytest.raises(ValueError, match="cut off"):
+        gen._openrouter_call("s", "u", 0)
+
+
+def test_failure_log_keeps_the_raw_model_text(monkeypatch, caplog):
+    import logging
+
+    import src.generate as gen
+    from src.schema import Passage, Ticket
+
+    monkeypatch.setattr(gen, "log_decision", lambda **kw: "id")
+    ticket = Ticket(ticket_id="T-RAW", channel="email", subject="s", body="b")
+    passages = [Passage(doc_id="DOC-AUTH-001", score=0.5, text="t", title="x")]
+    with caplog.at_level(logging.WARNING, logger="src.generate"):
+        out = gen.generate(ticket, passages, ticket_id="T-RAW",
+                           call_model=lambda s, u, seed: '{"answer": "unterminated')
+    assert out.unknown is True
+    heads = [getattr(r, "raw_response_head", None) for r in caplog.records]
+    assert '{"answer": "unterminated' in heads

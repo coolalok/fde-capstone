@@ -134,7 +134,18 @@ def _openrouter_call(system: str, user: str, seed: int = 0) -> str:
     # what actually happened.
     if not getattr(completion, "choices", None):
         raise ValueError(f"provider returned no choices (model={MODEL_NAME})")
-    return completion.choices[0].message.content or ""
+    choice = completion.choices[0]
+    # A reply cut off by the provider's output limit is not valid JSON, and
+    # the parser then reports "Unterminated string", which looks like a
+    # formatting fault in the prompt. PR-GENERATE-01 v3.0 failed that way on
+    # DEV-0012 in the 14 Sep A/B smoke run, and nothing recorded why the model
+    # stopped. Name the cause instead.
+    if getattr(choice, "finish_reason", None) == "length":
+        raise ValueError(
+            f"model output cut off at the provider's length limit "
+            f"(finish_reason=length, model={MODEL_NAME})"
+        )
+    return choice.message.content or ""
 
 
 def _structural_critic(
@@ -260,6 +271,7 @@ def _run_empty_branch(
     empty answer and empty citations. If the model deviates, we force the
     unknown_fallback rather than let a fabricated citation through.
     """
+    raw: Optional[str] = None
     try:
         user_prompt = _PROMPT_02.render_user(
             channel=ticket.channel,
@@ -278,6 +290,9 @@ def _run_empty_branch(
                 "ticket_id": ticket.ticket_id,
                 "error": str(exc),
                 "error_type": type(exc).__name__,
+                # The model's text, when there was any: without it a parse
+                # failure cannot be told apart from a provider fault.
+                "raw_response_head": raw[:500] if raw is not None else None,
             },
         )
         return GeneratedResponse.unknown_fallback(
@@ -321,6 +336,7 @@ def _run_grounded_branch(
     retry_feedback = ""
 
     for attempt in range(GENERATE_MAX_RETRIES + 1):
+        raw = None
         try:
             user_prompt = _PROMPT_01.render_user(
                 passages=passages_block,
@@ -342,6 +358,7 @@ def _run_grounded_branch(
                     "attempt": attempt,
                     "error": str(exc),
                     "error_type": type(exc).__name__,
+                    "raw_response_head": raw[:500] if raw is not None else None,
                 },
             )
             return GeneratedResponse.unknown_fallback(
