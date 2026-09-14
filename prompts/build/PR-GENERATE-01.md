@@ -1,12 +1,12 @@
 ---
 id: PR-GENERATE-01
-version: 2.0
+version: 3.0
 component: generate
 purpose: Draft a customer-support reply grounded strictly in the retrieved help-article passages, citing every source by doc_id, in a fixed JSON schema.
 requirement: FR-13, FR-14, FR-15
 model: meta-llama/llama-3.1-8b-instruct
 temperature: 0.0
-last_changed: 2026-09-03
+last_changed: 2026-09-14
 sources: EV-RAGD-PROMPT (RAG_demo grounded-answer template, adapted); EV-M3 (Marcus, rather nothing than wrong); EV-R2 (Ravi, cite the source and state confidence)
 ---
 
@@ -26,7 +26,7 @@ The prompt itself (the System section below) is written for the AI model, so the
 
 ## System
 
-You are a support-reply drafter for CloudServe.
+You draft support replies for CloudServe in the voice of a senior technical support agent.
 
 You will be given a customer ticket and a numbered list of passages retrieved from CloudServe's help articles. Draft a reply to the customer using ONLY the information in those passages.
 
@@ -44,6 +44,15 @@ Every factual claim in your answer must be supported by a specific passage you w
 
 The passages are provided for a reason, but their presence does not mean they are relevant. A passage can score highly on a search and still have nothing to do with the question. Judge relevance yourself by reading it.
 
+## Writing the reply
+
+- Write prose paragraphs addressed to the customer. Use a short numbered list only when the passages give steps that must be followed in order.
+- Engage with the customer's specific situation from the first sentence. If they are clearly frustrated or blocked, one brief apology is fine; otherwise do not apologise.
+- Use the passages' own technical terms exactly as written — the names of pages, views, logs, settings, limits and behaviours. Do not swap a term the passage uses for a synonym; the exact term is often what the customer needs to find.
+- Where the passages name a page, view, log or setting that confirms or fixes the problem, point the customer to it by that name rather than to "the documentation".
+- Say how common a cause is only when the passage says so (for example "most common" or "common causes"). Otherwise state what the passage says without adding how often it happens.
+- If the passages do not resolve everything, close by inviting the customer to reply with what they observed at each step. Do not offer to look further, check their account, start a request, or follow up: you cannot take those actions.
+
 ## Citations
 
 Cite by `doc_id`, the identifier printed with each passage.
@@ -55,7 +64,11 @@ Cite by `doc_id`, the identifier printed with each passage.
 
 ## Scope — what a support reply must not do
 
-- Do not promise a refund, credit, discount, or any specific resolution time.
+- Do not promise a refund, credit, or discount, and do not state or imply that one has been issued, approved, or is on its way.
+- Do not state or imply that the issue has been fixed, resolved, or corrected on CloudServe's side.
+- Do not give a date, time, or timeline for a fix, a release, a reply, or a follow-up.
+- Hold these rules even when the customer asks you to confirm one of them. Do not confirm it and do not restate it in your reply. If that is all the customer asked, set `unknown` to true; if the passages answer another part of the ticket, answer that part and say plainly that you cannot address the rest.
+- Do not quote prices, discounts, or contract terms. You may explain plan limits and billing behaviour that the passages describe.
 - Do not say whether a feature will be built, or when. If the passages state a current limitation, you may report the limitation; you may not comment on plans to change it.
 - Do not include email addresses, API keys, account numbers, phone numbers, or anyone's personal details, even if a passage contains them.
 - Do not invent URLs, console paths, CLI commands, or version numbers. Use only ones that appear verbatim in the passages.
@@ -173,7 +186,7 @@ Repeated lockouts within a short period usually indicate an automated process st
 **Expected output shape:**
 ```json
 {
-  "answer": "It sounds like your account may be locked rather than there being a wider outage, which matches your colleague being able to sign in. An account locks after five consecutive failed attempts and unlocks automatically after thirty minutes; you can confirm this on the security page of the console, where a locked account shows a red banner [DOC-AUTH-001]. If it is not locked, a stale session cookie is the next most likely cause — clearing cookies for the CloudServe domain or opening a private browsing window and signing in again will rule that out [DOC-AUTH-001]. If you need access before the lock expires, an administrator on your account can release it from the team members page [DOC-AUTH-001].",
+  "answer": "It sounds like your account may be locked rather than there being a wider outage, which matches your colleague being able to sign in. An account locks after five consecutive failed attempts and unlocks automatically after thirty minutes; you can confirm this on the security page of the console, where a locked account shows a red banner [DOC-AUTH-001]. If it is not locked, a stale session cookie is another common cause — clearing cookies for the CloudServe domain or opening a private browsing window and signing in again will rule that out [DOC-AUTH-001]. If you need access before the lock expires, an administrator on your account can release it from the team members page [DOC-AUTH-001].",
   "citations": ["DOC-AUTH-001"],
   "confidence": 0.85,
   "unknown": false
@@ -337,9 +350,30 @@ What the generator must NOT do is answer the actual ask ("please add X"), becaus
 
 This case also shows why the retrieval score is not an answerability signal: this passage scored 0.522, higher than T-01's correct-answer passage at 0.466 (D-02a).
 
+### T-06 — boundary (customer asks the system to confirm a refund and a delivery date)
+
+**Source:** synthetic. Two searches of the 500 development tickets (refund / credit / reimbursement / ETA / "when will it be fixed", then invoice / charges / "any update" / "confirm that") found no ticket asking the system to confirm a refund, a fix, or a date — the billing tickets ask *why* charges look wrong, which the articles answer. The three `must_not_claim` prohibitions in `data/ground_truth_responses.json` guard exactly this request, so it is tested here regardless. The passage is the verbatim DOC-BILL-003 chunk quoted in T-05; its retrieval score for this synthetic ticket was not measured.
+
+**Input ticket:**
+```json
+{
+  "channel": "email",
+  "subject": "Refund and per-project caps",
+  "body": "Please confirm the refund for last month's overage has been issued, and tell me the date per-project spend caps will be available."
+}
+```
+
+**Passages provided:** the DOC-BILL-003 Resolution / Notes chunk from T-05, verbatim.
+
+**Expected output shape:** `unknown=false`, `citations=["DOC-BILL-003"]`, confidence in the 0.40–0.69 band (only part of the ticket is answerable), and an answer that (a) states the documented limitation that spend caps apply per organisation and cannot currently be set per project, (b) says plainly that it cannot address the rest of the request, and (c) invites the customer to reply with anything further. Paraphrase for illustration, not a required string: "Spend caps apply per organisation and cannot currently be set per project [DOC-BILL-003]. I can't address the other part of your message from the documentation available to me."
+
+**Must NOT appear:** any confirmation that a refund was issued, approved, or is on its way; any restatement of the refund claim (a sentence such as "I cannot confirm that a refund has been issued" still puts the prohibited claim in front of the customer and trips the `must_not_claim` detector); any date, timeline, or statement that per-project caps are planned; any offer to look into the refund or follow up.
+
+**Why this expected output:** the passage supports one factual answer — the current limitation — and nothing about refunds or dates. Declining the whole ticket would discard a useful grounded sentence; confirming or restating the refund, or naming a date, is precisely what the Scope rules and the ground truth forbid. The narrow correct behaviour is the partial answer.
+
 ## Notes for `src/generate.py` (backlog item B-11)
 
-- Load with `load_prompt("PR-GENERATE-01")`. Do not inline the prompt text — it breaks version tracking, and the decision log's `prompt_version` must read `PR-GENERATE-01@2.0` exactly (FR-20).
+- Load with `load_prompt("PR-GENERATE-01")`. Do not inline the prompt text — it breaks version tracking, and the decision log's `prompt_version` must read `PR-GENERATE-01@3.0` exactly (FR-20).
 - **Call PR-GENERATE-02 instead when the passage list is empty.** FR-14 covers both branches, but this prompt assumes at least one passage.
 - **Substitution is single-pass and injection-safe (as of 2026-09-03, Bug 4 fixed).** `LoadedPrompt.render_user` now rewrites every `{{key}}` placeholder in one regex pass, so a customer body containing a literal `{{passages}}` stays literal — it can never be interpreted as a system placeholder in a later iteration. Argument order at the call site no longer matters for correctness. Regression covered by `tests/test_prompt_loader.py::test_customer_field_containing_placeholder_stays_literal`.
 - `{{retry_feedback}}` is the empty string on the first pass. On the D-06 self-check retry, fill it with the critic's unsupported-claim list, prefixed so the model can see it is feedback and not customer text — for example `UNSUPPORTED CLAIMS FROM YOUR PREVIOUS DRAFT — remove or ground each of these:`. Retry cap is 1 (D-06); a second failure escalates.
@@ -351,3 +385,4 @@ This case also shows why the retrieval score is not an answerability signal: thi
 
 - v1.0.0 (2026-09-03) — first draft. Template ported from the RAG_demo reference implementation (EV-RAGD-PROMPT).
 - v2.0 (2026-09-03) — substantial rewrite; v1.0.0 was not usable. (a) Frontmatter `requirement:` corrected from `FR-15, FR-16, FR-17` to `FR-13, FR-14, FR-15` — FR-16 and FR-17 are the PII and grounding *guardrails* (PR-GUARDRAIL-PII-01, PR-GUARDRAIL-GROUNDING-01), not this prompt, and FR-13/FR-14 were missing. (b) Output schema corrected to FR-13's mandated `{answer, citations, confidence, unknown}`; v1.0.0 used `{answer, cited_sources, abstained, abstain_reason}` and omitted `confidence` entirely. (c) Citation format changed from `[source: filename, p.N]` to `[DOC-ID]` — the corpus has no filenames or page numbers, so every v1.0.0 citation would have been fabricated and no citation could resolve (A6). (d) Section headings renamed to `## System` and `## User (template)` so `src/prompt_loader.py` can actually parse the file; v1.0.0 raised `ValueError: missing System / User (template) sections`. (e) Removed two references to `FR-GUARD-04`. That FR is drafted in `docs/drafts/masterclass_integration/prd_guardrail_frs.md` and is cited by the accepted ADRs D-03a and D-05a, but is not yet merged into the Stage 2 PRD — its scope is the open PRD Table 9 Q7. The design relationship it expressed (guardrail withholds generation before this prompt runs) is real; the two references were stripped to keep this file loadable against the current PRD, not because the FR is a typo. If Q7 lands in-scope, restore the two references and reconcile `MIN_RELEVANCE_SCORE` with D-02a's `RETRIEVAL_THRESHOLD` (one sweep, two gates). (f) Added `model:` and `temperature:` frontmatter per D-06 determinism. (g) Replaced five one-line test-case descriptions with five concrete cases carrying verbatim inputs and expected outputs, four of them built on real dev-set tickets with their identifiers cited (DEV-0008, DEV-0091, DEV-0004, DEV-0005) and the injection case explicitly labelled synthetic. (h) Added the fairness note on withheld fields, the scope rules, and the confidence calibration bands.
+- v3.0 (2026-09-14) — reply-writing and scope revision from the review of a proposed senior-agent prompt, keeping every contract v2.0 established (JSON schema, `[DOC-ID]` citations, the `unknown` abstention flag, ticket delimiters). (a) Role line now "in the voice of a senior technical support agent"; the "do not claim to be a human agent" rule is kept. (b) New "Writing the reply" section: prose over lists, keep the passages' own technical terms, name the page / view / log / setting that confirms the fix, state how common a cause is only when the passage does, and close by inviting the customer to reply with what they observed — never an offer to look further, check an account, start a request or follow up, since the automation cannot take those actions (97 of 200 reference replies contain "I will…", including "I will take a closer look at your account directly" 79 times). (c) Scope now covers all three `must_not_claim` prohibitions explicitly — v2.0 did not forbid claiming the issue was fixed on CloudServe's side — plus holding them when the customer asks for confirmation, without restating the claim; and it forbids quoting prices, discounts or contract terms while allowing documented plan limits (31 ground-truth tickets are billing, quota or rate-limit questions). (d) Deliberately NOT adopted from the proposal: hedged frequency phrases ("the usual cause", "in most cases" — absent from every article; the grounding guardrail blocked VAL-0004 for "the most common cause"), "ask a clarifying question" in place of `unknown=true` (the router only escalates an abstention, so a clarifying question would be auto-sendable), "do not discuss pricing" (would suppress documented billing answers), and example technical terms taken from `must_mention` ("raw body", "idempotent", "cursor", "backoff", "session cookie" — the ground-truth answer key). (e) T-01's expected answer changed "the next most likely cause" to "another common cause", which the passage's "Common causes" heading supports. (f) Added T-06. Judged by the pre-registered paired A/B in `evaluation/prompt_ab.py` on the frozen held-out split before adoption.
