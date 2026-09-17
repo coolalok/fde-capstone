@@ -45,6 +45,9 @@ def test_every_client_is_bounded(module, monkeypatch):
     monkeypatch.setattr(openai, "OpenAI", _FakeOpenAI)
     monkeypatch.setattr(mod, "OPENROUTER_API_KEY", "test-key", raising=False)
     monkeypatch.setattr(mod, "require_key", lambda: "test-key", raising=False)
+    # The judge checks its own key, not require_key(); without this the test
+    # passes only on a machine whose .env holds a real one.
+    monkeypatch.setattr(mod, "GUARDRAIL_API_KEY", "test-key", raising=False)
 
     with pytest.raises(RuntimeError):
         mod._openrouter_call("system", "user", 0)
@@ -214,6 +217,7 @@ def test_guardrail_call_site_uses_the_judge_model(monkeypatch):
 
     monkeypatch.setattr(openai, "OpenAI", _FakeClient)
     monkeypatch.setattr(g, "require_key", lambda: "k", raising=False)
+    monkeypatch.setattr(g, "GUARDRAIL_API_KEY", "k")
     with pytest.raises(RuntimeError):
         g._openrouter_call("system", "user", 0)
     assert captured.get("model") == GUARDRAIL_MODEL
@@ -247,6 +251,7 @@ def test_empty_provider_content_raises_its_true_cause(monkeypatch):
 
     monkeypatch.setattr(openai, "OpenAI", _FakeClient)
     monkeypatch.setattr(g, "require_key", lambda: "k", raising=False)
+    monkeypatch.setattr(g, "GUARDRAIL_API_KEY", "k")
     with pytest.raises(ValueError, match="empty content"):
         g._openrouter_call("system", "user", 0)
 
@@ -289,6 +294,7 @@ def test_null_choices_raises_its_true_cause(module, monkeypatch):
     mod = importlib.import_module(module)
     monkeypatch.setattr(openai, "OpenAI", _client_returning(None))
     monkeypatch.setattr(mod, "require_key", lambda: "k", raising=False)
+    monkeypatch.setattr(mod, "GUARDRAIL_API_KEY", "k", raising=False)
 
     with pytest.raises(ValueError, match="no choices"):
         mod._openrouter_call("system", "user", 0)
@@ -304,6 +310,7 @@ def test_empty_choices_list_also_raises_the_cause(module, monkeypatch):
     mod = importlib.import_module(module)
     monkeypatch.setattr(openai, "OpenAI", _client_returning([]))
     monkeypatch.setattr(mod, "require_key", lambda: "k", raising=False)
+    monkeypatch.setattr(mod, "GUARDRAIL_API_KEY", "k", raising=False)
 
     with pytest.raises(ValueError, match="no choices"):
         mod._openrouter_call("system", "user", 0)

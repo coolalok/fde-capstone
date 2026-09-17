@@ -207,7 +207,7 @@ def test_row_records_the_draft_not_just_its_length(db, _no_retrieval):
     re-run against the live provider to reproduce. A blocked draft is never
     sent to the customer, so results.jsonl is the only place it survives.
     """
-    row = process_ticket(SMOKE_TICKETS[0])
+    row = process_ticket(SMOKE_TICKETS[0], call_model=FakeModelClient())
     assert "answer" in row
     assert isinstance(row["answer"], str)
     assert row["answer_len"] == len(row["answer"])
@@ -267,7 +267,7 @@ def test_rows_are_streamed_not_buffered_to_the_end(db, _no_retrieval, tmp_path,
         if len(seen) == 2:
             raise KeyboardInterrupt("simulated kill mid-run")
         seen.append(raw["ticket_id"])
-        return real(raw, **kw)
+        return real(raw, call_model=FakeModelClient(), **kw)
 
     monkeypatch.setattr("evaluation.harness.process_ticket", die_on_third)
     with pytest.raises(KeyboardInterrupt):
@@ -288,7 +288,7 @@ def test_row_captures_the_inbound_request_for_every_channel(db, _no_retrieval):
     IS the ingest bug.
     """
     for ticket in SMOKE_TICKETS:
-        row = process_ticket(ticket)
+        row = process_ticket(ticket, call_model=FakeModelClient())
         req = row["request"]
         assert req["raw"]["ticket_id"] == ticket["ticket_id"]
         assert req["normalised"]["channel"] == row["channel"]
@@ -303,7 +303,7 @@ def test_request_capture_never_contains_evaluation_labels(db, _no_retrieval):
     """
     labelled = dict(SMOKE_TICKETS[0])
     labelled["labels"] = {"intent": "billing_query", "answerable_from_docs": True}
-    row = process_ticket(labelled)
+    row = process_ticket(labelled, call_model=FakeModelClient())
     assert "labels" not in row["request"]["raw"]
     assert "billing_query" not in json.dumps(row["request"])
 
@@ -313,7 +313,7 @@ def test_pre_and_post_guardrail_responses_are_both_recorded(db, _no_retrieval):
     they only permit or withhold, never rewrite — so recording the equality
     is recording a claim that can later break.
     """
-    row = process_ticket(SMOKE_TICKETS[0])
+    row = process_ticket(SMOKE_TICKETS[0], call_model=FakeModelClient())
     pre, post = row["response_pre_guardrail"], row["response_post_guardrail"]
 
     assert pre["answer"] == row["answer"]
@@ -342,7 +342,7 @@ def test_a_blocked_draft_is_kept_but_marked_not_sent(
                                 reason="PII detected (email=1)")]
 
     monkeypatch.setattr("evaluation.harness.run_all", one_block)
-    row = process_ticket(SMOKE_TICKETS[0])
+    row = process_ticket(SMOKE_TICKETS[0], call_model=FakeModelClient())
 
     assert row["decision"] == "block"
     assert row["response_post_guardrail"]["sent_to_customer"] is False
@@ -360,7 +360,7 @@ def test_degraded_ticket_still_carries_the_debug_fields(
         raise RuntimeError("classifier exploded")
 
     monkeypatch.setattr("evaluation.harness.classify", boom)
-    row = process_ticket(SMOKE_TICKETS[0])
+    row = process_ticket(SMOKE_TICKETS[0], call_model=FakeModelClient())
 
     assert row["degraded"] is True
     assert row["request"]["raw"]["ticket_id"] == SMOKE_TICKETS[0]["ticket_id"]
@@ -391,7 +391,7 @@ def test_sent_reply_carries_no_internal_document_ids(db, _no_retrieval,
 
     monkeypatch.setattr("evaluation.harness.generate", fake_generate)
     monkeypatch.setattr("evaluation.harness.run_all", lambda r, c, **k: [])
-    row = process_ticket(SMOKE_TICKETS[0])
+    row = process_ticket(SMOKE_TICKETS[0], call_model=FakeModelClient())
 
     post = row["response_post_guardrail"]
     assert post["sent_to_customer"] is True
@@ -417,7 +417,7 @@ def test_escalated_draft_keeps_its_markers_for_the_human_reviewer(
         lambda r, c, **k: [GuardrailResult(name="pii", passed=False,
                                            blocking=True, reason="PII")],
     )
-    row = process_ticket(SMOKE_TICKETS[0])
+    row = process_ticket(SMOKE_TICKETS[0], call_model=FakeModelClient())
     assert row["decision"] == "block"
     assert row["response_post_guardrail"]["answer"] == ""
     # The draft retains whatever the generator produced.
