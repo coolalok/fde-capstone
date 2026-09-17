@@ -5,6 +5,8 @@ production retriever returns (src.retrieve.retrieve — same query text, same
 top_k, same relevance threshold as the harness), then broken down by intent.
 
   hit@k    any relevant chunk in the top k
+  recall@k share of the expected DOCUMENTS found in the top k, each counted
+           once. Differs from hit@k only for tickets expecting several documents.
   MRR      mean of 1 / rank of the first relevant chunk (0 when none)
   NDCG@k   binary-relevance NDCG. A chunk is relevant when its doc_id is in
            expected_doc_ids. Each expected DOCUMENT earns gain once, at its
@@ -80,6 +82,13 @@ def hit_at_k(ranked: list[str], expected: set[str], k: int) -> bool:
     return any(d in expected for d in ranked[:k])
 
 
+def recall_at_k(ranked: list[str], expected: set[str], k: int) -> float:
+    """Share of expected documents among the top k chunks, each counted once."""
+    if not expected:
+        return 0.0
+    return len(expected & set(ranked[:k])) / len(expected)
+
+
 def reciprocal_rank(ranked: list[str], expected: set[str]) -> float:
     rank = first_relevant_rank(ranked, expected)
     return 0.0 if rank is None else 1.0 / rank
@@ -100,6 +109,7 @@ def ndcg_at_k(ranked: list[str], expected: set[str], k: int) -> float:
 def score_ticket(ranked: list[str], expected: list[str]) -> dict:
     exp = set(expected)
     row = {f"hit@{k}": hit_at_k(ranked, exp, k) for k in K_VALUES}
+    row.update({f"recall@{k}": recall_at_k(ranked, exp, k) for k in K_VALUES})
     row["rr"] = reciprocal_rank(ranked, exp)
     row["ndcg@5"] = ndcg_at_k(ranked, exp, 5)
     row["first_relevant_rank"] = first_relevant_rank(ranked, exp)
@@ -112,7 +122,8 @@ def aggregate(rows: list[dict]) -> dict:
     if not n:
         return {"n": 0}
     out: dict = {"n": n}
-    for key in [f"hit@{k}" for k in K_VALUES] + ["rr", "ndcg@5"]:
+    keys = [f"hit@{k}" for k in K_VALUES] + [f"recall@{k}" for k in K_VALUES]
+    for key in keys + ["rr", "ndcg@5"]:
         out["mrr" if key == "rr" else key] = round(sum(float(r[key]) for r in rows) / n, 4)
     return out
 
@@ -289,7 +300,8 @@ def main(argv: list[str] | None = None) -> int:
 
     o = report["overall"]
     print(f"[retrieval] {o['n']} tickets  hit@1={o['hit@1']} hit@3={o['hit@3']} "
-          f"hit@5={o['hit@5']}  MRR={o['mrr']}  NDCG@5={o['ndcg@5']}  "
+          f"hit@5={o['hit@5']}  recall@3={o['recall@3']} recall@5={o['recall@5']}  "
+          f"MRR={o['mrr']}  NDCG@5={o['ndcg@5']}  "
           f"empty={report['empty_results']}")
     print("[retrieval] weakest intents by MRR:")
     for intent, s in list(report["by_intent"].items())[:6]:

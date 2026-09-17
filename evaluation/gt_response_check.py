@@ -6,6 +6,9 @@ evaluation metrics (RAGAS) so the numbers mean what a reader expects:
 
   expected_doc_ids   -> context recall. Of the documents the ground truth says
                         are needed, how many did retrieval actually return.
+                        Also citation precision / recall: of the documents the
+                        answer cites, how many are expected, and of those
+                        expected, how many it cites.
   must_mention       -> the FALSE NEGATIVE side of factual correctness: facts
                         the reference contains that our answer omitted.
   must_not_claim     -> the FALSE POSITIVE side: assertions our answer made
@@ -264,6 +267,30 @@ def context_recall(retrieved_doc_ids: list[str], expected: list[str]) -> float |
     return sum(1 for d in expected if d in got) / len(expected)
 
 
+def citation_precision_recall(
+    cited: list[str], expected: list[str]
+) -> tuple[float | None, float | None]:
+    """Document-level citation precision and recall against expected_doc_ids.
+
+      precision = cited documents that are expected / documents cited
+      recall    = expected documents that were cited / documents expected
+
+    Sets, so a document cited twice counts once. Both are None when nothing is
+    expected: no document answers the ticket, so no citation can match, and the
+    routing and abstention metrics already score an answer to it. Precision is
+    also None when nothing is cited.
+
+    This checks the RIGHT ARTICLE was cited. It does not check that the cited
+    passage supports the sentence it is attached to.
+    """
+    want = set(expected)
+    if not want:
+        return None, None
+    got = set(cited)
+    hits = len(got & want)
+    return (hits / len(got) if got else None), hits / len(want)
+
+
 def answer_correctness(n_present: int, n_missing: int, n_prohibited: int,
                        similarity: float | None) -> float:
     """RAGAS answer correctness: 0.75 * F1 + 0.25 * semantic similarity.
@@ -369,6 +396,10 @@ def main(argv: list[str] | None = None) -> int:
             customer_text = strip_citation_markers(response.answer)
             similarity = None if boiler else sim.score(customer_text, reference)
             n_present = checked["must_mention_total"] - len(checked["must_mention_missing"])
+            # A declined answer cites nothing by contract; scoring its recall 0
+            # would penalise the abstention the project wants.
+            cite_p, cite_r = (None, None) if response.unknown else citation_precision_recall(
+                response.citations, truth.get("expected_doc_ids", []))
 
             row = {
                 "ticket_id": tid,
@@ -378,6 +409,9 @@ def main(argv: list[str] | None = None) -> int:
                 "retrieved_doc_ids": retrieved,
                 "expected_doc_ids": truth.get("expected_doc_ids", []),
                 "context_recall": context_recall(retrieved, truth.get("expected_doc_ids", [])),
+                "citations": response.citations,
+                "citation_precision": None if cite_p is None else round(cite_p, 4),
+                "citation_recall": None if cite_r is None else round(cite_r, 4),
                 "reference_is_boilerplate": boiler,
                 "answer_similarity": None if similarity is None else round(similarity, 4),
                 "answer_correctness": answer_correctness(
@@ -418,6 +452,10 @@ def main(argv: list[str] | None = None) -> int:
         # ── expected_doc_ids -> context recall ──────────────────────────
         "context_recall_mean": _mean([r["context_recall"] for r in rows]),
         "context_recall_n": sum(1 for r in rows if r["context_recall"] is not None),
+        # ── expected_doc_ids -> citation precision / recall ─────────────
+        "citation_precision_mean": _mean([r["citation_precision"] for r in answered]),
+        "citation_recall_mean": _mean([r["citation_recall"] for r in answered]),
+        "citation_n": sum(1 for r in answered if r["citation_recall"] is not None),
         # ── reference_response -> answer similarity / correctness ───────
         # Split on purpose. 79 of 200 references are a content-free holding
         # reply; averaging them in would measure politeness and flatter the
@@ -446,6 +484,9 @@ def main(argv: list[str] | None = None) -> int:
     print(f"[gt] must_mention coverage: {report['must_mention_coverage']}")
     print(f"[gt] context recall (expected_doc_ids): {report['context_recall_mean']} "
           f"over {report['context_recall_n']} tickets")
+    print(f"[gt] citation precision / recall (expected_doc_ids): "
+          f"{report['citation_precision_mean']} / {report['citation_recall_mean']} "
+          f"over {report['citation_n']} answers")
     print(f"[gt] answer similarity vs reference: {report['answer_similarity_mean']} "
           f"over {len(specific)} tickets with a SPECIFIC reference")
     print(f"[gt] answer correctness (RAGAS 0.75/0.25): "

@@ -105,11 +105,32 @@ def test_metrics_report_contains_every_required_group(db, _no_retrieval):
     for key in ("fcr_proxy", "escalation_rate", "repeat_contact_proxy", "ttr_seconds_median"):
         assert key in m["business_metrics"], key
     for key in ("latency_p50_seconds", "latency_p95_seconds", "retrieval_hit_at_3",
-                "intent_per_class", "intent_accuracy"):
+                "intent_per_class", "intent_accuracy", "citation_accuracy",
+                "citation_accuracy_sent"):
         assert key in m["technical_metrics"], key
     for key in ("decisions_logged", "reconciles", "guardrail_activations",
                 "pii_detections", "confidence_calibration"):
         assert key in m["governance_metrics"], key
+
+
+def test_citation_accuracy_scores_drafts_against_expected_doc_ids():
+    from evaluation.harness import _citation_accuracy
+
+    truth = {
+        "T1": {"expected_doc_ids": ["DOC-A-001"]},
+        "T2": {"expected_doc_ids": ["DOC-A-001", "DOC-B-001"]},
+        "T3": {"expected_doc_ids": []},
+        "T4": {"expected_doc_ids": ["DOC-A-001"]},
+    }
+    rows = [
+        {"ticket_id": "T1", "citations": ["DOC-A-001", "DOC-C-001"]},  # p 0.5, r 1.0
+        {"ticket_id": "T2", "citations": ["DOC-A-001"]},               # p 1.0, r 0.5
+        {"ticket_id": "T3", "citations": ["DOC-A-001"]},               # nothing expected
+        {"ticket_id": "T4", "citations": []},                          # declined: not scored
+    ]
+    assert _citation_accuracy(rows, truth) == {
+        "n": 2, "precision": 0.75, "recall": 0.75, "citing_with_no_expected_doc": 1,
+    }
 
 
 def test_latency_p95_is_never_below_p50(db, _no_retrieval):

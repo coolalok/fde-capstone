@@ -16,6 +16,7 @@ from evaluation.retrieval_eval import (
     hit_at_k,
     margin_by_intent,
     ndcg_at_k,
+    recall_at_k,
     reciprocal_rank,
     score_margin,
     score_ticket,
@@ -28,6 +29,21 @@ A, B, C, D = "DOC-A-001", "DOC-B-001", "DOC-C-001", "DOC-D-001"
 def test_hit_at_k():
     assert hit_at_k([B, A], {A}, 1) is False
     assert hit_at_k([B, A], {A}, 3) is True
+
+
+def test_recall_at_k_counts_each_expected_document_once():
+    # Two chunks of A in the top 3 are still one of the two expected documents.
+    assert recall_at_k([A, A, C], {A, B}, 3) == pytest.approx(0.5)
+
+
+def test_recall_at_k_differs_from_hit_at_k_when_several_documents_are_expected():
+    assert hit_at_k([A, C, B], {A, B}, 1) is True
+    assert recall_at_k([A, C, B], {A, B}, 1) == pytest.approx(0.5)
+    assert recall_at_k([A, C, B], {A, B}, 3) == pytest.approx(1.0)
+
+
+def test_recall_at_k_empty_result_is_zero():
+    assert recall_at_k([], {A}, 5) == 0.0
 
 
 @pytest.mark.parametrize("ranked, expected, want", [
@@ -89,6 +105,7 @@ def test_score_ticket_and_aggregate():
     assert agg["n"] == 3
     assert agg["hit@1"] == pytest.approx(round(1 / 3, 4))
     assert agg["hit@3"] == pytest.approx(round(2 / 3, 4))
+    assert agg["recall@3"] == pytest.approx(round(2 / 3, 4))
     assert agg["mrr"] == pytest.approx(0.5)
 
 

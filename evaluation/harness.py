@@ -24,9 +24,9 @@ Design decisions worth reading:
   the input file directly, alongside the pipeline rather than through it.
 
 - **Label-dependent metrics are optional.** The hidden evaluation set is a file
-  we have never seen and may carry no labels at all. Intent precision/recall and
-  retrieval hit rate are computed only when labels are present; their absence
-  degrades the report, not the run.
+  we have never seen and may carry no labels at all. Intent precision/recall,
+  retrieval hit rate and citation accuracy are computed only when labels are
+  present; their absence degrades the report, not the run.
 
 - **Every ticket is wrapped.** A single ticket that raises anywhere must not end
   the run (FR-23). The failure is recorded, the ticket is force-escalated, and
@@ -44,6 +44,7 @@ from collections import Counter
 from pathlib import Path
 from typing import Any, Optional
 
+from evaluation.gt_response_check import citation_precision_recall
 from src.classify import classify
 from src.config import CONFIDENCE_THRESHOLD, GUARDRAIL_MODEL, MODEL_NAME
 from src.generate import generate, strip_citation_markers
@@ -286,6 +287,42 @@ def _intent_precision_recall(rows: list[dict], truth: dict[str, dict]) -> dict:
     }
 
 
+def _citation_accuracy(rows: list[dict], truth: dict[str, dict]) -> dict:
+    """Citation precision and recall against labels.expected_doc_ids. Labels required.
+
+    Document level, as the Dataset Guide defines that label: did the draft cite
+    the article that answers the ticket? It does NOT check that a cited passage
+    supports the sentence it is attached to (Evaluation Framework Tier 2); a set
+    comparison cannot see that.
+
+    Averaged per ticket over drafts that cite something. A draft citing
+    documents for a ticket whose labels expect none is not a precision data
+    point — nothing in the corpus answers it, and the routing metrics already
+    score that failure — so it is counted on its own.
+    """
+    precisions: list[float] = []
+    recalls: list[float] = []
+    no_expected = 0
+    for r in rows:
+        cited = r.get("citations") or []
+        if not cited or r["ticket_id"] not in truth:
+            continue
+        precision, recall = citation_precision_recall(
+            cited, truth[r["ticket_id"]].get("expected_doc_ids", []))
+        if precision is None or recall is None:
+            no_expected += 1
+            continue
+        precisions.append(precision)
+        recalls.append(recall)
+    n = len(precisions)
+    return {
+        "n": n,
+        "precision": round(sum(precisions) / n, 4) if n else None,
+        "recall": round(sum(recalls) / n, 4) if n else None,
+        "citing_with_no_expected_doc": no_expected,
+    }
+
+
 def build_metrics(rows: list[dict], truth: dict[str, dict], *,
                   run_id: str, skip_guardrails: bool) -> dict:
     """Every number here is computed, never hand-entered (FR-22 acceptance)."""
@@ -439,6 +476,10 @@ def build_metrics(rows: list[dict], truth: dict[str, dict], *,
         )
         metrics["technical_metrics"]["retrieval_hit_at_3"] = _pct(hits, len(answerable))
         metrics["technical_metrics"]["retrieval_answerable_n"] = len(answerable)
+        # Every draft, then only what reached a customer.
+        metrics["technical_metrics"]["citation_accuracy"] = _citation_accuracy(rows, truth)
+        metrics["technical_metrics"]["citation_accuracy_sent"] = _citation_accuracy(
+            [r for r in rows if r.get("decision") == AUTO_RESPOND], truth)
         metrics["technical_metrics"]["intent_per_class"] = _intent_precision_recall(rows, truth)
         metrics["technical_metrics"]["intent_accuracy"] = _pct(
             sum(1 for r in rows

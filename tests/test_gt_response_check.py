@@ -17,6 +17,7 @@ from evaluation.gt_response_check import (
     _W_SIMILARITY,
     answer_correctness,
     check_answer,
+    citation_precision_recall,
     context_recall,
     is_boilerplate_reference,
     _mean,
@@ -40,6 +41,32 @@ def test_context_recall(retrieved, expected, want):
 def test_context_recall_is_none_when_nothing_is_expected():
     """Not zero. Scoring an unscoreable ticket 0 would understate retrieval."""
     assert context_recall(["DOC-A-001"], []) is None
+
+
+# ─── expected_doc_ids -> citation precision / recall ─────────────────
+
+
+@pytest.mark.parametrize("cited, expected, want", [
+    (["DOC-A-001"], ["DOC-A-001"], (1.0, 1.0)),
+    # An extra citation halves precision; recall is untouched.
+    (["DOC-A-001", "DOC-B-002"], ["DOC-A-001"], (0.5, 1.0)),
+    # An expected document left uncited halves recall.
+    (["DOC-A-001"], ["DOC-A-001", "DOC-B-002"], (1.0, 0.5)),
+    (["DOC-B-002"], ["DOC-A-001"], (0.0, 0.0)),
+    # Citing one document twice counts it once.
+    (["DOC-A-001", "DOC-A-001"], ["DOC-A-001", "DOC-B-002"], (1.0, 0.5)),
+])
+def test_citation_precision_recall(cited, expected, want):
+    assert citation_precision_recall(cited, expected) == pytest.approx(want)
+
+
+def test_citation_precision_recall_is_none_when_nothing_is_expected():
+    """No document answers the ticket, so no citation can match it."""
+    assert citation_precision_recall(["DOC-A-001"], []) == (None, None)
+
+
+def test_citation_precision_is_none_when_nothing_is_cited():
+    assert citation_precision_recall([], ["DOC-A-001"]) == (None, 0.0)
 
 
 def test_mean_excludes_none_rather_than_counting_it_as_zero():
