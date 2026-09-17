@@ -45,6 +45,9 @@ from pathlib import Path
 from typing import Any, Optional
 
 from evaluation.gt_response_check import citation_precision_recall
+from evaluation.judge import DIMENSIONS as JUDGE_DIMENSIONS
+from evaluation.judge import score_item
+from evaluation.retrieval_eval import K_VALUES, recall_at_k
 from src import usage
 from src.classify import classify
 from src.config import CONFIDENCE_THRESHOLD, GUARDRAIL_MODEL, MODEL_NAME
@@ -62,7 +65,7 @@ import logging
 logger = logging.getLogger(__name__)
 
 
-def process_ticket(raw: dict, *, skip_guardrails: bool = False,
+def process_ticket(raw: dict, *, skip_guardrails: bool = False, judge: bool = False,
                    call_model: Optional[Any] = None) -> dict:
     """Run one ticket through the whole pipeline. Never raises.
 
@@ -175,6 +178,20 @@ def process_ticket(raw: dict, *, skip_guardrails: bool = False,
             for g in guardrail_results
         ]
 
+        # PR-EVAL-JUDGE-01 on the draft, as B-18 calibrated it: the raw draft
+        # with its [DOC-ID] markers, and the passages retrieval returned.
+        # Abstentions have no content to score and are not sent.
+        if judge and not response.unknown and response.answer.strip():
+            row["judge"] = score_item(
+                {"item_id": ticket_id, "ticket_id": ticket_id,
+                 "ticket": {"channel": ticket.channel, "subject": ticket.subject,
+                            "body": ticket.body},
+                 "passages": [{"doc_id": p.doc_id, "title": p.title,
+                               "category": p.category, "text": p.text}
+                              for p in passages],
+                 "reply": response.answer},
+                call_model=call_model)
+
         decision: Route = route(
             ticket, classification, passages, response, guardrail_results
         )
@@ -261,6 +278,10 @@ def process_ticket(raw: dict, *, skip_guardrails: bool = False,
 # max-gap figure, which would otherwise be driven by a single ticket.
 MIN_CALIBRATION_BUCKET_N = 5
 
+# A judged draft with any dimension below this is listed for a human to read.
+# 4 is the rubric's "minor issue"; below it the rubric describes a material one.
+JUDGE_FLAG_BELOW = 4
+
 
 def _pct(n: int, d: int) -> float:
     return round(n / d, 4) if d else 0.0
@@ -324,6 +345,75 @@ def _citation_accuracy(rows: list[dict], truth: dict[str, dict]) -> dict:
         "precision": round(sum(precisions) / n, 4) if n else None,
         "recall": round(sum(recalls) / n, 4) if n else None,
         "citing_with_no_expected_doc": no_expected,
+    }
+
+
+def _unknown_correctness(rows: list[dict], truth: dict[str, dict]) -> dict:
+    """Did the generator decline exactly the tickets the docs cannot answer? Labels required.
+
+    Scored against labels.answerable_from_docs. A declined draft ("unknown") is
+    correct on an unanswerable ticket and a miss on an answerable one. Generator
+    failures also come back unknown, but nothing was decided, so they are
+    excluded and counted, as the calibration block does for classifier fallbacks.
+    """
+    tp = fp = fn = excluded = 0
+    for r in rows:
+        labels = truth.get(r["ticket_id"])
+        if labels is None or r.get("unknown") is None:
+            continue
+        if r.get("generator_error"):
+            excluded += 1
+            continue
+        unanswerable = not labels.get("answerable_from_docs")
+        if r["unknown"] and unanswerable:
+            tp += 1
+        elif r["unknown"]:
+            fp += 1
+        elif unanswerable:
+            fn += 1
+    return {
+        "unanswerable_n": tp + fn,
+        "declined_unanswerable": tp,
+        "answered_unanswerable": fn,
+        "declined_answerable": fp,
+        # Of the drafts declined, how many should have been.
+        "precision": round(tp / (tp + fp), 4) if tp + fp else None,
+        # Of the unanswerable tickets, how many were declined.
+        "recall": round(tp / (tp + fn), 4) if tp + fn else None,
+        "generator_failures_excluded": excluded,
+    }
+
+
+def _judge_scores(rows: list[dict]) -> dict:
+    """Summarise PR-EVAL-JUDGE-01 verdicts. For review triage, not measurement.
+
+    B-18 (evaluation/results/judge_calibration_20260917) put the judge's pooled
+    Spearman against blind human scores at 0.35, below the 0.70 floor, so these
+    scores are not reported as quality figures. The means are here only to show
+    the spread; the flagged list is what the block is for.
+    """
+    judged = [r for r in rows if r.get("judge")]
+    scored = [r for r in judged if r["judge"].get("scores")]
+    return {
+        "trusted": False,
+        "use": ("flags drafts for a human to read; not a quality measurement "
+                "(B-18 pooled Spearman 0.35 < 0.70)"),
+        "prompt_version": judged[0]["judge"]["prompt_version"] if judged else None,
+        "judge_model": GUARDRAIL_MODEL,
+        "n_judged": len(judged),
+        "errors": len(judged) - len(scored),
+        "mean": {
+            dim: round(statistics.mean(r["judge"]["scores"][dim] for r in scored), 3)
+            if scored else None
+            for dim in JUDGE_DIMENSIONS
+        },
+        "flag_below": JUDGE_FLAG_BELOW,
+        "flagged_for_review": [
+            {"ticket_id": r["ticket_id"], "decision": r.get("decision"),
+             "scores": r["judge"]["scores"]}
+            for r in scored
+            if min(r["judge"]["scores"].values()) < JUDGE_FLAG_BELOW
+        ],
     }
 
 
@@ -433,6 +523,7 @@ def build_metrics(rows: list[dict], truth: dict[str, dict], *,
         buckets: list[list[float]] = [[] for _ in range(10)]
         correct = [0] * 10
         skipped_fallbacks = 0
+        brier_terms: list[float] = []
         for r in rows:
             gold = truth.get(r["ticket_id"], {}).get("intent")
             pred, conf = r.get("intent"), r.get("confidence")
@@ -448,6 +539,7 @@ def build_metrics(rows: list[dict], truth: dict[str, dict], *,
             buckets[b].append(conf)
             if pred == gold:
                 correct[b] += 1
+            brier_terms.append((conf - (1.0 if pred == gold else 0.0)) ** 2)
         calibration = []
         for i, confs in enumerate(buckets):
             if not confs:
@@ -472,6 +564,12 @@ def build_metrics(rows: list[dict], truth: dict[str, dict], *,
         metrics["governance_metrics"]["max_calibration_gap_pp"] = max(
             (abs(c["gap_pp"]) for c in calibration if c["sufficient_n"]), default=None)
         metrics["governance_metrics"]["calibration_min_bucket_n"] = MIN_CALIBRATION_BUCKET_N
+        # One number for the whole table: mean squared gap between stated
+        # confidence and whether the intent was right. 0 is perfect; always
+        # stating 0.5 scores 0.25. Unlike the bucket gaps it needs no binning.
+        metrics["governance_metrics"]["brier_score"] = (
+            round(statistics.mean(brier_terms), 4) if brier_terms else None)
+        metrics["governance_metrics"]["brier_n"] = len(brier_terms)
 
     # ── label-dependent technical metrics ─────────────────────────────
     if truth:
@@ -484,6 +582,15 @@ def build_metrics(rows: list[dict], truth: dict[str, dict], *,
         )
         metrics["technical_metrics"]["retrieval_hit_at_3"] = _pct(hits, len(answerable))
         metrics["technical_metrics"]["retrieval_answerable_n"] = len(answerable)
+        # Same definition as evaluation/retrieval_eval.py, on the chunks this run retrieved.
+        metrics["technical_metrics"]["retrieval_recall_at_k"] = {
+            f"recall@{k}": round(statistics.mean(
+                recall_at_k(r.get("retrieved_doc_ids", []),
+                            set(truth[r["ticket_id"]].get("expected_doc_ids", [])), k)
+                for r in answerable), 4) if answerable else None
+            for k in K_VALUES
+        }
+        metrics["technical_metrics"]["unknown_correctness"] = _unknown_correctness(rows, truth)
         # Every draft, then only what reached a customer.
         metrics["technical_metrics"]["citation_accuracy"] = _citation_accuracy(rows, truth)
         metrics["technical_metrics"]["citation_accuracy_sent"] = _citation_accuracy(
@@ -492,6 +599,9 @@ def build_metrics(rows: list[dict], truth: dict[str, dict], *,
         metrics["technical_metrics"]["intent_accuracy"] = _pct(
             sum(1 for r in rows
                 if r.get("intent") == truth.get(r["ticket_id"], {}).get("intent")), n)
+
+    if any(r.get("judge") for r in rows):
+        metrics["judge_scores"] = _judge_scores(rows)
     return metrics
 
 
@@ -503,6 +613,10 @@ def main(argv: Optional[list[str]] = None) -> int:
     parser.add_argument("--limit", type=int, default=0, help="process only the first N tickets")
     parser.add_argument("--skip-guardrails", action="store_true",
                         help="run without the guardrail layer (diagnostic only)")
+    # Off by default: one more paid call per draft, and B-18 found the judge
+    # untrusted, so a graded run should not depend on it.
+    parser.add_argument("--judge", action="store_true",
+                        help="score each draft with PR-EVAL-JUDGE-01 (review flags only)")
     args = parser.parse_args(argv)
 
     configure_logging()
@@ -518,7 +632,8 @@ def main(argv: Optional[list[str]] = None) -> int:
     run_id = set_run_id(new_run_id("harness"))
     print(f"[harness] run_id={run_id}", flush=True)
     print(f"[harness] input={input_path} tickets={len(tickets)} "
-          f"labels={'yes' if truth else 'no'} guardrails={not args.skip_guardrails}",
+          f"labels={'yes' if truth else 'no'} guardrails={not args.skip_guardrails} "
+          f"judge={args.judge}",
           flush=True)
 
     started = time.perf_counter()
@@ -531,7 +646,8 @@ def main(argv: Optional[list[str]] = None) -> int:
     # Partial output from an interrupted run is still evidence; nothing is.
     with results_path.open("w", encoding="utf-8") as fh:
         for i, raw in enumerate(tickets, 1):
-            row = process_ticket(raw, skip_guardrails=args.skip_guardrails)
+            row = process_ticket(raw, skip_guardrails=args.skip_guardrails,
+                                 judge=args.judge)
             rows.append(row)
             fh.write(json.dumps(row) + "\n")
             fh.flush()

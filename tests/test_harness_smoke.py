@@ -422,3 +422,101 @@ def test_escalated_draft_keeps_its_markers_for_the_human_reviewer(
     assert row["response_post_guardrail"]["answer"] == ""
     # The draft retains whatever the generator produced.
     assert row["response_pre_guardrail"]["answer"] == row["answer"]
+
+
+# ─── unknown-correctness, recall@k, Brier, judge (17 Sep) ────────────
+
+
+def test_unknown_correctness_scores_declines_against_answerable_labels():
+    from evaluation.harness import _unknown_correctness
+
+    truth = {f"T{i}": {"answerable_from_docs": a}
+             for i, a in enumerate([False, False, True, True, False], 1)}
+    rows = [
+        {"ticket_id": "T1", "unknown": True},                          # right decline
+        {"ticket_id": "T2", "unknown": False},                         # answered unanswerable
+        {"ticket_id": "T3", "unknown": True},                          # declined answerable
+        {"ticket_id": "T4", "unknown": False},                         # right answer
+        {"ticket_id": "T5", "unknown": True, "generator_error": "x"},  # failure, not a decline
+        {"ticket_id": "T6", "unknown": True},                          # no labels
+        {"ticket_id": "T1", "degraded": True},                         # never reached generate
+    ]
+    assert _unknown_correctness(rows, truth) == {
+        "unanswerable_n": 2, "declined_unanswerable": 1, "answered_unanswerable": 1,
+        "declined_answerable": 1, "precision": 0.5, "recall": 0.5,
+        "generator_failures_excluded": 1,
+    }
+
+
+def test_brier_score_matches_hand_computation(db, _no_retrieval):
+    """Fake classifier states 0.92 on every ticket; one of three intents is right.
+
+    (0.92 - 1)^2 + 2 * (0.92 - 0)^2 = 0.0064 + 1.6928 = 1.6992; / 3 = 0.5664.
+    """
+    rows = [process_ticket(t, call_model=FakeModelClient()) for t in SMOKE_TICKETS]
+    truth = {t["ticket_id"]: t["labels"] for t in SMOKE_TICKETS}
+    g = build_metrics(rows, truth, run_id="smoke", skip_guardrails=False)["governance_metrics"]
+    assert g["brier_n"] == 3
+    assert g["brier_score"] == 0.5664
+
+
+def test_recall_at_k_and_unknown_correctness_are_in_the_report(db, _no_retrieval):
+    rows = [process_ticket(t, call_model=FakeModelClient()) for t in SMOKE_TICKETS]
+    truth = {t["ticket_id"]: t["labels"] for t in SMOKE_TICKETS}
+    t = build_metrics(rows, truth, run_id="smoke", skip_guardrails=False)["technical_metrics"]
+    # Retrieval always returns DOC-AUTH-001: SMOKE-01 expects it, SMOKE-03 does not.
+    assert t["retrieval_recall_at_k"] == {"recall@1": 0.5, "recall@3": 0.5, "recall@5": 0.5}
+    # The fake never declines, so the one unanswerable ticket is answered.
+    assert t["unknown_correctness"]["answered_unanswerable"] == 1
+    assert t["unknown_correctness"]["recall"] == 0.0
+
+
+class JudgingFakeModelClient(FakeModelClient):
+    """FakeModelClient that also answers PR-EVAL-JUDGE-01."""
+
+    def __init__(self, verdict: str) -> None:
+        super().__init__()
+        self.verdict = verdict
+
+    def __call__(self, system: str, user: str, seed: int = 0) -> str:
+        if "evaluation judge" in system:
+            self.calls.append("judge")
+            return self.verdict
+        return super().__call__(system, user, seed)
+
+
+def _verdict(grounded: int) -> str:
+    return json.dumps({"reasoning": "fake",
+                       "context_relevance": {"score": 5, "supporting_evidence": "x"},
+                       "groundedness": {"score": grounded, "unsupported_claims": []},
+                       "answer_relevance": {"score": 5, "notes": "x"}})
+
+
+def test_judge_is_off_by_default(db, _no_retrieval):
+    client = JudgingFakeModelClient(_verdict(5))
+    rows = [process_ticket(t, call_model=client) for t in SMOKE_TICKETS]
+    assert "judge" not in client.calls
+    assert "judge_scores" not in build_metrics(rows, {}, run_id="smoke", skip_guardrails=False)
+
+
+def test_judge_scores_block_flags_low_scores_and_is_marked_untrusted(db, _no_retrieval):
+    rows = [process_ticket(SMOKE_TICKETS[0], judge=True,
+                           call_model=JudgingFakeModelClient(_verdict(5))),
+            process_ticket(SMOKE_TICKETS[2], judge=True,
+                           call_model=JudgingFakeModelClient(_verdict(2)))]
+    # The judge sees the raw draft with its markers, as B-18 calibrated it.
+    assert rows[0]["judge"]["scores"]["groundedness"] == 5
+    j = build_metrics(rows, {}, run_id="smoke", skip_guardrails=False)["judge_scores"]
+    assert j["trusted"] is False
+    assert j["n_judged"] == 2 and j["errors"] == 0
+    assert j["mean"]["groundedness"] == 3.5
+    assert [f["ticket_id"] for f in j["flagged_for_review"]] == ["SMOKE-03"]
+
+
+def test_a_failed_judge_call_is_an_error_not_a_score_and_not_a_crash(db, _no_retrieval):
+    row = process_ticket(SMOKE_TICKETS[0], judge=True,
+                         call_model=JudgingFakeModelClient("not json"))
+    assert row["degraded"] is False
+    assert row["judge"]["scores"] is None and row["judge"]["error"]
+    j = build_metrics([row], {}, run_id="smoke", skip_guardrails=False)["judge_scores"]
+    assert j["errors"] == 1 and j["flagged_for_review"] == []
