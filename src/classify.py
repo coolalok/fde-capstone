@@ -27,7 +27,7 @@ from src.config import (
     require_key,
 )
 from src.logging_store import log_decision
-from src.metrics import MODEL_CALL_FAILURES
+from src.metrics import CONFIDENCE, MODEL_CALL_FAILURES
 from src.prompt_loader import load_prompt
 from src.schema import Alternative, ClassificationResult, Ticket
 
@@ -170,6 +170,13 @@ def classify(
         result = ClassificationResult.unknown_fallback(
             error=f"{type(exc).__name__}: {exc}"
         )
+
+    # Confidence distribution (Setup Guide §06 dashboard: "where drift shows up
+    # first"). A fallback states 0.0 because the model never answered, so
+    # recording it would put a spike at zero that reads as an overcautious
+    # classifier rather than an outage — MODEL_CALL_FAILURES already counts those.
+    if result.error is None:
+        CONFIDENCE.observe(result.confidence)
 
     decision_id = log_decision(
         ticket_id=ticket.ticket_id,

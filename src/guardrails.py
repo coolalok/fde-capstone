@@ -76,7 +76,7 @@ from src.config import (
 )
 from src.generate import strip_citation_markers
 from src.logging_store import log_decision
-from src.metrics import MODEL_CALL_FAILURES
+from src.metrics import GUARDRAIL_BLOCKS, MODEL_CALL_FAILURES
 from src.prompt_loader import load_prompt
 from src.schema import (
     GeneratedResponse,
@@ -1111,6 +1111,14 @@ def run_all(
                     fail_safe=True,
                 )
             )
+
+    # Guardrail activations over time (Setup Guide §06 dashboard). Counts every
+    # check that did not pass, including fail-safe blocks: on the dashboard a
+    # spike is a reason to look, and metrics_report.json is where the two are
+    # separated.
+    for verdict in results:
+        if not verdict.passed:
+            GUARDRAIL_BLOCKS.labels(guardrail=verdict.name).inc()
 
     _write_decision_log(response=response, context=context, results=results)
     return results

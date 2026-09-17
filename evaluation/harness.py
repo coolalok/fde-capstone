@@ -50,12 +50,13 @@ from evaluation.judge import score_item
 from evaluation.retrieval_eval import K_VALUES, recall_at_k
 from src import usage
 from src.classify import classify
-from src.config import CONFIDENCE_THRESHOLD, GUARDRAIL_MODEL, MODEL_NAME
+from src.config import CONFIDENCE_THRESHOLD, GUARDRAIL_MODEL, METRICS_PORT, MODEL_NAME
 from src.generate import generate, strip_citation_markers
 from src.guardrails import run_all
 from src.ingest import normalise_any
 from src.logging_config import configure_logging
 from src.logging_store import new_run_id, reconcile, set_run_id
+from src.metrics import LATENCY, TICKETS, start_metrics_server
 from src.retrieve import retrieve
 from src.route import AUTO_RESPOND, BLOCK, ESCALATE, route
 from src.schema import GuardrailContext, Route
@@ -266,6 +267,13 @@ def process_ticket(raw: dict, *, skip_guardrails: bool = False, judge: bool = Fa
     calls = usage.drain()
     row["usage"] = {**usage.summarise(calls), "per_call": calls}
     row["latency_seconds"] = round(time.perf_counter() - started, 3)
+    # Live counters for the Setup Guide §06 dashboard: tickets by channel and
+    # outcome, and end-to-end latency. The same figures are recomputed from the
+    # rows for metrics_report.json (A10); these exist to be watchable DURING a
+    # run, which a report written at the end cannot be.
+    TICKETS.labels(channel=row.get("channel") or "unknown",
+                   outcome=row.get("decision") or "unknown").inc()
+    LATENCY.observe(row["latency_seconds"])
     return row
 
 
@@ -617,6 +625,9 @@ def main(argv: Optional[list[str]] = None) -> int:
     # untrusted, so a graded run should not depend on it.
     parser.add_argument("--judge", action="store_true",
                         help="score each draft with PR-EVAL-JUDGE-01 (review flags only)")
+    parser.add_argument("--metrics-port", type=int, default=METRICS_PORT,
+                        help="serve Prometheus metrics on this port during the run "
+                             "(0 = off; or set METRICS_PORT)")
     args = parser.parse_args(argv)
 
     configure_logging()
@@ -628,6 +639,17 @@ def main(argv: Optional[list[str]] = None) -> int:
         tickets = tickets[: args.limit]
     # Ground truth is read here, from the raw file — never through the Ticket.
     truth = {t["ticket_id"]: t["labels"] for t in tickets if "labels" in t}
+
+    if args.metrics_port:
+        # A dashboard is only useful while the run is happening, and an 80-ticket
+        # run is ~26 minutes of it. Failing to bind must not cost the run (A9).
+        try:
+            start_metrics_server(args.metrics_port)
+            print(f"[harness] metrics on http://localhost:{args.metrics_port}/metrics",
+                  flush=True)
+        except OSError as exc:
+            print(f"[harness] metrics server not started ({exc}); run continues",
+                  flush=True)
 
     run_id = set_run_id(new_run_id("harness"))
     print(f"[harness] run_id={run_id}", flush=True)

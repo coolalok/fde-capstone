@@ -150,6 +150,11 @@ GENERATE_MAX_RETRIES: int = int(os.environ.get("GENERATE_MAX_RETRIES", "1"))
 # Model temperature for generation — 0.0 = deterministic per D-06 A5.
 GENERATE_TEMPERATURE: float = float(os.environ.get("GENERATE_TEMPERATURE", "0.0"))
 
+# Monitoring — port for the Prometheus /metrics endpoint (Setup Guide §06).
+# 0 = do not start the server, which is the default: a graded run must not need
+# a free port, and the metrics report (A10) is the artefact that is assessed.
+METRICS_PORT: int = int(os.environ.get("METRICS_PORT", "0"))
+
 # Logging
 LOG_LEVEL: str = os.environ.get("LOG_LEVEL", "INFO")
 # Optional second destination for structured logs. Empty = stderr only.

@@ -1,0 +1,77 @@
+# HELP python_gc_objects_collected_total Objects collected during gc
+# TYPE python_gc_objects_collected_total counter
+python_gc_objects_collected_total{generation="0"} 12395.0
+python_gc_objects_collected_total{generation="1"} 10588.0
+python_gc_objects_collected_total{generation="2"} 535.0
+# HELP python_gc_objects_uncollectable_total Uncollectable objects found during GC
+# TYPE python_gc_objects_uncollectable_total counter
+python_gc_objects_uncollectable_total{generation="0"} 0.0
+python_gc_objects_uncollectable_total{generation="1"} 0.0
+python_gc_objects_uncollectable_total{generation="2"} 0.0
+# HELP python_gc_collections_total Number of times this generation was collected
+# TYPE python_gc_collections_total counter
+python_gc_collections_total{generation="0"} 1166.0
+python_gc_collections_total{generation="1"} 105.0
+python_gc_collections_total{generation="2"} 7.0
+# HELP python_info Python platform information
+# TYPE python_info gauge
+python_info{implementation="CPython",major="3",minor="11",patchlevel="16",version="3.11.16"} 1.0
+# HELP tickets_processed_total Tickets processed
+# TYPE tickets_processed_total counter
+tickets_processed_total{channel="forum",outcome="block"} 1.0
+tickets_processed_total{channel="chat",outcome="escalate"} 1.0
+# HELP tickets_processed_created Tickets processed
+# TYPE tickets_processed_created gauge
+tickets_processed_created{channel="forum",outcome="block"} 1.789672078185382e+09
+tickets_processed_created{channel="chat",outcome="escalate"} 1.789672083773582e+09
+# HELP response_seconds End-to-end response time
+# TYPE response_seconds histogram
+response_seconds_bucket{le="0.5"} 0.0
+response_seconds_bucket{le="1.0"} 0.0
+response_seconds_bucket{le="2.0"} 0.0
+response_seconds_bucket{le="4.0"} 0.0
+response_seconds_bucket{le="8.0"} 1.0
+response_seconds_bucket{le="16.0"} 1.0
+response_seconds_bucket{le="32.0"} 1.0
+response_seconds_bucket{le="+Inf"} 2.0
+response_seconds_count 2.0
+response_seconds_sum 43.676
+# HELP response_seconds_created End-to-end response time
+# TYPE response_seconds_created gauge
+response_seconds_created 1.789672039080029e+09
+# HELP guardrail_blocks_total Responses blocked by guardrail
+# TYPE guardrail_blocks_total counter
+guardrail_blocks_total{guardrail="tone_scope"} 1.0
+guardrail_blocks_total{guardrail="answer_relevance"} 1.0
+# HELP guardrail_blocks_created Responses blocked by guardrail
+# TYPE guardrail_blocks_created gauge
+guardrail_blocks_created{guardrail="tone_scope"} 1.789672078109344e+09
+guardrail_blocks_created{guardrail="answer_relevance"} 1.789672078109359e+09
+# HELP classification_confidence Distribution of classification confidence scores (for calibration monitoring)
+# TYPE classification_confidence histogram
+classification_confidence_bucket{le="0.1"} 0.0
+classification_confidence_bucket{le="0.2"} 0.0
+classification_confidence_bucket{le="0.3"} 0.0
+classification_confidence_bucket{le="0.4"} 0.0
+classification_confidence_bucket{le="0.5"} 0.0
+classification_confidence_bucket{le="0.6"} 0.0
+classification_confidence_bucket{le="0.7"} 0.0
+classification_confidence_bucket{le="0.8"} 0.0
+classification_confidence_bucket{le="0.9"} 0.0
+classification_confidence_bucket{le="1.0"} 2.0
+classification_confidence_bucket{le="+Inf"} 2.0
+classification_confidence_count 2.0
+classification_confidence_sum 1.9
+# HELP classification_confidence_created Distribution of classification confidence scores (for calibration monitoring)
+# TYPE classification_confidence_created gauge
+classification_confidence_created 1.789672039080066e+09
+# HELP model_call_failures_total Model calls that failed, by pipeline stage and exception class
+# TYPE model_call_failures_total counter
+model_call_failures_total{error_type="ValueError",stage="guardrail:tonescope"} 1.0
+model_call_failures_total{error_type="ValueError",stage="guardrail:answer_relevance"} 1.0
+# HELP model_call_failures_created Model calls that failed, by pipeline stage and exception class
+# TYPE model_call_failures_created gauge
+model_call_failures_created{error_type="ValueError",stage="guardrail:tonescope"} 1.7896720772609348e+09
+model_call_failures_created{error_type="ValueError",stage="guardrail:answer_relevance"} 1.7896720781088839e+09
+# HELP decision_log_write_failures_total Decision-log writes that failed — FR-20 not satisfied for those decisions
+# TYPE decision_log_write_failures_total counter

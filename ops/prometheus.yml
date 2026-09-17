@@ -1,0 +1,19 @@
+# Prometheus scrape config for a local harness run (Setup Guide §06).
+#
+#   python -m evaluation.harness --input data/validation_tickets.json \
+#       --output evaluation/results/run --metrics-port 8001
+#   prometheus --config.file=ops/prometheus.yml
+#
+# The harness serves /metrics only while it runs, so `up` returns to 0 between
+# runs. That is expected here: this is a batch pipeline, not a service. Once
+# src/api.py exists (B-29) the same job scrapes it continuously instead.
+global:
+  scrape_interval: 5s      # an 80-ticket run is ~26 minutes; 5s gives ~300 points
+  evaluation_interval: 15s
+
+scrape_configs:
+  - job_name: cloudserve-support-automation
+    static_configs:
+      - targets: ["localhost:8001"]
+        labels:
+          component: harness
