@@ -22,6 +22,16 @@ FIXTURE = json.loads(Path("tests/fixtures/judge_calibration.json").read_text())
 PROMPT = Path("prompts/evaluation/PR-EVAL-JUDGE-01.md").read_text()
 
 
+def _unscored() -> dict:
+    """A copy of the fixture with every human score cleared. The real fixture holds the
+    B-18 scores, so import counts must not depend on it."""
+    fx = copy.deepcopy(FIXTURE)
+    for item in fx["items"]:
+        item["human_scores"] = {d: None for d in item["human_scores"]}
+        item["human_notes"] = ""
+    return fx
+
+
 def _data_block(page: str) -> dict:
     m = re.search(r'<script type="application/json" id="data">(.*?)</script>', page, re.S)
     return json.loads(m.group(1).replace("<\\/", "</"))
@@ -65,7 +75,7 @@ def _payload(fx, scores):
 
 
 def test_import_merges_valid_scores_and_notes():
-    fx = copy.deepcopy(FIXTURE)
+    fx = _unscored()
     first = fx["items"][0]["item_id"]
     report = import_scores(fx, _payload(fx, {first: {
         "context_relevance": 4, "groundedness": 5, "answer_relevance": 3, "notes": "ok"}}))
@@ -90,7 +100,7 @@ def test_import_refuses_scores_from_a_different_fixture():
 
 
 def test_import_allows_a_partial_file():
-    fx = copy.deepcopy(FIXTURE)
+    fx = _unscored()
     first = fx["items"][0]["item_id"]
     report = import_scores(fx, _payload(fx, {first: {"groundedness": 4}}))
     assert fx["items"][0]["human_scores"]["groundedness"] == 4

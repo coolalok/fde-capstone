@@ -1,0 +1,35 @@
+{
+  "dimensions": {
+    "context_relevance": {
+      "n": 50,
+      "spearman": 0.6682,
+      "exact_agreement": 0.92,
+      "within_one": 0.98,
+      "mean_judge_minus_human": 0.02
+    },
+    "groundedness": {
+      "n": 50,
+      "spearman": 0.4565,
+      "exact_agreement": 0.9,
+      "within_one": 0.98,
+      "mean_judge_minus_human": -0.12
+    },
+    "answer_relevance": {
+      "n": 50,
+      "spearman": 0.0458,
+      "exact_agreement": 0.7,
+      "within_one": 0.96,
+      "mean_judge_minus_human": -0.18
+    }
+  },
+  "excluded": {
+    "judge_error": 0,
+    "human_unscored": 0
+  },
+  "pooled": {
+    "n": 150,
+    "spearman": 0.3492
+  },
+  "floor": 0.7,
+  "trusted": false
+}

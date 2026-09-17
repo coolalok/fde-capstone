@@ -76,9 +76,9 @@
     ]
    },
    "human_scores": {
-    "context_relevance": null,
-    "groundedness": null,
-    "answer_relevance": null
+    "context_relevance": 5,
+    "groundedness": 5,
+    "answer_relevance": 5
    },
    "human_notes": ""
   },
@@ -143,9 +143,9 @@
     ]
    },
    "human_scores": {
-    "context_relevance": null,
-    "groundedness": null,
-    "answer_relevance": null
+    "context_relevance": 5,
+    "groundedness": 5,
+    "answer_relevance": 5
    },
    "human_notes": ""
   },
@@ -210,11 +210,11 @@
     ]
    },
    "human_scores": {
-    "context_relevance": null,
-    "groundedness": null,
-    "answer_relevance": null
+    "context_relevance": 4,
+    "groundedness": 5,
+    "answer_relevance": 5
    },
-   "human_notes": ""
+   "human_notes": "No actual shareable artefact. However the answer actually makes sense because location is available on settings page for that specific customer page"
   },
   {
    "item_id": "CAL-04",
@@ -277,9 +277,9 @@
     ]
    },
    "human_scores": {
-    "context_relevance": null,
-    "groundedness": null,
-    "answer_relevance": null
+    "context_relevance": 5,
+    "groundedness": 5,
+    "answer_relevance": 5
    },
    "human_notes": ""
   },
@@ -344,9 +344,9 @@
     ]
    },
    "human_scores": {
-    "context_relevance": null,
-    "groundedness": null,
-    "answer_relevance": null
+    "context_relevance": 5,
+    "groundedness": 5,
+    "answer_relevance": 5
    },
    "human_notes": ""
   },
@@ -404,9 +404,9 @@
     ]
    },
    "human_scores": {
-    "context_relevance": null,
-    "groundedness": null,
-    "answer_relevance": null
+    "context_relevance": 5,
+    "groundedness": 5,
+    "answer_relevance": 5
    },
    "human_notes": ""
   },
@@ -471,9 +471,9 @@
     ]
    },
    "human_scores": {
-    "context_relevance": null,
-    "groundedness": null,
-    "answer_relevance": null
+    "context_relevance": 5,
+    "groundedness": 5,
+    "answer_relevance": 5
    },
    "human_notes": ""
   },
@@ -538,9 +538,9 @@
     ]
    },
    "human_scores": {
-    "context_relevance": null,
-    "groundedness": null,
-    "answer_relevance": null
+    "context_relevance": 5,
+    "groundedness": 5,
+    "answer_relevance": 5
    },
    "human_notes": ""
   },
@@ -584,9 +584,9 @@
     ]
    },
    "human_scores": {
-    "context_relevance": null,
-    "groundedness": null,
-    "answer_relevance": null
+    "context_relevance": 5,
+    "groundedness": 5,
+    "answer_relevance": 5
    },
    "human_notes": ""
   },
@@ -651,11 +651,11 @@
     ]
    },
    "human_scores": {
-    "context_relevance": null,
-    "groundedness": null,
-    "answer_relevance": null
+    "context_relevance": 4,
+    "groundedness": 5,
+    "answer_relevance": 5
    },
-   "human_notes": ""
+   "human_notes": "Reply ignores backup replication detail present in passages"
   },
   {
    "item_id": "CAL-11",
@@ -718,9 +718,9 @@
     ]
    },
    "human_scores": {
-    "context_relevance": null,
-    "groundedness": null,
-    "answer_relevance": null
+    "context_relevance": 5,
+    "groundedness": 5,
+    "answer_relevance": 5
    },
    "human_notes": ""
   },
@@ -785,9 +785,9 @@
     ]
    },
    "human_scores": {
-    "context_relevance": null,
-    "groundedness": null,
-    "answer_relevance": null
+    "context_relevance": 5,
+    "groundedness": 5,
+    "answer_relevance": 5
    },
    "human_notes": ""
   },
@@ -852,9 +852,9 @@
     ]
    },
    "human_scores": {
-    "context_relevance": null,
-    "groundedness": null,
-    "answer_relevance": null
+    "context_relevance": 5,
+    "groundedness": 5,
+    "answer_relevance": 5
    },
    "human_notes": ""
   },
@@ -919,11 +919,11 @@
     ]
    },
    "human_scores": {
-    "context_relevance": null,
-    "groundedness": null,
-    "answer_relevance": null
+    "context_relevance": 3,
+    "groundedness": 5,
+    "answer_relevance": 5
    },
-   "human_notes": ""
+   "human_notes": "Passage says \"revoke immediately if exposed\" — reply defaults to the standard rotation flow and doesn't flag this priority.  For example DOC-AUTH-004  says \"4. If a key has been exposed publicly, revoke it immediately rather than waiting for the rotation window.\n\""
   },
   {
    "item_id": "CAL-15",
@@ -965,11 +965,11 @@
     ]
    },
    "human_scores": {
-    "context_relevance": null,
-    "groundedness": null,
-    "answer_relevance": null
+    "context_relevance": 4,
+    "groundedness": 5,
+    "answer_relevance": 5
    },
-   "human_notes": ""
+   "human_notes": "Doesn't mention effective permissions view — the passage's actual answer to \"how do they interact\""
   },
   {
    "item_id": "CAL-16",
@@ -1032,9 +1032,9 @@
     ]
    },
    "human_scores": {
-    "context_relevance": null,
-    "groundedness": null,
-    "answer_relevance": null
+    "context_relevance": 5,
+    "groundedness": 5,
+    "answer_relevance": 5
    },
    "human_notes": ""
   },
@@ -1099,9 +1099,9 @@
     ]
    },
    "human_scores": {
-    "context_relevance": null,
-    "groundedness": null,
-    "answer_relevance": null
+    "context_relevance": 5,
+    "groundedness": 5,
+    "answer_relevance": 5
    },
    "human_notes": ""
   },
@@ -1166,9 +1166,9 @@
     ]
    },
    "human_scores": {
-    "context_relevance": null,
-    "groundedness": null,
-    "answer_relevance": null
+    "context_relevance": 5,
+    "groundedness": 5,
+    "answer_relevance": 5
    },
    "human_notes": ""
   },
@@ -1233,11 +1233,11 @@
     ]
    },
    "human_scores": {
-    "context_relevance": null,
-    "groundedness": null,
-    "answer_relevance": null
+    "context_relevance": 4,
+    "groundedness": 5,
+    "answer_relevance": 5
    },
-   "human_notes": ""
+   "human_notes": "Customer asked why autoscaling isn't coping at peak; reply gives autoscaling-specific causes. Memory/ Garbage collection/p95 gap was passage-based."
   },
   {
    "item_id": "CAL-20",
@@ -1300,9 +1300,9 @@
     ]
    },
    "human_scores": {
-    "context_relevance": null,
-    "groundedness": null,
-    "answer_relevance": null
+    "context_relevance": 5,
+    "groundedness": 5,
+    "answer_relevance": 5
    },
    "human_notes": ""
   },
@@ -1367,9 +1367,9 @@
     ]
    },
    "human_scores": {
-    "context_relevance": null,
-    "groundedness": null,
-    "answer_relevance": null
+    "context_relevance": 5,
+    "groundedness": 5,
+    "answer_relevance": 5
    },
    "human_notes": ""
   },
@@ -1434,9 +1434,9 @@
     ]
    },
    "human_scores": {
-    "context_relevance": null,
-    "groundedness": null,
-    "answer_relevance": null
+    "context_relevance": 5,
+    "groundedness": 5,
+    "answer_relevance": 5
    },
    "human_notes": ""
   },
@@ -1501,9 +1501,9 @@
     ]
    },
    "human_scores": {
-    "context_relevance": null,
-    "groundedness": null,
-    "answer_relevance": null
+    "context_relevance": 5,
+    "groundedness": 5,
+    "answer_relevance": 5
    },
    "human_notes": ""
   },
@@ -1568,9 +1568,9 @@
     ]
    },
    "human_scores": {
-    "context_relevance": null,
-    "groundedness": null,
-    "answer_relevance": null
+    "context_relevance": 5,
+    "groundedness": 5,
+    "answer_relevance": 5
    },
    "human_notes": ""
   },
@@ -1635,11 +1635,11 @@
     ]
    },
    "human_scores": {
-    "context_relevance": null,
-    "groundedness": null,
-    "answer_relevance": null
+    "context_relevance": 5,
+    "groundedness": 5,
+    "answer_relevance": 4
    },
-   "human_notes": ""
+   "human_notes": "Body is a scope issue only; reply also volunteers rotation steps the customer didn't ask for"
   },
   {
    "item_id": "CAL-26",
@@ -1702,9 +1702,9 @@
     ]
    },
    "human_scores": {
-    "context_relevance": null,
-    "groundedness": null,
-    "answer_relevance": null
+    "context_relevance": 5,
+    "groundedness": 5,
+    "answer_relevance": 5
    },
    "human_notes": ""
   },
@@ -1769,9 +1769,9 @@
     ]
    },
    "human_scores": {
-    "context_relevance": null,
-    "groundedness": null,
-    "answer_relevance": null
+    "context_relevance": 5,
+    "groundedness": 5,
+    "answer_relevance": 5
    },
    "human_notes": ""
   },
@@ -1836,9 +1836,9 @@
     ]
    },
    "human_scores": {
-    "context_relevance": null,
-    "groundedness": null,
-    "answer_relevance": null
+    "context_relevance": 5,
+    "groundedness": 5,
+    "answer_relevance": 5
    },
    "human_notes": ""
   },
@@ -1882,9 +1882,9 @@
     ]
    },
    "human_scores": {
-    "context_relevance": null,
-    "groundedness": null,
-    "answer_relevance": null
+    "context_relevance": 5,
+    "groundedness": 5,
+    "answer_relevance": 5
    },
    "human_notes": ""
   },
@@ -1949,9 +1949,9 @@
     ]
    },
    "human_scores": {
-    "context_relevance": null,
-    "groundedness": null,
-    "answer_relevance": null
+    "context_relevance": 5,
+    "groundedness": 5,
+    "answer_relevance": 5
    },
    "human_notes": ""
   },
@@ -2016,9 +2016,9 @@
     ]
    },
    "human_scores": {
-    "context_relevance": null,
-    "groundedness": null,
-    "answer_relevance": null
+    "context_relevance": 5,
+    "groundedness": 5,
+    "answer_relevance": 5
    },
    "human_notes": ""
   },
@@ -2083,11 +2083,11 @@
     ]
    },
    "human_scores": {
-    "context_relevance": null,
-    "groundedness": null,
-    "answer_relevance": null
+    "context_relevance": 4,
+    "groundedness": 5,
+    "answer_relevance": 5
    },
-   "human_notes": ""
+   "human_notes": "Customer wants shareable evidence; reply explains but doesn't provide a shareable artefact or location. The answer actually makes sense because location is available on settings page for that specific customer page"
   },
   {
    "item_id": "CAL-33",
@@ -2150,11 +2150,11 @@
     ]
    },
    "human_scores": {
-    "context_relevance": null,
-    "groundedness": null,
-    "answer_relevance": null
+    "context_relevance": 5,
+    "groundedness": 4,
+    "answer_relevance": 5
    },
-   "human_notes": ""
+   "human_notes": "Remove and re-invite\" isn't in the passage; minor extrapolation"
   },
   {
    "item_id": "CAL-34",
@@ -2217,9 +2217,9 @@
     ]
    },
    "human_scores": {
-    "context_relevance": null,
-    "groundedness": null,
-    "answer_relevance": null
+    "context_relevance": 5,
+    "groundedness": 5,
+    "answer_relevance": 5
    },
    "human_notes": ""
   },
@@ -2284,11 +2284,11 @@
     ]
    },
    "human_scores": {
-    "context_relevance": null,
-    "groundedness": null,
-    "answer_relevance": null
+    "context_relevance": 5,
+    "groundedness": 5,
+    "answer_relevance": 4
    },
-   "human_notes": ""
+   "human_notes": "Fuller than CAL-19 but somewhat unfocused for the specific \"peak\" question . Misses naming compare median and 95th percentile latency, autoscaling policy"
   },
   {
    "item_id": "CAL-36",
@@ -2330,9 +2330,9 @@
     ]
    },
    "human_scores": {
-    "context_relevance": null,
-    "groundedness": null,
-    "answer_relevance": null
+    "context_relevance": 5,
+    "groundedness": 5,
+    "answer_relevance": 5
    },
    "human_notes": ""
   },
@@ -2397,9 +2397,9 @@
     ]
    },
    "human_scores": {
-    "context_relevance": null,
-    "groundedness": null,
-    "answer_relevance": null
+    "context_relevance": 5,
+    "groundedness": 5,
+    "answer_relevance": 5
    },
    "human_notes": ""
   },
@@ -2464,11 +2464,11 @@
     ]
    },
    "human_scores": {
-    "context_relevance": null,
-    "groundedness": null,
-    "answer_relevance": null
+    "context_relevance": 5,
+    "groundedness": 5,
+    "answer_relevance": 3
    },
-   "human_notes": ""
+   "human_notes": "Retrieval correctly followed body, not subject"
   },
   {
    "item_id": "CAL-39",
@@ -2517,11 +2517,11 @@
     ]
    },
    "human_scores": {
-    "context_relevance": null,
-    "groundedness": null,
-    "answer_relevance": null
+    "context_relevance": 2,
+    "groundedness": 5,
+    "answer_relevance": 2
    },
-   "human_notes": ""
+   "human_notes": "Retrieval failed — pulled login-errors doc; only the free-tier notes chunk of onboarding surfaced. Reply is honest about the gap but useless to the customer"
   },
   {
    "item_id": "CAL-40",
@@ -2584,9 +2584,9 @@
     ]
    },
    "human_scores": {
-    "context_relevance": null,
-    "groundedness": null,
-    "answer_relevance": null
+    "context_relevance": 5,
+    "groundedness": 5,
+    "answer_relevance": 5
    },
    "human_notes": ""
   },
@@ -2630,9 +2630,9 @@
     ]
    },
    "human_scores": {
-    "context_relevance": null,
-    "groundedness": null,
-    "answer_relevance": null
+    "context_relevance": 5,
+    "groundedness": 5,
+    "answer_relevance": 5
    },
    "human_notes": ""
   },
@@ -2690,9 +2690,9 @@
     ]
    },
    "human_scores": {
-    "context_relevance": null,
-    "groundedness": null,
-    "answer_relevance": null
+    "context_relevance": 5,
+    "groundedness": 5,
+    "answer_relevance": 5
    },
    "human_notes": ""
   },
@@ -2757,11 +2757,11 @@
     ]
    },
    "human_scores": {
-    "context_relevance": null,
-    "groundedness": null,
-    "answer_relevance": null
+    "context_relevance": 5,
+    "groundedness": 5,
+    "answer_relevance": 5
    },
-   "human_notes": ""
+   "human_notes": "Direct \"no, only per-org\" — good"
   },
   {
    "item_id": "CAL-44",
@@ -2824,11 +2824,11 @@
     ]
    },
    "human_scores": {
-    "context_relevance": null,
-    "groundedness": null,
-    "answer_relevance": null
+    "context_relevance": 5,
+    "groundedness": 5,
+    "answer_relevance": 5
    },
-   "human_notes": ""
+   "human_notes": "Follows body; DOC-ONB-002 in retrieval unused, fine"
   },
   {
    "item_id": "CAL-45",
@@ -2891,9 +2891,9 @@
     ]
    },
    "human_scores": {
-    "context_relevance": null,
-    "groundedness": null,
-    "answer_relevance": null
+    "context_relevance": 5,
+    "groundedness": 5,
+    "answer_relevance": 5
    },
    "human_notes": ""
   },
@@ -2958,9 +2958,9 @@
     ]
    },
    "human_scores": {
-    "context_relevance": null,
-    "groundedness": null,
-    "answer_relevance": null
+    "context_relevance": 5,
+    "groundedness": 5,
+    "answer_relevance": 5
    },
    "human_notes": ""
   },
@@ -3025,9 +3025,9 @@
     ]
    },
    "human_scores": {
-    "context_relevance": null,
-    "groundedness": null,
-    "answer_relevance": null
+    "context_relevance": 5,
+    "groundedness": 5,
+    "answer_relevance": 5
    },
    "human_notes": ""
   },
@@ -3092,9 +3092,9 @@
     ]
    },
    "human_scores": {
-    "context_relevance": null,
-    "groundedness": null,
-    "answer_relevance": null
+    "context_relevance": 5,
+    "groundedness": 5,
+    "answer_relevance": 5
    },
    "human_notes": ""
   },
@@ -3159,9 +3159,9 @@
     ]
    },
    "human_scores": {
-    "context_relevance": null,
-    "groundedness": null,
-    "answer_relevance": null
+    "context_relevance": 5,
+    "groundedness": 5,
+    "answer_relevance": 5
    },
    "human_notes": ""
   },
@@ -3226,9 +3226,9 @@
     ]
    },
    "human_scores": {
-    "context_relevance": null,
-    "groundedness": null,
-    "answer_relevance": null
+    "context_relevance": 5,
+    "groundedness": 5,
+    "answer_relevance": 5
    },
    "human_notes": ""
   }

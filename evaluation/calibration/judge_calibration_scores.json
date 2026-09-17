@@ -1,0 +1,307 @@
+{
+ "fixture_id": "8fdd65c70cc7",
+ "prompt_id": "PR-EVAL-JUDGE-01",
+ "downloaded_at": "2026-09-17T07:22:23.470Z",
+ "scores": {
+  "CAL-01": {
+   "notes": "",
+   "context_relevance": 5,
+   "groundedness": 5,
+   "answer_relevance": 5
+  },
+  "CAL-02": {
+   "notes": "",
+   "context_relevance": 5,
+   "groundedness": 5,
+   "answer_relevance": 5
+  },
+  "CAL-03": {
+   "notes": "No actual shareable artefact. However the answer actually makes sense because location is available on settings page for that specific customer page",
+   "context_relevance": 4,
+   "groundedness": 5,
+   "answer_relevance": 5
+  },
+  "CAL-04": {
+   "notes": "",
+   "context_relevance": 5,
+   "groundedness": 5,
+   "answer_relevance": 5
+  },
+  "CAL-05": {
+   "notes": "",
+   "context_relevance": 5,
+   "groundedness": 5,
+   "answer_relevance": 5
+  },
+  "CAL-06": {
+   "notes": "",
+   "context_relevance": 5,
+   "groundedness": 5,
+   "answer_relevance": 5
+  },
+  "CAL-07": {
+   "notes": "",
+   "context_relevance": 5,
+   "groundedness": 5,
+   "answer_relevance": 5
+  },
+  "CAL-08": {
+   "notes": "",
+   "context_relevance": 5,
+   "groundedness": 5,
+   "answer_relevance": 5
+  },
+  "CAL-09": {
+   "notes": "",
+   "context_relevance": 5,
+   "groundedness": 5,
+   "answer_relevance": 5
+  },
+  "CAL-10": {
+   "notes": "Reply ignores backup replication detail present in passages",
+   "context_relevance": 4,
+   "groundedness": 5,
+   "answer_relevance": 5
+  },
+  "CAL-11": {
+   "notes": "",
+   "context_relevance": 5,
+   "groundedness": 5,
+   "answer_relevance": 5
+  },
+  "CAL-12": {
+   "notes": "",
+   "context_relevance": 5,
+   "groundedness": 5,
+   "answer_relevance": 5
+  },
+  "CAL-13": {
+   "notes": "",
+   "context_relevance": 5,
+   "groundedness": 5,
+   "answer_relevance": 5
+  },
+  "CAL-14": {
+   "notes": "Passage says \"revoke immediately if exposed\" — reply defaults to the standard rotation flow and doesn't flag this priority.  For example DOC-AUTH-004  says \"4. If a key has been exposed publicly, revoke it immediately rather than waiting for the rotation window.\n\"",
+   "answer_relevance": 5,
+   "groundedness": 5,
+   "context_relevance": 3
+  },
+  "CAL-15": {
+   "notes": "Doesn't mention effective permissions view — the passage's actual answer to \"how do they interact\"",
+   "answer_relevance": 5,
+   "groundedness": 5,
+   "context_relevance": 4
+  },
+  "CAL-16": {
+   "notes": "",
+   "context_relevance": 5,
+   "groundedness": 5,
+   "answer_relevance": 5
+  },
+  "CAL-17": {
+   "notes": "",
+   "context_relevance": 5,
+   "groundedness": 5,
+   "answer_relevance": 5
+  },
+  "CAL-18": {
+   "notes": "",
+   "context_relevance": 5,
+   "groundedness": 5,
+   "answer_relevance": 5
+  },
+  "CAL-19": {
+   "notes": "Customer asked why autoscaling isn't coping at peak; reply gives autoscaling-specific causes. Memory/ Garbage collection/p95 gap was passage-based.",
+   "context_relevance": 4,
+   "groundedness": 5,
+   "answer_relevance": 5
+  },
+  "CAL-20": {
+   "notes": "",
+   "context_relevance": 5,
+   "groundedness": 5,
+   "answer_relevance": 5
+  },
+  "CAL-21": {
+   "notes": "",
+   "context_relevance": 5,
+   "groundedness": 5,
+   "answer_relevance": 5
+  },
+  "CAL-22": {
+   "notes": "",
+   "context_relevance": 5,
+   "groundedness": 5,
+   "answer_relevance": 5
+  },
+  "CAL-23": {
+   "notes": "",
+   "context_relevance": 5,
+   "groundedness": 5,
+   "answer_relevance": 5
+  },
+  "CAL-24": {
+   "notes": "",
+   "context_relevance": 5,
+   "groundedness": 5,
+   "answer_relevance": 5
+  },
+  "CAL-25": {
+   "notes": "Body is a scope issue only; reply also volunteers rotation steps the customer didn't ask for",
+   "context_relevance": 5,
+   "groundedness": 5,
+   "answer_relevance": 4
+  },
+  "CAL-26": {
+   "notes": "",
+   "context_relevance": 5,
+   "groundedness": 5,
+   "answer_relevance": 5
+  },
+  "CAL-27": {
+   "notes": "",
+   "context_relevance": 5,
+   "groundedness": 5,
+   "answer_relevance": 5
+  },
+  "CAL-28": {
+   "notes": "",
+   "context_relevance": 5,
+   "groundedness": 5,
+   "answer_relevance": 5
+  },
+  "CAL-29": {
+   "notes": "",
+   "context_relevance": 5,
+   "groundedness": 5,
+   "answer_relevance": 5
+  },
+  "CAL-30": {
+   "notes": "",
+   "context_relevance": 5,
+   "groundedness": 5,
+   "answer_relevance": 5
+  },
+  "CAL-31": {
+   "notes": "",
+   "context_relevance": 5,
+   "groundedness": 5,
+   "answer_relevance": 5
+  },
+  "CAL-32": {
+   "notes": "Customer wants shareable evidence; reply explains but doesn't provide a shareable artefact or location. The answer actually makes sense because location is available on settings page for that specific customer page",
+   "context_relevance": 4,
+   "groundedness": 5,
+   "answer_relevance": 5
+  },
+  "CAL-33": {
+   "notes": "Remove and re-invite\" isn't in the passage; minor extrapolation",
+   "groundedness": 4,
+   "context_relevance": 5,
+   "answer_relevance": 5
+  },
+  "CAL-34": {
+   "notes": "",
+   "context_relevance": 5,
+   "groundedness": 5,
+   "answer_relevance": 5
+  },
+  "CAL-35": {
+   "notes": "Fuller than CAL-19 but somewhat unfocused for the specific \"peak\" question . Misses naming compare median and 95th percentile latency, autoscaling policy",
+   "context_relevance": 5,
+   "groundedness": 5,
+   "answer_relevance": 4
+  },
+  "CAL-36": {
+   "notes": "",
+   "context_relevance": 5,
+   "groundedness": 5,
+   "answer_relevance": 5
+  },
+  "CAL-37": {
+   "notes": "",
+   "context_relevance": 5,
+   "groundedness": 5,
+   "answer_relevance": 5
+  },
+  "CAL-38": {
+   "notes": "Retrieval correctly followed body, not subject",
+   "answer_relevance": 3,
+   "groundedness": 5,
+   "context_relevance": 5
+  },
+  "CAL-39": {
+   "notes": "Retrieval failed — pulled login-errors doc; only the free-tier notes chunk of onboarding surfaced. Reply is honest about the gap but useless to the customer",
+   "context_relevance": 2,
+   "groundedness": 5,
+   "answer_relevance": 2
+  },
+  "CAL-40": {
+   "notes": "",
+   "context_relevance": 5,
+   "groundedness": 5,
+   "answer_relevance": 5
+  },
+  "CAL-41": {
+   "notes": "",
+   "context_relevance": 5,
+   "groundedness": 5,
+   "answer_relevance": 5
+  },
+  "CAL-42": {
+   "notes": "",
+   "context_relevance": 5,
+   "groundedness": 5,
+   "answer_relevance": 5
+  },
+  "CAL-43": {
+   "notes": "Direct \"no, only per-org\" — good",
+   "context_relevance": 5,
+   "groundedness": 5,
+   "answer_relevance": 5
+  },
+  "CAL-44": {
+   "notes": "Follows body; DOC-ONB-002 in retrieval unused, fine",
+   "context_relevance": 5,
+   "groundedness": 5,
+   "answer_relevance": 5
+  },
+  "CAL-45": {
+   "notes": "",
+   "groundedness": 5,
+   "answer_relevance": 5,
+   "context_relevance": 5
+  },
+  "CAL-46": {
+   "notes": "",
+   "context_relevance": 5,
+   "groundedness": 5,
+   "answer_relevance": 5
+  },
+  "CAL-47": {
+   "notes": "",
+   "context_relevance": 5,
+   "groundedness": 5,
+   "answer_relevance": 5
+  },
+  "CAL-48": {
+   "notes": "",
+   "context_relevance": 5,
+   "groundedness": 5,
+   "answer_relevance": 5
+  },
+  "CAL-49": {
+   "notes": "",
+   "context_relevance": 5,
+   "groundedness": 5,
+   "answer_relevance": 5
+  },
+  "CAL-50": {
+   "notes": "",
+   "context_relevance": 5,
+   "groundedness": 5,
+   "answer_relevance": 5
+  }
+ }
+}

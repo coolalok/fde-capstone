@@ -1,0 +1,440 @@
+{
+  "source_judged": "evaluation/results/judge_calibration_20260917/judged.jsonl",
+  "human_scores": "evaluation/calibration/judge_calibration_scores.json",
+  "items": [
+    {
+      "item_id": "CAL-03",
+      "ticket_id": "VAL-0054",
+      "dimensions": [
+        "answer_relevance"
+      ],
+      "human": {
+        "context_relevance": 4,
+        "groundedness": 5,
+        "answer_relevance": 5
+      },
+      "judge": {
+        "context_relevance": 4,
+        "groundedness": 5,
+        "answer_relevance": 4
+      },
+      "sent_to_customer_14sep": true,
+      "answerable_label": true,
+      "judge_unsupported_claims": [],
+      "judge_reasoning": "DOC-DATA-003 directly covers data residency and explains where primary data is stored based on the organisation settings page, although it does not provide an official written confirmation or attestation document. Every factual statement in the reply is fully grounded in DOC-DATA-003, including region determination, centralised metadata, backup replication, and migration requirements. Regarding answer relevance, the reply addresses the question of where data is stored by directing the user to their organisation settings page, but it includes extra advice about migration and backup configuration that was not specifically requested.",
+      "human_notes": "No actual shareable artefact. However the answer actually makes sense because location is available on settings page for that specific customer page"
+    },
+    {
+      "item_id": "CAL-07",
+      "ticket_id": "VAL-0058",
+      "dimensions": [
+        "answer_relevance"
+      ],
+      "human": {
+        "context_relevance": 5,
+        "groundedness": 5,
+        "answer_relevance": 5
+      },
+      "judge": {
+        "context_relevance": 5,
+        "groundedness": 5,
+        "answer_relevance": 4
+      },
+      "sent_to_customer_14sep": true,
+      "answerable_label": true,
+      "judge_unsupported_claims": [],
+      "judge_reasoning": "DOC-AUTH-004 directly addresses keys suddenly returning 401 Unauthorized, handling exposed keys, and safe key rotation procedures, matching the ticket's body and subject completely. Every factual statement and instruction in the reply is directly grounded in DOC-AUTH-004 without any unsupported claims. In terms of answer relevance, the reply directly answers the customer's query regarding the 401 error and key rotation, though including scope checks is extraneous given that the key previously worked without changes.",
+      "human_notes": ""
+    },
+    {
+      "item_id": "CAL-09",
+      "ticket_id": "VAL-0024",
+      "dimensions": [
+        "groundedness"
+      ],
+      "human": {
+        "context_relevance": 5,
+        "groundedness": 5,
+        "answer_relevance": 5
+      },
+      "judge": {
+        "context_relevance": 5,
+        "groundedness": 4,
+        "answer_relevance": 5
+      },
+      "sent_to_customer_14sep": true,
+      "answerable_label": false,
+      "judge_unsupported_claims": [
+        "you will need to create a new key with the appropriate write permissions to resolve this issue"
+      ],
+      "judge_reasoning": "DOC-AUTH-004 directly addresses keys working for some operations but failing writes due to scope restrictions, specifically noting that read-only keys cannot write. The reply draws accurately from the document regarding scopes and read-only limitations, but extrapolates by stating that a new key must be created to resolve the issue, a detail not specified in the text. In terms of answer relevance, the reply directly and concisely answers the customer's question about why write operations fail despite read operations succeeding.",
+      "human_notes": ""
+    },
+    {
+      "item_id": "CAL-10",
+      "ticket_id": "VAL-0066",
+      "dimensions": [
+        "answer_relevance"
+      ],
+      "human": {
+        "context_relevance": 4,
+        "groundedness": 5,
+        "answer_relevance": 5
+      },
+      "judge": {
+        "context_relevance": 4,
+        "groundedness": 5,
+        "answer_relevance": 4
+      },
+      "sent_to_customer_14sep": true,
+      "answerable_label": false,
+      "judge_unsupported_claims": [],
+      "judge_reasoning": "DOC-DATA-003 addresses data residency inquiries and explains that primary data storage is determined by the region shown on the organisation settings page, though it does not provide an official shareable document or written certification. The reply is completely grounded in DOC-DATA-003, with every statement directly matching the passage text regarding organisation settings, central metadata, and migration. Regarding answer relevance, the reply explains where to verify physical data storage, but does not provide or link to a shareable written confirmation document as specifically requested, representing a minor gap.",
+      "human_notes": "Reply ignores backup replication detail present in passages"
+    },
+    {
+      "item_id": "CAL-11",
+      "ticket_id": "VAL-0072",
+      "dimensions": [
+        "answer_relevance"
+      ],
+      "human": {
+        "context_relevance": 5,
+        "groundedness": 5,
+        "answer_relevance": 5
+      },
+      "judge": {
+        "context_relevance": 5,
+        "groundedness": 5,
+        "answer_relevance": 4
+      },
+      "sent_to_customer_14sep": true,
+      "answerable_label": false,
+      "judge_unsupported_claims": [],
+      "judge_reasoning": "The retrieved article DOC-BILL-001 directly addresses unexpected invoice charges and services not in use, providing exact causes and resolution steps. Every claim in the reply is supported by DOC-BILL-001, including the potential causes, the usage breakdown instructions, and the billing period explanation. Regarding answer relevance, the reply addresses the customer's question about unfamiliar charges by explaining common causes and how to inspect the breakdown, but it also includes advice regarding billing period alignment which the customer did not ask about.",
+      "human_notes": ""
+    },
+    {
+      "item_id": "CAL-14",
+      "ticket_id": "VAL-0039",
+      "dimensions": [
+        "context_relevance",
+        "answer_relevance"
+      ],
+      "human": {
+        "context_relevance": 3,
+        "groundedness": 5,
+        "answer_relevance": 5
+      },
+      "judge": {
+        "context_relevance": 5,
+        "groundedness": 5,
+        "answer_relevance": 4
+      },
+      "sent_to_customer_14sep": true,
+      "answerable_label": true,
+      "judge_unsupported_claims": [],
+      "judge_reasoning": "DOC-AUTH-004 and DOC-SEC-002 directly address both key rotation without downtime and handling keys exposed in repositories, providing full context for the issue. Every factual claim and step in the reply is directly supported by step 3 of DOC-AUTH-004. Judged against the ticket alone, the reply gives the order of operations for zero-downtime key rotation, but it contains a minor gap by not addressing the public repository exposure mentioned in the body or the 401 error in the subject.",
+      "human_notes": "Passage says \"revoke immediately if exposed\" \u2014 reply defaults to the standard rotation flow and doesn't flag this priority.  For example DOC-AUTH-004  says \"4. If a key has been exposed publicly, revoke it immediately rather than waiting for the rotation window.\n\""
+    },
+    {
+      "item_id": "CAL-15",
+      "ticket_id": "VAL-0008",
+      "dimensions": [
+        "answer_relevance"
+      ],
+      "human": {
+        "context_relevance": 4,
+        "groundedness": 5,
+        "answer_relevance": 5
+      },
+      "judge": {
+        "context_relevance": 4,
+        "groundedness": 5,
+        "answer_relevance": 3
+      },
+      "sent_to_customer_14sep": true,
+      "answerable_label": true,
+      "judge_unsupported_claims": [],
+      "judge_reasoning": "DOC-ACCT-001 addresses narrowing permissions after a review and notes that group membership can grant broader access while the effective permissions view resolves direct roles and groups together, though detailed interaction mechanics are lacking. The reply is completely grounded in the provided text, drawing directly from the symptoms, causes, and recommendations of DOC-ACCT-001. However, the customer specifically asked how group memberships interact with directly assigned roles, and the reply offers advice on preferring groups rather than explaining the interaction mechanism or mentioning the effective permissions view.",
+      "human_notes": "Doesn't mention effective permissions view \u2014 the passage's actual answer to \"how do they interact\""
+    },
+    {
+      "item_id": "CAL-16",
+      "ticket_id": "VAL-0045",
+      "dimensions": [
+        "context_relevance",
+        "groundedness"
+      ],
+      "human": {
+        "context_relevance": 5,
+        "groundedness": 5,
+        "answer_relevance": 5
+      },
+      "judge": {
+        "context_relevance": 4,
+        "groundedness": 4,
+        "answer_relevance": 5
+      },
+      "sent_to_customer_14sep": false,
+      "answerable_label": true,
+      "judge_unsupported_claims": [
+        "you may consider canceling and reinitiating the export"
+      ],
+      "judge_reasoning": "DOC-DATA-001 covers incomplete exports, asynchronous queueing for large datasets, and checking job status on the exports page, but it does not address whether or how to cancel a job that has been stuck for days. In the reply, recommending that the user consider canceling and reinitiating the export is unsupported, as no retrieved passage mentions cancellation. The reply addresses the customer's question about whether to cancel directly, while also noting timing expectations and snapshot behavior.",
+      "human_notes": ""
+    },
+    {
+      "item_id": "CAL-19",
+      "ticket_id": "VAL-0016",
+      "dimensions": [
+        "context_relevance"
+      ],
+      "human": {
+        "context_relevance": 4,
+        "groundedness": 5,
+        "answer_relevance": 5
+      },
+      "judge": {
+        "context_relevance": 5,
+        "groundedness": 5,
+        "answer_relevance": 5
+      },
+      "sent_to_customer_14sep": true,
+      "answerable_label": false,
+      "judge_unsupported_claims": [],
+      "judge_reasoning": "The retrieved passages from DOC-PERF-001 and DOC-PERF-002 directly cover latency rising at predictable times of day and explain why autoscaling may fail to keep up with load patterns, offering specific diagnostic steps and remedies. The reply draws entirely upon these documents, correctly identifying causes such as reaching maximum instance limits, metric lag, and improper cooldown settings. In relation to the ticket, the customer wanted to know why their service slows down during peak periods despite autoscaling, and the reply directly and concisely explains the specific autoscaling issues that cause this behaviour.",
+      "human_notes": "Customer asked why autoscaling isn't coping at peak; reply gives autoscaling-specific causes. Memory/ Garbage collection/p95 gap was passage-based."
+    },
+    {
+      "item_id": "CAL-23",
+      "ticket_id": "VAL-0026",
+      "dimensions": [
+        "groundedness",
+        "answer_relevance"
+      ],
+      "human": {
+        "context_relevance": 5,
+        "groundedness": 5,
+        "answer_relevance": 5
+      },
+      "judge": {
+        "context_relevance": 5,
+        "groundedness": 4,
+        "answer_relevance": 4
+      },
+      "sent_to_customer_14sep": false,
+      "answerable_label": false,
+      "judge_unsupported_claims": [
+        "if you have specific requirements for data residency, consider enabling read replicas in the EU to reduce latency for users located there without moving the primary storage"
+      ],
+      "judge_reasoning": "DOC-DATA-003 directly addresses the customer's situation by explaining how to check the organisation's region and the requirements for migrating between regions to meet data residency needs. The reply's guidance on checking the settings page and contacting support for migration is well-grounded in the text, but it mistakenly frames read replicas for latency reduction as a solution for data residency requirements. When evaluated against the ticket alone, the reply answers how to find the region and what migration involves, but introduces unrequested guidance on latency while omitting the relevant detail about cross-region backup replication.",
+      "human_notes": ""
+    },
+    {
+      "item_id": "CAL-24",
+      "ticket_id": "VAL-0071",
+      "dimensions": [
+        "groundedness",
+        "answer_relevance"
+      ],
+      "human": {
+        "context_relevance": 5,
+        "groundedness": 5,
+        "answer_relevance": 5
+      },
+      "judge": {
+        "context_relevance": 5,
+        "groundedness": 3,
+        "answer_relevance": 4
+      },
+      "sent_to_customer_14sep": true,
+      "answerable_label": false,
+      "judge_unsupported_claims": [
+        "you can choose to enable overage protection instead.",
+        "You can configure this setting on the billing page."
+      ],
+      "judge_reasoning": "DOC-BILL-003 directly addresses services being throttled by spend caps after traffic increases, and explains choosing overage instead of a hard spend cap, making retrieval highly relevant. However, the reply advises the customer to 'enable overage protection' to keep services running, whereas the text notes that disabling overage protection is what allows usage to continue beyond the allowance; telling them to enable overage protection to continue running is an unsupported claim, as is stating this setting is configured on the billing page. For answer relevance, the reply answers the customer's question on opting for overage, while adding unrequested advice about setting tiered alerts and resuming an already stopped service.",
+      "human_notes": ""
+    },
+    {
+      "item_id": "CAL-25",
+      "ticket_id": "VAL-0049",
+      "dimensions": [
+        "answer_relevance"
+      ],
+      "human": {
+        "context_relevance": 5,
+        "groundedness": 5,
+        "answer_relevance": 4
+      },
+      "judge": {
+        "context_relevance": 5,
+        "groundedness": 5,
+        "answer_relevance": 5
+      },
+      "sent_to_customer_14sep": false,
+      "answerable_label": true,
+      "judge_unsupported_claims": [],
+      "judge_reasoning": "DOC-AUTH-004 directly addresses both the write permission errors resulting from scoping issues and the procedure for rotating an exposed key. The reply's factual statements regarding key scopes, revoking exposed keys, and zero-downtime rotation are fully supported by the text in DOC-AUTH-004 without any external claims. Furthermore, the reply thoroughly addresses the customer's dual inquiry regarding the write permission error described in the body and the exposed key rotation noted in the subject.",
+      "human_notes": "Body is a scope issue only; reply also volunteers rotation steps the customer didn't ask for"
+    },
+    {
+      "item_id": "CAL-29",
+      "ticket_id": "VAL-0046",
+      "dimensions": [
+        "answer_relevance"
+      ],
+      "human": {
+        "context_relevance": 5,
+        "groundedness": 5,
+        "answer_relevance": 5
+      },
+      "judge": {
+        "context_relevance": 5,
+        "groundedness": 5,
+        "answer_relevance": 4
+      },
+      "sent_to_customer_14sep": true,
+      "answerable_label": false,
+      "judge_unsupported_claims": [],
+      "judge_reasoning": "DOC-API-002 directly identifies the symptom of iterating through results missing or duplicating records and provides cursor pagination as the specific fix. Every claim in the reply closely matches the resolution steps of DOC-API-002, leaving no unsupported statements. When evaluated against the ticket alone, the reply directly answers how to solve the issue of skipped and repeated records using cursor pagination, but it also introduces unrequested guidance regarding the page size limit and the export endpoint.",
+      "human_notes": ""
+    },
+    {
+      "item_id": "CAL-32",
+      "ticket_id": "VAL-0079",
+      "dimensions": [
+        "answer_relevance"
+      ],
+      "human": {
+        "context_relevance": 4,
+        "groundedness": 5,
+        "answer_relevance": 5
+      },
+      "judge": {
+        "context_relevance": 4,
+        "groundedness": 5,
+        "answer_relevance": 4
+      },
+      "sent_to_customer_14sep": true,
+      "answerable_label": true,
+      "judge_unsupported_claims": [],
+      "judge_reasoning": "DOC-DATA-003 directly addresses inquiries regarding data residency and locating where data is held via the organisation settings page, but it lacks a formal written confirmation or attestation document to share as requested. The reply draws entirely from DOC-DATA-003, accurately stating that the organisation settings page shows the fixed region of primary data and mentioning central metadata storage without adding unsupported claims. In terms of answer relevance, the reply provides the location to verify storage but leaves a minor gap since it cannot supply a downloadable or shareable written statement.",
+      "human_notes": "Customer wants shareable evidence; reply explains but doesn't provide a shareable artefact or location. The answer actually makes sense because location is available on settings page for that specific customer page"
+    },
+    {
+      "item_id": "CAL-33",
+      "ticket_id": "VAL-0019",
+      "dimensions": [
+        "groundedness"
+      ],
+      "human": {
+        "context_relevance": 5,
+        "groundedness": 4,
+        "answer_relevance": 5
+      },
+      "judge": {
+        "context_relevance": 5,
+        "groundedness": 3,
+        "answer_relevance": 5
+      },
+      "sent_to_customer_14sep": false,
+      "answerable_label": true,
+      "judge_unsupported_claims": [
+        "you may want to consider removing the user and re-inviting them to ensure they have the correct permissions set up"
+      ],
+      "judge_reasoning": "DOC-ACCT-001 directly addresses the issue of a user being unable to access a project and provides relevant causes and resolution steps, making context relevance strong. In terms of groundedness, while checking the effective permissions view and confirming invitation acceptance are well supported by DOC-ACCT-001, the recommendation to remove and re-invite the user is not found in the passages and constitutes a material unsupported claim. For answer relevance, the reply directly and specifically addresses the customer's question regarding why their team member cannot access the project after being granted permissions.",
+      "human_notes": "Remove and re-invite\" isn't in the passage; minor extrapolation"
+    },
+    {
+      "item_id": "CAL-35",
+      "ticket_id": "VAL-0022",
+      "dimensions": [
+        "answer_relevance"
+      ],
+      "human": {
+        "context_relevance": 5,
+        "groundedness": 5,
+        "answer_relevance": 4
+      },
+      "judge": {
+        "context_relevance": 5,
+        "groundedness": 5,
+        "answer_relevance": 5
+      },
+      "sent_to_customer_14sep": true,
+      "answerable_label": false,
+      "judge_unsupported_claims": [],
+      "judge_reasoning": "DOC-PERF-001 and DOC-PERF-002 directly address performance degradation at predictable times of day and explain why autoscaling may fail to keep up with load. The reply draws entirely upon the provided texts, noting causes such as reaching maximum instance limits, memory pressure, and slow-reacting scaling metrics without introducing unsupported claims. In addressing the customer's specific question about why an autoscaled service would slow down during peak hours, the response directly targets the likely autoscaling and resource constraints without extraneous information.",
+      "human_notes": "Fuller than CAL-19 but somewhat unfocused for the specific \"peak\" question . Misses naming compare median and 95th percentile latency, autoscaling policy"
+    },
+    {
+      "item_id": "CAL-38",
+      "ticket_id": "VAL-0062",
+      "dimensions": [
+        "answer_relevance"
+      ],
+      "human": {
+        "context_relevance": 5,
+        "groundedness": 5,
+        "answer_relevance": 3
+      },
+      "judge": {
+        "context_relevance": 5,
+        "groundedness": 5,
+        "answer_relevance": 5
+      },
+      "sent_to_customer_14sep": false,
+      "answerable_label": true,
+      "judge_unsupported_claims": [],
+      "judge_reasoning": "The retrieved passages directly address the customer's situation, explaining that log forwarding pauses after consecutive failures and must be manually resumed even after the destination becomes healthy again. Every factual claim in the reply is supported by DOC-INT-002, including the pause behavior, manual resumption requirement, status page checks, and credential verification. Furthermore, the reply directly answers why the forwarding did not resume on its own and tells the user precisely what action is needed to restore it without extraneous information.",
+      "human_notes": "Retrieval correctly followed body, not subject"
+    },
+    {
+      "item_id": "CAL-45",
+      "ticket_id": "VAL-0004",
+      "dimensions": [
+        "answer_relevance"
+      ],
+      "human": {
+        "context_relevance": 5,
+        "groundedness": 5,
+        "answer_relevance": 5
+      },
+      "judge": {
+        "context_relevance": 5,
+        "groundedness": 5,
+        "answer_relevance": 4
+      },
+      "sent_to_customer_14sep": true,
+      "answerable_label": false,
+      "judge_unsupported_claims": [],
+      "judge_reasoning": "DOC-AUTH-002 directly covers the exact issue of authenticator codes being rejected as invalid and provides the root cause (clock drift) and troubleshooting steps. Every statement in the reply is supported by DOC-AUTH-002, matching the causes and resolution steps accurately. For answer relevance, the reply directly answers the problem by highlighting time synchronization and account matching, but also includes escalation procedures for admin resets and identity verification that were not requested.",
+      "human_notes": ""
+    },
+    {
+      "item_id": "CAL-48",
+      "ticket_id": "VAL-0052",
+      "dimensions": [
+        "context_relevance",
+        "answer_relevance"
+      ],
+      "human": {
+        "context_relevance": 5,
+        "groundedness": 5,
+        "answer_relevance": 5
+      },
+      "judge": {
+        "context_relevance": 4,
+        "groundedness": 5,
+        "answer_relevance": 4
+      },
+      "sent_to_customer_14sep": true,
+      "answerable_label": true,
+      "judge_unsupported_claims": [],
+      "judge_reasoning": "DOC-AUTH-001 covers account lockout and login failures, matching the user's situation where they cannot log in while colleagues can. However, the passages do not cover how support checks account status or how a user accesses console security settings when completely locked out, leaving a small gap. Every factual statement in the reply is directly drawn from DOC-AUTH-001, making it fully grounded. On answer relevance, the reply addresses the login issue with practical troubleshooting, but includes unrequested instructions for the CLI and cannot directly perform the specific account check the user requested.",
+      "human_notes": ""
+    }
+  ]
+}
