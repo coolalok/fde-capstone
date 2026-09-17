@@ -100,7 +100,8 @@ def test_metrics_report_contains_every_required_group(db, _no_retrieval):
     rows = [process_ticket(t, call_model=FakeModelClient()) for t in SMOKE_TICKETS]
     truth = {t["ticket_id"]: t["labels"] for t in SMOKE_TICKETS}
     m = build_metrics(rows, truth, run_id="smoke", skip_guardrails=False)
-    for group in ("counts", "business_metrics", "technical_metrics", "governance_metrics"):
+    for group in ("counts", "business_metrics", "technical_metrics", "governance_metrics",
+                  "cost_metrics"):
         assert group in m, f"missing metric group: {group}"
     for key in ("fcr_proxy", "escalation_rate", "repeat_contact_proxy", "ttr_seconds_median"):
         assert key in m["business_metrics"], key

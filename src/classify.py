@@ -16,6 +16,7 @@ import logging
 import re
 from typing import Callable, Optional
 
+from src import usage
 from src.config import (
     accepts_seed,
     MODEL_MAX_RETRIES,
@@ -104,6 +105,7 @@ def _openrouter_call(system: str, user: str, seed: int = 0) -> str:
         **({"seed": seed} if accepts_seed(MODEL_BASE_URL) else {}),
         response_format={"type": "json_object"},
     )
+    usage.record("classification", MODEL_NAME, getattr(completion, "usage", None))
     # OpenRouter can answer 200 with choices=None when the upstream provider
     # errors. Subscripting that raised "TypeError: 'NoneType' object is not
     # subscriptable" from inside the caller's broad except, which recorded the

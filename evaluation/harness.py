@@ -45,6 +45,7 @@ from pathlib import Path
 from typing import Any, Optional
 
 from evaluation.gt_response_check import citation_precision_recall
+from src import usage
 from src.classify import classify
 from src.config import CONFIDENCE_THRESHOLD, GUARDRAIL_MODEL, MODEL_NAME
 from src.generate import generate, strip_citation_markers
@@ -75,6 +76,7 @@ def process_ticket(raw: dict, *, skip_guardrails: bool = False,
     know about. Production leaves it None.
     """
     started = time.perf_counter()
+    usage.drain()  # calls made outside a ticket are not this ticket's
     ticket_id = str(raw.get("ticket_id", ""))
     row: dict[str, Any] = {"ticket_id": ticket_id, "degraded": False, "error": None}
 
@@ -244,6 +246,8 @@ def process_ticket(raw: dict, *, skip_guardrails: bool = False,
                         "withheld_by": [], "modified_from_draft": False,
                         "withheld_reason": f"degraded: {type(exc).__name__}"})
 
+    calls = usage.drain()
+    row["usage"] = {**usage.summarise(calls), "per_call": calls}
     row["latency_seconds"] = round(time.perf_counter() - started, 3)
     return row
 
@@ -417,6 +421,10 @@ def build_metrics(rows: list[dict], truth: dict[str, dict], *,
         },
     }
 
+    # ── cost (NFR-08): tokens the provider returned, priced per src/usage.py ──
+    metrics["cost_metrics"] = usage.summarise(
+        [c for r in rows for c in r.get("usage", {}).get("per_call", [])])
+
     # ── confidence calibration (governance) ───────────────────────────
     # Project Brief §07: stated confidence should sit within five points of
     # observed accuracy. PR-CLASSIFY-01 states the same contract to the model
@@ -541,6 +549,10 @@ def main(argv: Optional[list[str]] = None) -> int:
     print(f"[harness] auto_respond={c['auto_respond']} escalate={c['escalate']} "
           f"block={c['block']} degraded={c['degraded']}")
     print(f"[harness] A8 reconciles={metrics['governance_metrics']['reconciles']}")
+    cost = metrics["cost_metrics"]
+    print(f"[harness] model calls={cost['calls']} tokens in={cost['prompt_tokens']} "
+          f"out={cost['completion_tokens']} cost_usd={cost['cost_usd']} "
+          f"(unpriced calls={cost['unpriced_calls']})")
     print(f"[harness] wrote {results_path}")
     print(f"[harness] wrote {report_path}")
     # A9/FR-23: a degraded run is still a completed run.
