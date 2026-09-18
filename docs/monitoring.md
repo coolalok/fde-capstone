@@ -11,6 +11,13 @@ python -m evaluation.harness --input data/validation_tickets.json \
 curl -s localhost:8001/metrics
 ```
 
+To show the endpoint without a provider — no network, no API credit, no rate
+limit — run the fake pipeline instead:
+
+```
+python -m scripts.demo_metrics
+```
+
 `--metrics-port 0` (the default) does not start the server. The default is off
 on purpose: a graded run on an unfamiliar machine must not fail because a port
 is taken, and the assessed artefact is `metrics_report.json` (A10), not a live
