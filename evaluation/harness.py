@@ -50,7 +50,8 @@ from evaluation.judge import score_item
 from evaluation.retrieval_eval import K_VALUES, recall_at_k
 from src import usage
 from src.classify import classify
-from src.config import CONFIDENCE_THRESHOLD, GUARDRAIL_MODEL, METRICS_PORT, MODEL_NAME
+from src.config import (CONFIDENCE_THRESHOLD, GUARDRAIL_MODEL, METRICS_PORT,
+                        MODEL_CACHE_DISABLED, MODEL_NAME)
 from src.generate import generate, strip_citation_markers
 from src.guardrails import run_all
 from src.ingest import normalise_any
@@ -520,8 +521,12 @@ def build_metrics(rows: list[dict], truth: dict[str, dict], *,
     }
 
     # ── cost (NFR-08): tokens the provider returned, priced per src/usage.py ──
-    metrics["cost_metrics"] = usage.summarise(
-        [c for r in rows for c in r.get("usage", {}).get("per_call", [])])
+    metrics["cost_metrics"] = {
+        # D-08: a cached run replays earlier replies. State whether the cache
+        # was on, so no reader takes replayed figures for live behaviour.
+        "model_cache_enabled": not MODEL_CACHE_DISABLED,
+        **usage.summarise([c for r in rows for c in r.get("usage", {}).get("per_call", [])]),
+    }
 
     # ── confidence calibration (governance) ───────────────────────────
     # Project Brief §07: stated confidence should sit within five points of
@@ -682,15 +687,29 @@ def main(argv: Optional[list[str]] = None) -> int:
     metrics["wall_clock_seconds"] = round(time.perf_counter() - started, 1)
     report_path = output_dir / "metrics_report.json"
     report_path.write_text(json.dumps(metrics, indent=2))
+    # The Evaluation Framework's results table, produced by this run rather than
+    # by hand afterwards (Framework §4). A failure here must not fail the run (A9).
+    try:
+        from evaluation.results_table import write as write_results_table
+
+        write_results_table(output_dir, rows, metrics,
+                            {t.get("ticket_id"): t for t in tickets})
+        print(f"[harness] wrote {output_dir / 'results_table.md'}")
+    except Exception:  # noqa: BLE001 - reporting must never end a completed run
+        logger.warning("harness.results_table_failed", exc_info=True)
 
     c = metrics["counts"]
     print(f"[harness] auto_respond={c['auto_respond']} escalate={c['escalate']} "
           f"block={c['block']} degraded={c['degraded']}")
     print(f"[harness] A8 reconciles={metrics['governance_metrics']['reconciles']}")
     cost = metrics["cost_metrics"]
-    print(f"[harness] model calls={cost['calls']} tokens in={cost['prompt_tokens']} "
-          f"out={cost['completion_tokens']} cost_usd={cost['cost_usd']} "
-          f"(unpriced calls={cost['unpriced_calls']})")
+    print(f"[harness] model calls={cost['calls']} (live={cost['live_calls']} "
+          f"cached={cost['cached_calls']}, cache "
+          f"{'on' if cost['model_cache_enabled'] else 'off'}) "
+          f"tokens in={cost['prompt_tokens']} out={cost['completion_tokens']} "
+          f"cost_usd={cost['cost_usd']} (unpriced calls={cost['unpriced_calls']}) "
+          f"replayed tokens in={cost['cached_prompt_tokens']} "
+          f"out={cost['cached_completion_tokens']} cost_saved_usd={cost['cost_saved_usd']}")
     print(f"[harness] wrote {results_path}")
     print(f"[harness] wrote {report_path}")
     # A9/FR-23: a degraded run is still a completed run.

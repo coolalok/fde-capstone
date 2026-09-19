@@ -109,6 +109,8 @@ def test_metrics_report_contains_every_required_group(db, _no_retrieval):
                 "intent_per_class", "intent_accuracy", "citation_accuracy",
                 "citation_accuracy_sent"):
         assert key in m["technical_metrics"], key
+    for key in ("model_cache_enabled", "live_calls", "cached_calls", "cost_saved_usd"):
+        assert key in m["cost_metrics"], key
     for key in ("decisions_logged", "reconciles", "guardrail_activations",
                 "pii_detections", "confidence_calibration"):
         assert key in m["governance_metrics"], key
@@ -194,6 +196,9 @@ def test_full_cli_run_exits_zero_and_writes_both_artefacts(db, _no_retrieval, tm
     report = json.loads((out / "metrics_report.json").read_text())
     assert report["counts"]["tickets_processed"] == len(SMOKE_TICKETS)
     assert len((out / "results.jsonl").read_text().strip().splitlines()) == len(SMOKE_TICKETS)
+    # Evaluation Framework §4: the results table is produced by the run itself.
+    table = (out / "results_table.md").read_text()
+    assert "| Measure | Baseline | Target | Achieved | Confidence in the figure | Notes |" in table
 
 
 # ─── result rows must be auditable after the fact (2026-09-13) ───────

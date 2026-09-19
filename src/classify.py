@@ -125,7 +125,8 @@ def _openrouter_call(system: str, user: str, seed: int = 0) -> str:
     if not getattr(completion, "choices", None):
         raise ValueError(f"provider returned no choices (model={MODEL_NAME})")
     content = completion.choices[0].message.content or ""
-    model_cache.put(cache_key, content, stage="classification", model=MODEL_NAME)
+    model_cache.put(cache_key, content, stage="classification", model=MODEL_NAME,
+                    usage=getattr(completion, "usage", None))
     return content
 
 

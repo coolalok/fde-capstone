@@ -172,7 +172,8 @@ def _openrouter_call(system: str, user: str, seed: int = 0) -> str:
         # simply returned nothing. Raise the true cause so the fail-safe verdict
         # and the failure counter record what actually happened.
         raise ValueError(f"{GUARDRAIL_MODEL} returned empty content")
-    model_cache.put(cache_key, content, stage="guardrail", model=GUARDRAIL_MODEL)
+    model_cache.put(cache_key, content, stage="guardrail", model=GUARDRAIL_MODEL,
+                    usage=getattr(completion, "usage", None))
     return content
 
 
@@ -340,6 +341,39 @@ class Guardrail(Protocol):
 # ─── FR-16: PII guardrail ───────────────────────────────────────────
 
 
+def regex_pii_detections(answer: str) -> list[dict]:
+    """The regex pass of the PII guardrail, callable on any text.
+
+    Shared with evaluation/results_table.py, whose scan of every sent reply must
+    use exactly the patterns the guardrail enforces. Citation markers are masked
+    first (see _mask_citation_markers); indices are preserved, so start_index
+    still points into ``answer``.
+    """
+    detections: list[dict] = []
+    scan_text = _mask_citation_markers(answer)
+    for category, pattern in [
+        ("email", _RE_EMAIL),
+        ("api_key", _RE_API_KEY),
+        ("phone", _RE_PHONE),
+        ("account_number", _RE_ACCOUNT),
+    ]:
+        for match in pattern.finditer(scan_text):
+            text = match.group(0)
+            # Skip obvious placeholders wrapped in <> or SHOUTING_SNAKE_CASE.
+            if _looks_like_placeholder(text):
+                continue
+            detections.append(
+                {
+                    "category": category,
+                    "text": text,
+                    "start_index": match.start(),
+                    "reason": f"regex match ({category})",
+                    "source": "regex",
+                }
+            )
+    return detections
+
+
 @dataclass
 class PIIGuardrail:
     """FR-16 — block responses containing PII.
@@ -368,32 +402,8 @@ class PIIGuardrail:
                 reason="no answer text to inspect",
             )
 
-        detections: list[dict] = []
-
         # ── Pass 1: regex ─────────────────────────────────────
-        # Citation markers are masked first — see _mask_citation_markers.
-        # Indices are preserved, so start_index still points into answer.
-        scan_text = _mask_citation_markers(response.answer)
-        for category, pattern in [
-            ("email", _RE_EMAIL),
-            ("api_key", _RE_API_KEY),
-            ("phone", _RE_PHONE),
-            ("account_number", _RE_ACCOUNT),
-        ]:
-            for match in pattern.finditer(scan_text):
-                text = match.group(0)
-                # Skip obvious placeholders wrapped in <> or SHOUTING_SNAKE_CASE.
-                if _looks_like_placeholder(text):
-                    continue
-                detections.append(
-                    {
-                        "category": category,
-                        "text": text,
-                        "start_index": match.start(),
-                        "reason": f"regex match ({category})",
-                        "source": "regex",
-                    }
-                )
+        detections: list[dict] = regex_pii_detections(response.answer)
 
         # ── Pass 2: LLM ───────────────────────────────────────
         llm_detections = self._call_llm(response.answer, context.ticket.ticket_id)

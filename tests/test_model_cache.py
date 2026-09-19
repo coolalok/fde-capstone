@@ -154,3 +154,52 @@ def test_a_cached_reply_is_served_with_no_api_key(cache_dir, monkeypatch):
     assert _FakeOpenAI.calls == 1
     with pytest.raises(RuntimeError, match="not set"):
         classify._openrouter_call("system", "a ticket never seen before", 0)
+
+
+# ─── every replay is logged ──────────────────────────────────────────
+
+
+class _Usage:
+    prompt_tokens = 1200
+    completion_tokens = 80
+
+
+def test_a_hit_is_recorded_as_a_cached_call_with_the_original_token_counts(cache_dir):
+    """The cache is encouraged, but a run must say how much of it was replayed."""
+    from src import usage
+    from src.model_cache import get, put
+
+    usage.drain()
+    put(_key(), "reply", stage="generation", model="gpt-4o-mini", usage=_Usage())
+    assert usage.drain() == [], "storing a reply is not a call"
+    assert get(_key(), stage="generation") == "reply"
+    calls = usage.drain()
+    assert len(calls) == 1
+    assert calls[0]["cached"] is True and calls[0]["stage"] == "generation"
+    assert calls[0]["model"] == "gpt-4o-mini"
+    assert (calls[0]["prompt_tokens"], calls[0]["completion_tokens"]) == (1200, 80)
+    assert calls[0]["cost_usd"] == 0.0 and calls[0]["cost_saved_usd"] > 0
+
+
+def test_an_entry_stored_before_counts_were_kept_is_still_logged(cache_dir):
+    import json
+
+    from src import usage
+    from src.model_cache import get
+
+    (cache_dir / f"{_key()}.json").write_text(json.dumps(
+        {"content": "old reply", "stage": "classification", "model": "m"}))
+    usage.drain()
+    assert get(_key(), stage="classification") == "old reply"
+    calls = usage.drain()
+    assert len(calls) == 1 and calls[0]["cached"] is True
+    assert calls[0]["prompt_tokens"] is None
+
+
+def test_a_miss_is_not_recorded_as_a_call(cache_dir):
+    from src import usage
+    from src.model_cache import get
+
+    usage.drain()
+    assert get(_key(user="never stored"), stage="guardrail") is None
+    assert usage.drain() == []

@@ -160,7 +160,8 @@ def _openrouter_call(system: str, user: str, seed: int = 0) -> str:
             f"(finish_reason=length, model={MODEL_NAME})"
         )
     content = choice.message.content or ""
-    model_cache.put(cache_key, content, stage="generation", model=MODEL_NAME)
+    model_cache.put(cache_key, content, stage="generation", model=MODEL_NAME,
+                    usage=getattr(completion, "usage", None))
     return content
 
 

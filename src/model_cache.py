@@ -34,8 +34,9 @@ import json
 import logging
 import tempfile
 from pathlib import Path
-from typing import Optional
+from typing import Any, Optional
 
+from src import usage
 from src.config import MODEL_CACHE_DIR, MODEL_CACHE_DISABLED
 from src.metrics import MODEL_CACHE_HITS
 
@@ -61,18 +62,26 @@ def get(cache_key: str, *, stage: str = "") -> Optional[str]:
         record = json.loads(path.read_text(encoding="utf-8"))
         content = record["content"]
     except FileNotFoundError:
+        logger.info("model_cache.miss", extra={"key": cache_key[:12], "stage": stage})
         return None
     except (OSError, ValueError, KeyError) as exc:
         logger.warning("model_cache.unreadable",
                        extra={"key": cache_key[:12], "error": str(exc)})
         return None
     MODEL_CACHE_HITS.labels(stage=stage or "unknown").inc()
-    logger.info("model_cache.hit", extra={"key": cache_key[:12], "stage": stage})
+    logger.info("model_cache.hit", extra={"key": cache_key[:12], "stage": stage,
+                                          "model": record.get("model", "")})
+    # A replayed reply is recorded like a live call, marked cached, with the
+    # token counts of the call that filled the cache (None for entries stored
+    # before counts were kept). A run must be able to say how much it replayed.
+    usage.record(stage, record.get("model", ""), record, cached=True)
     return content
 
 
-def put(cache_key: str, content: str, *, stage: str = "", model: str = "") -> None:
-    """Store a reply. Never raises: failing to cache must not fail the ticket."""
+def put(cache_key: str, content: str, *, stage: str = "", model: str = "",
+        usage: Any = None) -> None:
+    """Store a reply, with the live call's token counts when the provider sent
+    them. Never raises: failing to cache must not fail the ticket."""
     if MODEL_CACHE_DISABLED:
         return
     directory = Path(MODEL_CACHE_DIR)
@@ -82,9 +91,14 @@ def put(cache_key: str, content: str, *, stage: str = "", model: str = "") -> No
         # that later reads as a valid reply.
         with tempfile.NamedTemporaryFile("w", dir=directory, delete=False,
                                          encoding="utf-8") as handle:
-            json.dump({"content": content, "stage": stage, "model": model}, handle)
+            json.dump({"content": content, "stage": stage, "model": model,
+                       "prompt_tokens": getattr(usage, "prompt_tokens", None),
+                       "completion_tokens": getattr(usage, "completion_tokens", None)},
+                      handle)
             temporary = Path(handle.name)
         temporary.replace(directory / f"{cache_key}.json")
+        logger.info("model_cache.stored", extra={"key": cache_key[:12], "stage": stage,
+                                                 "model": model})
     except OSError as exc:
         logger.warning("model_cache.unwritable",
                        extra={"key": cache_key[:12], "error": str(exc)})
