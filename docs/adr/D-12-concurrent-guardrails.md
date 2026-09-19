@@ -34,7 +34,14 @@ Measured with `evaluation/guardrail_parallel_check.py` on 20 stored drafts from 
 
 - **Same verdicts:** all 20 drafts got identical verdicts from every guardrail in turn and concurrently, and in both in-turn passes. Concurrency changes no decision.
 - **Local speed-up: 1.11x.** The local server only overlaps requests when started with `OLLAMA_NUM_PARALLEL` above 1. On this 16 GB machine Ollama otherwise chooses one slot, and four concurrent calls took as long as four in turn (a probe measured 1.05x). With four slots a probe of four short generations measured 1.75x, but guardrail calls are dominated by long prompts, and prompt processing on one local GPU barely overlaps. On a local judge the gain is real but small.
-- **Hosted providers: not measured.** A hosted provider serves concurrent requests on separate hardware, so the stage should approach its slowest call, not the sum. That is the configuration where the 10.5 s mean was measured, and it is the next run's number to check.
+- **Hosted providers: 3.3x.** Two 80-ticket runs on the same models (gpt-4o-mini drafting, gemini-3.8-flash judging, cache off): b21_openai_gemini_80_20260920 in turn at 562f943, b21_openai_gemini_80_d12_20260920 concurrent at be776a6. Compared on tickets 1-70, because the Gemini account's prepaid credit ran out at ticket 71 of the concurrent run (HTTP 402; tickets 71-80 were fail-safe blocked, as A11 requires):
+
+  | Tickets 1-70 | Guardrails mean | Guardrails p95 | Ticket mean | Ticket p95 |
+  |---|---|---|---|---|
+  | In turn | 10.14 s | 20.05 s | 13.99 s | 24.23 s |
+  | Concurrent | 3.10 s | 8.90 s | 6.59 s | 12.19 s |
+
+  4 of the 70 decisions differ between the runs, and every one had a different draft or classifier confidence (the drafting model varies run to run). On the 19 tickets whose drafts were identical in both runs, every guardrail verdict was identical. No rate-limit pacing engaged in either run.
 
 The check first alternated the modes per ticket. That design was discarded: Ollama keeps each slot's last prompt, so whichever mode ran second on a ticket reused the first one's work (VAL-0001: 33.9 s, then 4.5 s).
 
@@ -46,7 +53,7 @@ The check first alternated the modes per ticket. That design was discarded: Olla
 
 ## Revisit trigger
 
-A run where rate-limit pacing engages more often than in the equivalent in-turn run, or a hosted-provider run whose guardrail stage does not fall well below the 10.5 s mean measured in turn.
+A run where rate-limit pacing engages more often than in the equivalent in-turn run, or a hosted-provider run whose guardrail stage mean rises back towards the 10.1 s measured in turn.
 
 ## Supersedes / superseded by
 

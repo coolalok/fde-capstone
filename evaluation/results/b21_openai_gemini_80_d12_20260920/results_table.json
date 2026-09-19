@@ -1,0 +1,205 @@
+{
+  "header": {
+    "run_id": "harness-20260919T204301Z-5aae4b55",
+    "run_date": "2026-09-19",
+    "tickets": 80,
+    "generator_model": "gpt-4o-mini",
+    "guardrail_model": "gemini-3.8-flash",
+    "guardrails_enabled": true,
+    "confidence_threshold": 0.85,
+    "model_cache_enabled": false,
+    "cached_calls": 0,
+    "live_calls": 414,
+    "tickets_with_replayed_calls": 0,
+    "code_version": "be776a6",
+    "hidden_set_runs": 0
+  },
+  "rows": [
+    {
+      "measure": "First contact resolution",
+      "baseline": "42%",
+      "target": "60%",
+      "achieved": "35.0% correctly resolved (50.0% auto-sent)",
+      "confidence": "95% CI 25-46% (n=80)",
+      "notes": "12 of 40 sent replies went to tickets the labels say must be held, so they are not counted as resolved: a wrong answer returns as a repeat contact. Correctness is agreement with labels.expected_route, not a check of reply quality.",
+      "status": "NOT MET"
+    },
+    {
+      "measure": "Mean time to first reply",
+      "baseline": "8 to 12 hrs",
+      "target": "< 5 min",
+      "achieved": "5.9 s",
+      "confidence": "n=40 auto-sent tickets; median 5.8 s",
+      "notes": "Harness time from ticket read to reply ready; excludes queueing and delivery. The 40 escalated or blocked tickets get no automated reply (holding reply is out of scope, PRD Table 6), so their first reply comes from the human queue.",
+      "status": "MET"
+    },
+    {
+      "measure": "Satisfaction proxy",
+      "baseline": "3.2 / 5",
+      "target": "4.0",
+      "achieved": "Not measured",
+      "confidence": "No scored sample on this run",
+      "notes": "The Framework's method is human review of a stated sample of responses against a rubric, reporting sample size, rubric and scorers. Not done for this run. Nearest evidence: B-18, where one person scored 50 drafts from b21_openai_80_20260914 on the judge's RAG rubric (mean answer relevance 4.86/5) \u2014 a different rubric, a different run and a single scorer, so not a satisfaction proxy.",
+      "status": "NOT MEASURED"
+    },
+    {
+      "measure": "Escalation rate",
+      "baseline": "58%",
+      "target": "\u2264 30%",
+      "achieved": "50.0%",
+      "confidence": "95% CI 39-61% (n=80)",
+      "notes": "7 escalated by routing and 33 blocked by a guardrail; 10 tickets were blocked because a check could not run (fail-safe), not because it found a fault.",
+      "status": "NOT MET"
+    },
+    {
+      "measure": "Classification precision",
+      "baseline": "\u2014",
+      "target": "85%",
+      "achieved": "77.0% mean over 22 classes; 14 of 22 at \u226585%",
+      "confidence": "Per-class n: median 3; 16 classes have fewer than 5 tickets, so per-class figures are indicative only",
+      "notes": "Weakest: account_access 0% (n=4); integration_help 0% (n=3); rate_limit 0% (n=1). Overall intent accuracy 87.5%. The target is per class, so it is met only if every class reaches 85%.",
+      "status": "NOT MET"
+    },
+    {
+      "measure": "Hallucination rate",
+      "baseline": "\u2014",
+      "target": "\u2264 5%",
+      "achieved": "Not measured to method",
+      "confidence": "\u2014",
+      "notes": "The Framework requires at least fifty responses assessed independently by two people, with their agreement reported. This project had one human assessor. Nearest evidence (B-18, drafts from b21_openai_80_20260914): one human found an unsupported claim in 1 of 50 drafts; the LLM judge in 5 of 50; the judge failed calibration (pooled Spearman 0.3492 against 0.70).",
+      "status": "NOT MEASURED"
+    },
+    {
+      "measure": "Citation accuracy",
+      "baseline": "\u2014",
+      "target": "95%",
+      "achieved": "Not measured to method",
+      "confidence": "\u2014",
+      "notes": "The Framework checks each citation against the sentence it is attached to. Sentence-level support was not assessed. Nearest evidence: the cited ARTICLE was one the labels expect in 94.3% of citations over 53 drafts (recall 82.1%) \u2014 a check of the right source, not of support.",
+      "status": "NOT MEASURED"
+    },
+    {
+      "measure": "Latency p95",
+      "baseline": "\u2014",
+      "target": "< 3 s",
+      "achieved": "10.8 s",
+      "confidence": "n=80 live tickets; max 32.4 s",
+      "notes": "End to end per ticket, including retrieval and every model call, run in sequence. Models: gpt-4o-mini drafting, gemini-3.8-flash guardrails.",
+      "status": "NOT MET"
+    },
+    {
+      "measure": "Private data occurrences",
+      "baseline": "\u2014",
+      "target": "0",
+      "achieved": "0",
+      "confidence": "Automated scan of all 40 sent replies; manual sample review: not done",
+      "notes": "The scan uses the PII guardrail's own patterns (email, API key, phone, account number), independently of the judge's verdict. The guardrail blocked 0 drafts for private data before sending.",
+      "status": "MET"
+    },
+    {
+      "measure": "Cross-group variation",
+      "baseline": "\u2014",
+      "target": "< 5 pts",
+      "achieved": "34 pts (customer_tier: business vs standard)",
+      "confidence": "breach at n=30; segments under n=10 excluded",
+      "notes": "Quality here is decision correctness against labels, not a rubric score, across language fluency, region and tier. NFR-05 allows 15 points; this Framework target is 5. Full per-segment figures: fairness audit.",
+      "status": "NOT MET"
+    }
+  ],
+  "governance": [
+    {
+      "condition": "Private data in outbound text",
+      "requirement": "Zero occurrences.",
+      "result": "0 (Automated scan of all 40 sent replies; manual sample review: not done)",
+      "status": "MET"
+    },
+    {
+      "condition": "Quality across customer groups",
+      "requirement": "Under five percentage points of variation.",
+      "result": "34 pts (customer_tier: business vs standard) (breach at n=30; segments under n=10 excluded)",
+      "status": "NOT MET"
+    },
+    {
+      "condition": "Decision logging",
+      "requirement": "Complete coverage.",
+      "result": "80 of 80 tickets logged; reconciles=True",
+      "status": "MET"
+    },
+    {
+      "condition": "Confidence calibration",
+      "requirement": "Stated confidence within five points of observed accuracy.",
+      "result": "largest gap -25.0 pts in band 0.7-0.8 (stated 0.75, observed 0.50, n=10); 0.80-0.90 band observed 0.92 (n=52, Framework expects about 0.85)",
+      "status": "NOT MET"
+    }
+  ],
+  "business": [
+    "40 of 80 tickets (50.0%) were answered without a human; 40 (50.0%) went to the human queue (baseline escalation 58%).",
+    "12 of those answers went to tickets that should have reached a person, so correct automated resolution is 35.0% against the 42% human baseline: the system moves work off the queue, but not yet more correctly resolved work."
+  ],
+  "routing": {
+    "n": 80,
+    "should_send": 48,
+    "sent": 40,
+    "correct_sends": 28,
+    "wrong_sends": 12,
+    "wrong_holds": 20,
+    "send_precision": 0.7,
+    "send_coverage": 0.5833,
+    "wrong_send_rate": 0.15,
+    "wrong_hold_rate": 0.25
+  },
+  "failures": {
+    "wrong_decisions": 32,
+    "by_stage": {
+      "guardrail": 20,
+      "answerability": 11,
+      "other": 1
+    },
+    "by_reason": {
+      "answerability:sent_unanswerable": 11,
+      "guardrail:confidence_floor:verdict": 8,
+      "guardrail:pii:fail_safe": 8,
+      "guardrail:grounding:verdict": 4,
+      "other:sent_against_label": 1
+    }
+  },
+  "stages": {
+    "n_live_tickets": 80,
+    "stages": {
+      "classification": {
+        "n": 80,
+        "p50": 1.413,
+        "p95": 1.728,
+        "mean": 1.451
+      },
+      "retrieval": {
+        "n": 80,
+        "p50": 0.097,
+        "p95": 0.13,
+        "mean": 0.327
+      },
+      "generation": {
+        "n": 80,
+        "p50": 1.644,
+        "p95": 2.269,
+        "mean": 1.657
+      },
+      "guardrails": {
+        "n": 80,
+        "p50": 2.339,
+        "p95": 7.513,
+        "mean": 2.852
+      }
+    },
+    "model_calls_per_ticket": {
+      "mean": 5.17,
+      "max": 6
+    }
+  },
+  "limitations": [
+    "A single run of 80 tickets: one ticket moves a rate by 1.2 points, and 95% intervals are wide.",
+    "Not measured to the Framework's method: Satisfaction proxy, Hallucination rate, Citation accuracy.",
+    "Correctness is agreement with the dataset's labels, some of which are debatable (e.g. VAL-0004 is labelled unanswerable although DOC-AUTH-002 covers it).",
+    "Hidden evaluation set runs: 0. These figures are from a labelled validation set, not the held-out test set."
+  ]
+}
