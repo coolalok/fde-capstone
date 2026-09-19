@@ -34,6 +34,12 @@ Design decisions worth reading:
   generator (B-11) can pick either; the guardrail (B-13 grounding
   check) reads Passage.text so its citation-matching sees the header.
 
+- The query is the ticket's subject and body (D-09), built by
+  `retrieval_query`. Body alone was the original query; on the 357
+  answerable dev tickets adding the subject lifts hit@1 from 87.7% to 89.9%
+  (evaluation/answerability_probe.py). Chat tickets carry no subject and
+  query with the body alone, as before.
+
 - Empty query, threshold-filtered-to-empty, index missing, embedder
   fails — all return `[]` and log the outcome. Never raises. A11.
 """
@@ -45,7 +51,7 @@ from typing import Callable, Optional
 from src.config import CHROMA_PATH, EMBEDDING_MODEL, RETRIEVAL_THRESHOLD, RETRIEVAL_TOP_K
 from src.index_docs import DISTANCE_SPACE
 from src.logging_store import log_decision
-from src.schema import Passage
+from src.schema import Passage, Ticket
 
 logger = logging.getLogger(__name__)
 
@@ -112,6 +118,17 @@ def _clear_cache() -> None:
     global _STORE, _EMBEDDINGS
     _STORE = None
     _EMBEDDINGS = None
+
+
+def retrieval_query(ticket: Ticket) -> str:
+    """The text retrieval searches with: subject, a blank line, then body (D-09).
+
+    Plain text, no "Subject:" / "Body:" labels: the labels would be embedded too
+    and pull every query toward each other. A missing or blank subject leaves
+    the body alone.
+    """
+    subject = (ticket.subject or "").strip()
+    return f"{subject}\n\n{ticket.body}" if subject else ticket.body
 
 
 # Callable signature: (query, top_k) -> list of (text, metadata, score) tuples.

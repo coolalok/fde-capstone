@@ -58,7 +58,7 @@ from src.ingest import normalise_any
 from src.logging_config import configure_logging
 from src.logging_store import new_run_id, reconcile, set_run_id
 from src.metrics import LATENCY, TICKETS, start_metrics_server
-from src.retrieve import retrieve
+from src.retrieve import retrieval_query, retrieve
 from src.route import AUTO_RESPOND, BLOCK, ESCALATE, route
 from src.schema import GuardrailContext, Route
 
@@ -129,7 +129,7 @@ def process_ticket(raw: dict, *, skip_guardrails: bool = False, judge: bool = Fa
         row["classifier_error"] = classification.error
 
         t0 = time.perf_counter()
-        passages = retrieve(ticket.body, ticket_id=ticket_id)
+        passages = retrieve(retrieval_query(ticket), ticket_id=ticket_id)
         stage_seconds["retrieval"] = round(time.perf_counter() - t0, 3)
         row["retrieved_doc_ids"] = [p.doc_id for p in passages]
         row["top_score"] = passages[0].score if passages else 0.0

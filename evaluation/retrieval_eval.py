@@ -227,7 +227,7 @@ def main(argv: list[str] | None = None) -> int:
     from src.ingest import normalise_any
     from src.logging_config import configure_logging
     from src.logging_store import new_run_id, set_run_id
-    from src.retrieve import retrieve
+    from src.retrieve import retrieval_query, retrieve
 
     configure_logging()
     run_id = set_run_id(new_run_id("retrieval-eval"))
@@ -251,13 +251,14 @@ def main(argv: list[str] | None = None) -> int:
             ticket = normalise_any(raw)
             expected = gt[tid]["expected_doc_ids"]
             # Same query text the harness sends, so this measures production.
-            ranked = [p.doc_id for p in retrieve(ticket.body, ticket_id=tid)]
+            ranked = [p.doc_id for p in retrieve(retrieval_query(ticket), ticket_id=tid)]
             # Full ranking for the margin. The least similar chunks score just
             # below 0, and LangChain then warns with the ENTIRE result list —
             # megabytes per ticket. Comparing gaps is unaffected, so silence it.
             with warnings.catch_warnings():
                 warnings.simplefilter("ignore", UserWarning)
-                full = store.similarity_search_with_relevance_scores(ticket.body, k=n_chunks)
+                full = store.similarity_search_with_relevance_scores(
+                    retrieval_query(ticket), k=n_chunks)
             margin, rival = score_margin(
                 best_score_per_doc([(d.metadata["doc_id"], s) for d, s in full]), set(expected))
             row = {"ticket_id": tid, "intent": gt[tid]["intent"],

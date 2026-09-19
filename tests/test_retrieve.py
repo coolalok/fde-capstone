@@ -330,3 +330,24 @@ def test_passage_missing_metadata_falls_back_to_empty_strings(db):
     assert p.category == ""
     assert p.chunk_index == 0
     assert p.chunk_text == ""
+
+
+# ─── retrieval_query (D-09) ─────────────────────────────────────────
+
+
+def test_retrieval_query_puts_the_subject_before_the_body():
+    from src.retrieve import retrieval_query
+    from src.schema import Ticket
+
+    t = Ticket(ticket_id="T-Q", channel="email", subject="MFA code rejected",
+               body="Every code I enter is refused.")
+    assert retrieval_query(t) == "MFA code rejected\n\nEvery code I enter is refused."
+
+
+def test_retrieval_query_is_the_body_alone_when_there_is_no_subject():
+    from src.retrieve import retrieval_query
+    from src.schema import Ticket
+
+    for subject in ("", "   "):
+        t = Ticket(ticket_id="T-Q", channel="chat", subject=subject, body="help")
+        assert retrieval_query(t) == "help"
