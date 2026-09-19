@@ -357,12 +357,22 @@ def b18_evidence() -> Optional[dict]:
     }
 
 
+# The paths whose contents decide what a run does. A commit that only adds
+# results does not change the system, so it must not change the version.
+CODE_PATHS = ("src", "prompts", "evaluation/*.py")
+
+
 def git_commit() -> str:
+    """The last commit that changed code, marked when code has uncommitted edits."""
+    def git(*args: str) -> str:
+        return subprocess.run(["git", *args], cwd=_ROOT, capture_output=True,
+                              text=True, check=True).stdout.strip()
     try:
-        return subprocess.run(["git", "rev-parse", "--short", "HEAD"], cwd=_ROOT,
-                              capture_output=True, text=True, check=True).stdout.strip()
+        commit = git("log", "-1", "--format=%h", "--", *CODE_PATHS)
+        dirty = git("status", "--porcelain", "--", *CODE_PATHS)
     except (OSError, subprocess.CalledProcessError):
         return "unknown"
+    return f"{commit} + uncommitted changes" if dirty else commit
 
 
 def build(rows: list[dict], metrics: dict, tickets: dict[str, dict], *,

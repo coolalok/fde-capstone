@@ -134,3 +134,19 @@ def test_every_framework_row_and_column_is_present_in_the_markdown():
     assert table["header"]["run_date"] == "2026-09-19"
     assert "not recorded" in md, "a run without cache logging must not claim 0 cached calls"
     assert any("Hidden evaluation set runs: 0" in x for x in table["limitations"])
+
+
+def test_code_version_ignores_result_only_commits_and_flags_uncommitted_code(monkeypatch):
+    calls = []
+
+    class _Done:
+        def __init__(self, out):
+            self.stdout = out
+
+    def fake_run(args, **kw):
+        calls.append(args)
+        return _Done("abc1234" if args[1] == "log" else " M src/route.py")
+
+    monkeypatch.setattr(rt.subprocess, "run", fake_run)
+    assert rt.git_commit() == "abc1234 + uncommitted changes"
+    assert calls[0][-3:] == list(rt.CODE_PATHS), "only code paths decide the version"
