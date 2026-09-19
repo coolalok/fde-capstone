@@ -62,6 +62,7 @@ from src.config import (
     require_key,
 )
 from src.logging_store import log_decision
+from src import model_cache
 from src.metrics import MODEL_CALL_FAILURES
 from src.prompt_loader import load_prompt
 from src.schema import GeneratedResponse, Passage, Ticket
@@ -108,6 +109,14 @@ def _openrouter_call(system: str, user: str, seed: int = 0) -> str:
     """
     from openai import OpenAI  # imported lazily so unit tests don't need the pkg
 
+    # Cache first, before the key check and the client: a cached reply costs
+    # no quota, and a replay of a previous run works with no provider at all.
+    cache_key = model_cache.key(model=MODEL_NAME, system=system, user=user,
+                                seed=seed, temperature=GENERATE_TEMPERATURE)
+    cached = model_cache.get(cache_key, stage="generation")
+    if cached is not None:
+        return cached
+
     require_key()
     # Bounded on purpose: the SDK default is a 600s read timeout with 2
     # retries, so one unresponsive call can occupy ~30 minutes and stall an
@@ -149,7 +158,9 @@ def _openrouter_call(system: str, user: str, seed: int = 0) -> str:
             f"model output cut off at the provider's length limit "
             f"(finish_reason=length, model={MODEL_NAME})"
         )
-    return choice.message.content or ""
+    content = choice.message.content or ""
+    model_cache.put(cache_key, content, stage="generation", model=MODEL_NAME)
+    return content
 
 
 def _structural_critic(

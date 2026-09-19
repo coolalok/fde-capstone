@@ -23,7 +23,17 @@ def test_timeout_is_configured_and_sane():
     assert 0 < MODEL_TIMEOUT_SECONDS <= 120, (
         "a healthy call runs ~2s; a bound above 120s defeats the purpose"
     )
-    assert 0 <= MODEL_MAX_RETRIES <= 3
+    # The bound that matters for A9 is the worst case for ONE call, not the
+    # retry count on its own. Retries went 2 -> 5 on 19 Sep so a throttled free
+    # tier gets a real chance to answer: the SDK backs off exponentially with
+    # jitter and honours Retry-After, but starting at 0.5s and capping at 8s,
+    # two retries spend under 2 seconds. Five still leaves a call bounded.
+    assert 0 <= MODEL_MAX_RETRIES <= 6
+    worst_case_seconds = (1 + MODEL_MAX_RETRIES) * MODEL_TIMEOUT_SECONDS
+    assert worst_case_seconds <= 400, (
+        f"one call could occupy {worst_case_seconds}s; an unattended run (A9) "
+        f"must terminate — lower MODEL_MAX_RETRIES or MODEL_TIMEOUT_SECONDS"
+    )
 
 
 @pytest.mark.parametrize("module", CALL_SITES)

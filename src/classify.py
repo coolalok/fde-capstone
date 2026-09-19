@@ -27,6 +27,7 @@ from src.config import (
     require_key,
 )
 from src.logging_store import log_decision
+from src import model_cache
 from src.metrics import CONFIDENCE, MODEL_CALL_FAILURES
 from src.prompt_loader import load_prompt
 from src.schema import Alternative, ClassificationResult, Ticket
@@ -84,6 +85,14 @@ def _openrouter_call(system: str, user: str, seed: int = 0) -> str:
     """
     from openai import OpenAI  # imported lazily so unit tests don't need the pkg
 
+    # Cache first, before the key check and the client: a cached reply costs
+    # no quota, and a replay of a previous run works with no provider at all.
+    cache_key = model_cache.key(model=MODEL_NAME, system=system, user=user,
+                                seed=seed, temperature=0.0)
+    cached = model_cache.get(cache_key, stage="classification")
+    if cached is not None:
+        return cached
+
     require_key()
     # Bounded on purpose: the SDK default is a 600s read timeout with 2
     # retries, so one unresponsive call can occupy ~30 minutes and stall an
@@ -114,7 +123,9 @@ def _openrouter_call(system: str, user: str, seed: int = 0) -> str:
     # what actually happened.
     if not getattr(completion, "choices", None):
         raise ValueError(f"provider returned no choices (model={MODEL_NAME})")
-    return completion.choices[0].message.content or ""
+    content = completion.choices[0].message.content or ""
+    model_cache.put(cache_key, content, stage="classification", model=MODEL_NAME)
+    return content
 
 
 def classify(

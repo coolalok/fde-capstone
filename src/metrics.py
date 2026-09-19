@@ -32,6 +32,12 @@ CONFIDENCE = Histogram(
     buckets=(0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0),
 )
 
+MODEL_CACHE_HITS = Counter(
+    "model_cache_hits_total",
+    "Model replies served from the on-disk cache instead of the provider",
+    ["stage"],  # classification | generation | guardrail
+)
+
 MODEL_CALL_FAILURES = Counter(
     "model_call_failures_total",
     "Model calls that failed, by pipeline stage and exception class",

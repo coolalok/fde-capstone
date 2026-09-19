@@ -116,7 +116,12 @@ EMBEDDING_MODEL: str = os.environ.get("EMBEDDING_MODEL", "all-MiniLM-L6-v2")
 # A healthy call runs ~2s, so 60s is ~30x headroom while keeping the worst
 # case per call bounded at (1 + retries) * timeout.
 MODEL_TIMEOUT_SECONDS: float = float(os.environ.get("MODEL_TIMEOUT_SECONDS", "60.0"))
-MODEL_MAX_RETRIES: int = int(os.environ.get("MODEL_MAX_RETRIES", "2"))
+# 5, not the SDK default of 2. The SDK already backs off exponentially with
+# jitter and honours Retry-After, but it starts at 0.5s and caps at 8s, so two
+# retries spend under 2 seconds before a ticket gives up — nothing against an
+# upstream 429 (Build Spec: "Rate limits are a design problem"). Five keeps the
+# worst case bounded for A9: (1 + retries) * MODEL_TIMEOUT_SECONDS.
+MODEL_MAX_RETRIES: int = int(os.environ.get("MODEL_MAX_RETRIES", "5"))
 
 # Storage paths
 _ROOT = Path(__file__).parent.parent
@@ -149,6 +154,13 @@ RETRIEVAL_THRESHOLD: float = float(os.environ.get("RETRIEVAL_THRESHOLD", "0.25")
 GENERATE_MAX_RETRIES: int = int(os.environ.get("GENERATE_MAX_RETRIES", "1"))
 # Model temperature for generation — 0.0 = deterministic per D-06 A5.
 GENERATE_TEMPERATURE: float = float(os.environ.get("GENERATE_TEMPERATURE", "0.0"))
+
+# Model response cache (Build Spec: "Caching is encouraged"). A hit costs no
+# tokens and no quota, which is what makes a re-run on a throttled free tier
+# affordable. Set MODEL_CACHE_DISABLED=1 for a run that must call the provider
+# for every ticket — a gate run measuring live behaviour, for instance.
+MODEL_CACHE_DIR: str = os.environ.get("MODEL_CACHE_DIR", str(_ROOT / "storage" / "model_cache"))
+MODEL_CACHE_DISABLED: bool = os.environ.get("MODEL_CACHE_DISABLED", "0") == "1"
 
 # Monitoring — port for the Prometheus /metrics endpoint (Setup Guide §06).
 # 0 = do not start the server, which is the default: a graded run must not need

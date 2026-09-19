@@ -76,6 +76,7 @@ from src.config import (
 )
 from src.generate import strip_citation_markers
 from src.logging_store import log_decision
+from src import model_cache
 from src.metrics import GUARDRAIL_BLOCKS, MODEL_CALL_FAILURES
 from src.prompt_loader import load_prompt
 from src.schema import (
@@ -120,6 +121,14 @@ def _openrouter_call(system: str, user: str, seed: int = 0) -> str:
     # different provider, that check would pass while the judge has no
     # credentials — and every guardrail would then fail safe and block the
     # whole run for a reason the log would not name.
+    # Cache first, before the key check and the client: a cached reply costs
+    # no quota, and a replay of a previous run works with no provider at all.
+    cache_key = model_cache.key(model=GUARDRAIL_MODEL, system=system, user=user,
+                                seed=seed, temperature=0.0)
+    cached = model_cache.get(cache_key, stage="guardrail")
+    if cached is not None:
+        return cached
+
     if not GUARDRAIL_API_KEY:
         raise RuntimeError(
             "No judge key set. GUARDRAIL_API_KEY is empty and MODEL_API_KEY "
@@ -162,6 +171,7 @@ def _openrouter_call(system: str, user: str, seed: int = 0) -> str:
         # simply returned nothing. Raise the true cause so the fail-safe verdict
         # and the failure counter record what actually happened.
         raise ValueError(f"{GUARDRAIL_MODEL} returned empty content")
+    model_cache.put(cache_key, content, stage="guardrail", model=GUARDRAIL_MODEL)
     return content
 
 
