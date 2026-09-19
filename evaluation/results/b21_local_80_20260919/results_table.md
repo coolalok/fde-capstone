@@ -1,6 +1,6 @@
 # Evaluation results
 
-Run `harness-20260919T131836Z-5fe44f57` on 2026-09-19: 80 tickets. Code `5672665` at table generation. Drafting model `llama3.1-8b-ctx8k`, guardrail model `qwen2.5-7b-ctx8k`, confidence threshold 0.85, guardrails on. Model cache not recorded (run predates cache logging); 13 tickets replayed. Runs against the hidden evaluation set: 0.
+Run `harness-20260919T131836Z-5fe44f57` on 2026-09-19: 80 tickets. Code `562f943` at table generation. Drafting model `llama3.1-8b-ctx8k`, guardrail model `qwen2.5-7b-ctx8k`, confidence threshold 0.85, guardrails on. Model cache not recorded (run predates cache logging); 13 tickets replayed. Runs against the hidden evaluation set: 0.
 
 | Measure | Baseline | Target | Achieved | Confidence in the figure | Notes |
 |---|---|---|---|---|---|
@@ -28,6 +28,28 @@ Run `harness-20260919T131836Z-5fe44f57` on 2026-09-19: 80 tickets. Code `5672665
 
 - 48 of 80 tickets (60.0%) were answered without a human; 32 (40.0%) went to the human queue (baseline escalation 58%).
 - 14 of those answers went to tickets that should have reached a person, so correct automated resolution is 42.5% against the 42% human baseline: the system moves work off the queue, but not yet more correctly resolved work.
+
+## Routing against the labels
+
+The FCR figure divides correct sends by every ticket. It hides two failures with opposite fixes: sending what should be held, and holding what could be sent.
+
+| Measure | Value |
+|---|---|
+| Replies sent | 48 of 80 |
+| Send precision (sent replies that should have been sent) | 70.8% (34 of 48) |
+| Send coverage (tickets that should be answered, answered) | 70.8% (34 of 48) |
+| Wrong sends | 14 (17.5% of tickets) |
+| Wrong holds | 14 (17.5% of tickets) |
+
+Where the 28 wrong decisions come from. Each is attributed to one stage by `evaluation.harness.failure_stage`: a wrong send to what the labels say is wrong with sending, a wrong hold to the earliest stage that explains it.
+
+| Stage: reason | Tickets |
+|---|---|
+| answerability:sent_unanswerable | 13 |
+| guardrail:answer_relevance:verdict | 11 |
+| guardrail:pii:verdict | 2 |
+| guardrail:grounding:verdict | 1 |
+| other:sent_against_label | 1 |
 
 ## Facts for "the figures above should be treated with caution because"
 
