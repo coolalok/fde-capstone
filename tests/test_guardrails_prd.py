@@ -40,6 +40,7 @@ from src.schema import (
     ClassificationResult,
     GeneratedResponse,
     GuardrailContext,
+    GuardrailResult,
     Passage,
     Ticket,
 )
@@ -1273,3 +1274,70 @@ def test_regex_detection_is_not_subject_to_the_shape_filter(context):
     r = PIIGuardrail(call_model=_stub_returning({"passed": True, "detections": []})
                      ).check(draft, context)
     assert not r.passed
+
+
+# ─── D-12: guardrails run concurrently, results in guardrail order ───
+
+
+class _BarrierGuardrail:
+    """Passes only if every guardrail sharing the barrier is running at once."""
+    blocking = True
+
+    def __init__(self, name, barrier, delay=0.0):
+        self.name, self.barrier, self.delay = name, barrier, delay
+
+    def check(self, response, context):
+        import time
+        self.barrier.wait()
+        time.sleep(self.delay)
+        return GuardrailResult(name=self.name, passed=True, blocking=True, reason="ok")
+
+
+def test_guardrails_run_at_the_same_time(grounded_response, context, db):
+    import threading
+    barrier = threading.Barrier(3, timeout=5)
+    results = run_all(grounded_response, context, guardrails=[
+        _BarrierGuardrail(n, barrier) for n in ("a", "b", "c")])
+    assert all(r.passed for r in results), [r.reason for r in results]
+
+
+def test_results_keep_guardrail_order_when_they_finish_out_of_order(
+        grounded_response, context, db):
+    import threading
+    barrier = threading.Barrier(3, timeout=5)
+    # The first guardrail finishes last.
+    results = run_all(grounded_response, context, guardrails=[
+        _BarrierGuardrail("first", barrier, 0.3), _BarrierGuardrail("second", barrier, 0.1),
+        _BarrierGuardrail("third", barrier, 0.0)])
+    assert [r.name for r in results] == ["first", "second", "third"]
+
+
+def test_one_worker_runs_the_guardrails_in_turn(grounded_response, context, db, monkeypatch):
+    import threading
+    import src.guardrails as guardrails_module
+    monkeypatch.setattr(guardrails_module, "GUARDRAIL_MAX_WORKERS", 1)
+    barrier = threading.Barrier(2, timeout=0.3)
+    results = run_all(grounded_response, context, guardrails=[
+        _BarrierGuardrail("a", barrier), _BarrierGuardrail("b", barrier)])
+    # In turn, the first guardrail waits alone and the barrier breaks: both
+    # are recorded as fail-safe blocks, which is also the A11 path working.
+    assert all(not r.passed and r.fail_safe for r in results)
+
+
+def test_a_raising_guardrail_does_not_affect_the_others_running_beside_it(
+        grounded_response, context, db):
+    class Exploding:
+        name, blocking = "exploder", True
+
+        def check(self, response, context):
+            raise RuntimeError("kaboom")
+
+    class Fine:
+        name, blocking = "fine", True
+
+        def check(self, response, context):
+            return GuardrailResult(name="fine", passed=True, blocking=True, reason="ok")
+
+    results = run_all(grounded_response, context, guardrails=[Exploding(), Fine()])
+    assert [(r.name, r.passed, r.fail_safe) for r in results] == \
+        [("exploder", False, True), ("fine", True, False)]

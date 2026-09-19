@@ -1,0 +1,2156 @@
+{
+  "run_id": "guardrail-parallel-check-20260919T202255Z-8a93079a",
+  "source_run": "evaluation/results/b21_local_80_20260919",
+  "guardrail_model": "qwen2.5-7b-ctx8k",
+  "workers": {
+    "in_turn": 1,
+    "concurrent": 4,
+    "in_turn_again": 1
+  },
+  "tickets": 20,
+  "guardrail_seconds": {
+    "in_turn": {
+      "n": 20,
+      "p50": 10.55,
+      "p95": 12.55,
+      "mean": 10.71
+    },
+    "concurrent": {
+      "n": 20,
+      "p50": 9.28,
+      "p95": 11.32,
+      "mean": 9.54
+    },
+    "in_turn_again": {
+      "n": 20,
+      "p50": 10.31,
+      "p95": 11.99,
+      "mean": 10.44
+    }
+  },
+  "speed_up_mean": 1.11,
+  "identical_verdicts_in_turn_vs_concurrent": 20,
+  "identical_verdicts_in_turn_twice": 20,
+  "per_ticket": [
+    {
+      "ticket_id": "VAL-0001",
+      "in_turn_s": 12.55,
+      "concurrent_s": 9.68,
+      "in_turn_again_s": 10.82,
+      "same_verdicts_in_turn_vs_concurrent": true,
+      "same_verdicts_in_turn_twice": true,
+      "verdicts": {
+        "in_turn": [
+          [
+            "pii",
+            true,
+            false
+          ],
+          [
+            "grounding",
+            true,
+            false
+          ],
+          [
+            "instruction_integrity",
+            true,
+            false
+          ],
+          [
+            "tone_scope",
+            true,
+            false
+          ],
+          [
+            "answer_relevance",
+            false,
+            false
+          ],
+          [
+            "confidence_floor",
+            true,
+            false
+          ]
+        ],
+        "concurrent": [
+          [
+            "pii",
+            true,
+            false
+          ],
+          [
+            "grounding",
+            true,
+            false
+          ],
+          [
+            "instruction_integrity",
+            true,
+            false
+          ],
+          [
+            "tone_scope",
+            true,
+            false
+          ],
+          [
+            "answer_relevance",
+            false,
+            false
+          ],
+          [
+            "confidence_floor",
+            true,
+            false
+          ]
+        ],
+        "in_turn_again": [
+          [
+            "pii",
+            true,
+            false
+          ],
+          [
+            "grounding",
+            true,
+            false
+          ],
+          [
+            "instruction_integrity",
+            true,
+            false
+          ],
+          [
+            "tone_scope",
+            true,
+            false
+          ],
+          [
+            "answer_relevance",
+            false,
+            false
+          ],
+          [
+            "confidence_floor",
+            true,
+            false
+          ]
+        ]
+      }
+    },
+    {
+      "ticket_id": "VAL-0004",
+      "in_turn_s": 10.08,
+      "concurrent_s": 9.02,
+      "in_turn_again_s": 10.23,
+      "same_verdicts_in_turn_vs_concurrent": true,
+      "same_verdicts_in_turn_twice": true,
+      "verdicts": {
+        "in_turn": [
+          [
+            "pii",
+            true,
+            false
+          ],
+          [
+            "grounding",
+            true,
+            false
+          ],
+          [
+            "instruction_integrity",
+            true,
+            false
+          ],
+          [
+            "tone_scope",
+            true,
+            false
+          ],
+          [
+            "answer_relevance",
+            true,
+            false
+          ],
+          [
+            "confidence_floor",
+            true,
+            false
+          ]
+        ],
+        "concurrent": [
+          [
+            "pii",
+            true,
+            false
+          ],
+          [
+            "grounding",
+            true,
+            false
+          ],
+          [
+            "instruction_integrity",
+            true,
+            false
+          ],
+          [
+            "tone_scope",
+            true,
+            false
+          ],
+          [
+            "answer_relevance",
+            true,
+            false
+          ],
+          [
+            "confidence_floor",
+            true,
+            false
+          ]
+        ],
+        "in_turn_again": [
+          [
+            "pii",
+            true,
+            false
+          ],
+          [
+            "grounding",
+            true,
+            false
+          ],
+          [
+            "instruction_integrity",
+            true,
+            false
+          ],
+          [
+            "tone_scope",
+            true,
+            false
+          ],
+          [
+            "answer_relevance",
+            true,
+            false
+          ],
+          [
+            "confidence_floor",
+            true,
+            false
+          ]
+        ]
+      }
+    },
+    {
+      "ticket_id": "VAL-0005",
+      "in_turn_s": 7.74,
+      "concurrent_s": 6.62,
+      "in_turn_again_s": 7.63,
+      "same_verdicts_in_turn_vs_concurrent": true,
+      "same_verdicts_in_turn_twice": true,
+      "verdicts": {
+        "in_turn": [
+          [
+            "pii",
+            true,
+            false
+          ],
+          [
+            "grounding",
+            true,
+            false
+          ],
+          [
+            "instruction_integrity",
+            true,
+            false
+          ],
+          [
+            "tone_scope",
+            true,
+            false
+          ],
+          [
+            "answer_relevance",
+            true,
+            false
+          ],
+          [
+            "confidence_floor",
+            true,
+            false
+          ]
+        ],
+        "concurrent": [
+          [
+            "pii",
+            true,
+            false
+          ],
+          [
+            "grounding",
+            true,
+            false
+          ],
+          [
+            "instruction_integrity",
+            true,
+            false
+          ],
+          [
+            "tone_scope",
+            true,
+            false
+          ],
+          [
+            "answer_relevance",
+            true,
+            false
+          ],
+          [
+            "confidence_floor",
+            true,
+            false
+          ]
+        ],
+        "in_turn_again": [
+          [
+            "pii",
+            true,
+            false
+          ],
+          [
+            "grounding",
+            true,
+            false
+          ],
+          [
+            "instruction_integrity",
+            true,
+            false
+          ],
+          [
+            "tone_scope",
+            true,
+            false
+          ],
+          [
+            "answer_relevance",
+            true,
+            false
+          ],
+          [
+            "confidence_floor",
+            true,
+            false
+          ]
+        ]
+      }
+    },
+    {
+      "ticket_id": "VAL-0006",
+      "in_turn_s": 20.7,
+      "concurrent_s": 19.96,
+      "in_turn_again_s": 20.49,
+      "same_verdicts_in_turn_vs_concurrent": true,
+      "same_verdicts_in_turn_twice": true,
+      "verdicts": {
+        "in_turn": [
+          [
+            "pii",
+            true,
+            false
+          ],
+          [
+            "grounding",
+            false,
+            false
+          ],
+          [
+            "instruction_integrity",
+            true,
+            false
+          ],
+          [
+            "tone_scope",
+            true,
+            false
+          ],
+          [
+            "answer_relevance",
+            true,
+            false
+          ],
+          [
+            "confidence_floor",
+            true,
+            false
+          ]
+        ],
+        "concurrent": [
+          [
+            "pii",
+            true,
+            false
+          ],
+          [
+            "grounding",
+            false,
+            false
+          ],
+          [
+            "instruction_integrity",
+            true,
+            false
+          ],
+          [
+            "tone_scope",
+            true,
+            false
+          ],
+          [
+            "answer_relevance",
+            true,
+            false
+          ],
+          [
+            "confidence_floor",
+            true,
+            false
+          ]
+        ],
+        "in_turn_again": [
+          [
+            "pii",
+            true,
+            false
+          ],
+          [
+            "grounding",
+            false,
+            false
+          ],
+          [
+            "instruction_integrity",
+            true,
+            false
+          ],
+          [
+            "tone_scope",
+            true,
+            false
+          ],
+          [
+            "answer_relevance",
+            true,
+            false
+          ],
+          [
+            "confidence_floor",
+            true,
+            false
+          ]
+        ]
+      }
+    },
+    {
+      "ticket_id": "VAL-0008",
+      "in_turn_s": 7.91,
+      "concurrent_s": 7.71,
+      "in_turn_again_s": 8.04,
+      "same_verdicts_in_turn_vs_concurrent": true,
+      "same_verdicts_in_turn_twice": true,
+      "verdicts": {
+        "in_turn": [
+          [
+            "pii",
+            true,
+            false
+          ],
+          [
+            "grounding",
+            true,
+            false
+          ],
+          [
+            "instruction_integrity",
+            true,
+            false
+          ],
+          [
+            "tone_scope",
+            true,
+            false
+          ],
+          [
+            "answer_relevance",
+            true,
+            false
+          ],
+          [
+            "confidence_floor",
+            true,
+            false
+          ]
+        ],
+        "concurrent": [
+          [
+            "pii",
+            true,
+            false
+          ],
+          [
+            "grounding",
+            true,
+            false
+          ],
+          [
+            "instruction_integrity",
+            true,
+            false
+          ],
+          [
+            "tone_scope",
+            true,
+            false
+          ],
+          [
+            "answer_relevance",
+            true,
+            false
+          ],
+          [
+            "confidence_floor",
+            true,
+            false
+          ]
+        ],
+        "in_turn_again": [
+          [
+            "pii",
+            true,
+            false
+          ],
+          [
+            "grounding",
+            true,
+            false
+          ],
+          [
+            "instruction_integrity",
+            true,
+            false
+          ],
+          [
+            "tone_scope",
+            true,
+            false
+          ],
+          [
+            "answer_relevance",
+            true,
+            false
+          ],
+          [
+            "confidence_floor",
+            true,
+            false
+          ]
+        ]
+      }
+    },
+    {
+      "ticket_id": "VAL-0009",
+      "in_turn_s": 11.69,
+      "concurrent_s": 11.32,
+      "in_turn_again_s": 11.77,
+      "same_verdicts_in_turn_vs_concurrent": true,
+      "same_verdicts_in_turn_twice": true,
+      "verdicts": {
+        "in_turn": [
+          [
+            "pii",
+            true,
+            false
+          ],
+          [
+            "grounding",
+            false,
+            false
+          ],
+          [
+            "instruction_integrity",
+            true,
+            false
+          ],
+          [
+            "tone_scope",
+            true,
+            false
+          ],
+          [
+            "answer_relevance",
+            false,
+            false
+          ],
+          [
+            "confidence_floor",
+            true,
+            false
+          ]
+        ],
+        "concurrent": [
+          [
+            "pii",
+            true,
+            false
+          ],
+          [
+            "grounding",
+            false,
+            false
+          ],
+          [
+            "instruction_integrity",
+            true,
+            false
+          ],
+          [
+            "tone_scope",
+            true,
+            false
+          ],
+          [
+            "answer_relevance",
+            false,
+            false
+          ],
+          [
+            "confidence_floor",
+            true,
+            false
+          ]
+        ],
+        "in_turn_again": [
+          [
+            "pii",
+            true,
+            false
+          ],
+          [
+            "grounding",
+            false,
+            false
+          ],
+          [
+            "instruction_integrity",
+            true,
+            false
+          ],
+          [
+            "tone_scope",
+            true,
+            false
+          ],
+          [
+            "answer_relevance",
+            false,
+            false
+          ],
+          [
+            "confidence_floor",
+            true,
+            false
+          ]
+        ]
+      }
+    },
+    {
+      "ticket_id": "VAL-0010",
+      "in_turn_s": 9.45,
+      "concurrent_s": 8.38,
+      "in_turn_again_s": 9.32,
+      "same_verdicts_in_turn_vs_concurrent": true,
+      "same_verdicts_in_turn_twice": true,
+      "verdicts": {
+        "in_turn": [
+          [
+            "pii",
+            true,
+            false
+          ],
+          [
+            "grounding",
+            true,
+            false
+          ],
+          [
+            "instruction_integrity",
+            true,
+            false
+          ],
+          [
+            "tone_scope",
+            true,
+            false
+          ],
+          [
+            "answer_relevance",
+            true,
+            false
+          ],
+          [
+            "confidence_floor",
+            true,
+            false
+          ]
+        ],
+        "concurrent": [
+          [
+            "pii",
+            true,
+            false
+          ],
+          [
+            "grounding",
+            true,
+            false
+          ],
+          [
+            "instruction_integrity",
+            true,
+            false
+          ],
+          [
+            "tone_scope",
+            true,
+            false
+          ],
+          [
+            "answer_relevance",
+            true,
+            false
+          ],
+          [
+            "confidence_floor",
+            true,
+            false
+          ]
+        ],
+        "in_turn_again": [
+          [
+            "pii",
+            true,
+            false
+          ],
+          [
+            "grounding",
+            true,
+            false
+          ],
+          [
+            "instruction_integrity",
+            true,
+            false
+          ],
+          [
+            "tone_scope",
+            true,
+            false
+          ],
+          [
+            "answer_relevance",
+            true,
+            false
+          ],
+          [
+            "confidence_floor",
+            true,
+            false
+          ]
+        ]
+      }
+    },
+    {
+      "ticket_id": "VAL-0011",
+      "in_turn_s": 11.1,
+      "concurrent_s": 9.62,
+      "in_turn_again_s": 10.48,
+      "same_verdicts_in_turn_vs_concurrent": true,
+      "same_verdicts_in_turn_twice": true,
+      "verdicts": {
+        "in_turn": [
+          [
+            "pii",
+            true,
+            false
+          ],
+          [
+            "grounding",
+            true,
+            false
+          ],
+          [
+            "instruction_integrity",
+            true,
+            false
+          ],
+          [
+            "tone_scope",
+            true,
+            false
+          ],
+          [
+            "answer_relevance",
+            true,
+            false
+          ],
+          [
+            "confidence_floor",
+            true,
+            false
+          ]
+        ],
+        "concurrent": [
+          [
+            "pii",
+            true,
+            false
+          ],
+          [
+            "grounding",
+            true,
+            false
+          ],
+          [
+            "instruction_integrity",
+            true,
+            false
+          ],
+          [
+            "tone_scope",
+            true,
+            false
+          ],
+          [
+            "answer_relevance",
+            true,
+            false
+          ],
+          [
+            "confidence_floor",
+            true,
+            false
+          ]
+        ],
+        "in_turn_again": [
+          [
+            "pii",
+            true,
+            false
+          ],
+          [
+            "grounding",
+            true,
+            false
+          ],
+          [
+            "instruction_integrity",
+            true,
+            false
+          ],
+          [
+            "tone_scope",
+            true,
+            false
+          ],
+          [
+            "answer_relevance",
+            true,
+            false
+          ],
+          [
+            "confidence_floor",
+            true,
+            false
+          ]
+        ]
+      }
+    },
+    {
+      "ticket_id": "VAL-0012",
+      "in_turn_s": 8.92,
+      "concurrent_s": 7.45,
+      "in_turn_again_s": 8.59,
+      "same_verdicts_in_turn_vs_concurrent": true,
+      "same_verdicts_in_turn_twice": true,
+      "verdicts": {
+        "in_turn": [
+          [
+            "pii",
+            true,
+            false
+          ],
+          [
+            "grounding",
+            true,
+            false
+          ],
+          [
+            "instruction_integrity",
+            true,
+            false
+          ],
+          [
+            "tone_scope",
+            true,
+            false
+          ],
+          [
+            "answer_relevance",
+            true,
+            false
+          ],
+          [
+            "confidence_floor",
+            true,
+            false
+          ]
+        ],
+        "concurrent": [
+          [
+            "pii",
+            true,
+            false
+          ],
+          [
+            "grounding",
+            true,
+            false
+          ],
+          [
+            "instruction_integrity",
+            true,
+            false
+          ],
+          [
+            "tone_scope",
+            true,
+            false
+          ],
+          [
+            "answer_relevance",
+            true,
+            false
+          ],
+          [
+            "confidence_floor",
+            true,
+            false
+          ]
+        ],
+        "in_turn_again": [
+          [
+            "pii",
+            true,
+            false
+          ],
+          [
+            "grounding",
+            true,
+            false
+          ],
+          [
+            "instruction_integrity",
+            true,
+            false
+          ],
+          [
+            "tone_scope",
+            true,
+            false
+          ],
+          [
+            "answer_relevance",
+            true,
+            false
+          ],
+          [
+            "confidence_floor",
+            true,
+            false
+          ]
+        ]
+      }
+    },
+    {
+      "ticket_id": "VAL-0013",
+      "in_turn_s": 10.15,
+      "concurrent_s": 9.04,
+      "in_turn_again_s": 9.99,
+      "same_verdicts_in_turn_vs_concurrent": true,
+      "same_verdicts_in_turn_twice": true,
+      "verdicts": {
+        "in_turn": [
+          [
+            "pii",
+            true,
+            false
+          ],
+          [
+            "grounding",
+            true,
+            false
+          ],
+          [
+            "instruction_integrity",
+            true,
+            false
+          ],
+          [
+            "tone_scope",
+            true,
+            false
+          ],
+          [
+            "answer_relevance",
+            true,
+            false
+          ],
+          [
+            "confidence_floor",
+            true,
+            false
+          ]
+        ],
+        "concurrent": [
+          [
+            "pii",
+            true,
+            false
+          ],
+          [
+            "grounding",
+            true,
+            false
+          ],
+          [
+            "instruction_integrity",
+            true,
+            false
+          ],
+          [
+            "tone_scope",
+            true,
+            false
+          ],
+          [
+            "answer_relevance",
+            true,
+            false
+          ],
+          [
+            "confidence_floor",
+            true,
+            false
+          ]
+        ],
+        "in_turn_again": [
+          [
+            "pii",
+            true,
+            false
+          ],
+          [
+            "grounding",
+            true,
+            false
+          ],
+          [
+            "instruction_integrity",
+            true,
+            false
+          ],
+          [
+            "tone_scope",
+            true,
+            false
+          ],
+          [
+            "answer_relevance",
+            true,
+            false
+          ],
+          [
+            "confidence_floor",
+            true,
+            false
+          ]
+        ]
+      }
+    },
+    {
+      "ticket_id": "VAL-0014",
+      "in_turn_s": 10.56,
+      "concurrent_s": 9.37,
+      "in_turn_again_s": 10.2,
+      "same_verdicts_in_turn_vs_concurrent": true,
+      "same_verdicts_in_turn_twice": true,
+      "verdicts": {
+        "in_turn": [
+          [
+            "pii",
+            true,
+            false
+          ],
+          [
+            "grounding",
+            true,
+            false
+          ],
+          [
+            "instruction_integrity",
+            true,
+            false
+          ],
+          [
+            "tone_scope",
+            true,
+            false
+          ],
+          [
+            "answer_relevance",
+            false,
+            false
+          ],
+          [
+            "confidence_floor",
+            true,
+            false
+          ]
+        ],
+        "concurrent": [
+          [
+            "pii",
+            true,
+            false
+          ],
+          [
+            "grounding",
+            true,
+            false
+          ],
+          [
+            "instruction_integrity",
+            true,
+            false
+          ],
+          [
+            "tone_scope",
+            true,
+            false
+          ],
+          [
+            "answer_relevance",
+            false,
+            false
+          ],
+          [
+            "confidence_floor",
+            true,
+            false
+          ]
+        ],
+        "in_turn_again": [
+          [
+            "pii",
+            true,
+            false
+          ],
+          [
+            "grounding",
+            true,
+            false
+          ],
+          [
+            "instruction_integrity",
+            true,
+            false
+          ],
+          [
+            "tone_scope",
+            true,
+            false
+          ],
+          [
+            "answer_relevance",
+            false,
+            false
+          ],
+          [
+            "confidence_floor",
+            true,
+            false
+          ]
+        ]
+      }
+    },
+    {
+      "ticket_id": "VAL-0016",
+      "in_turn_s": 10.75,
+      "concurrent_s": 9.64,
+      "in_turn_again_s": 10.34,
+      "same_verdicts_in_turn_vs_concurrent": true,
+      "same_verdicts_in_turn_twice": true,
+      "verdicts": {
+        "in_turn": [
+          [
+            "pii",
+            true,
+            false
+          ],
+          [
+            "grounding",
+            true,
+            false
+          ],
+          [
+            "instruction_integrity",
+            true,
+            false
+          ],
+          [
+            "tone_scope",
+            true,
+            false
+          ],
+          [
+            "answer_relevance",
+            true,
+            false
+          ],
+          [
+            "confidence_floor",
+            true,
+            false
+          ]
+        ],
+        "concurrent": [
+          [
+            "pii",
+            true,
+            false
+          ],
+          [
+            "grounding",
+            true,
+            false
+          ],
+          [
+            "instruction_integrity",
+            true,
+            false
+          ],
+          [
+            "tone_scope",
+            true,
+            false
+          ],
+          [
+            "answer_relevance",
+            true,
+            false
+          ],
+          [
+            "confidence_floor",
+            true,
+            false
+          ]
+        ],
+        "in_turn_again": [
+          [
+            "pii",
+            true,
+            false
+          ],
+          [
+            "grounding",
+            true,
+            false
+          ],
+          [
+            "instruction_integrity",
+            true,
+            false
+          ],
+          [
+            "tone_scope",
+            true,
+            false
+          ],
+          [
+            "answer_relevance",
+            true,
+            false
+          ],
+          [
+            "confidence_floor",
+            true,
+            false
+          ]
+        ]
+      }
+    },
+    {
+      "ticket_id": "VAL-0018",
+      "in_turn_s": 8.12,
+      "concurrent_s": 7.2,
+      "in_turn_again_s": 7.94,
+      "same_verdicts_in_turn_vs_concurrent": true,
+      "same_verdicts_in_turn_twice": true,
+      "verdicts": {
+        "in_turn": [
+          [
+            "pii",
+            true,
+            false
+          ],
+          [
+            "grounding",
+            true,
+            false
+          ],
+          [
+            "instruction_integrity",
+            true,
+            false
+          ],
+          [
+            "tone_scope",
+            true,
+            false
+          ],
+          [
+            "answer_relevance",
+            true,
+            false
+          ],
+          [
+            "confidence_floor",
+            true,
+            false
+          ]
+        ],
+        "concurrent": [
+          [
+            "pii",
+            true,
+            false
+          ],
+          [
+            "grounding",
+            true,
+            false
+          ],
+          [
+            "instruction_integrity",
+            true,
+            false
+          ],
+          [
+            "tone_scope",
+            true,
+            false
+          ],
+          [
+            "answer_relevance",
+            true,
+            false
+          ],
+          [
+            "confidence_floor",
+            true,
+            false
+          ]
+        ],
+        "in_turn_again": [
+          [
+            "pii",
+            true,
+            false
+          ],
+          [
+            "grounding",
+            true,
+            false
+          ],
+          [
+            "instruction_integrity",
+            true,
+            false
+          ],
+          [
+            "tone_scope",
+            true,
+            false
+          ],
+          [
+            "answer_relevance",
+            true,
+            false
+          ],
+          [
+            "confidence_floor",
+            true,
+            false
+          ]
+        ]
+      }
+    },
+    {
+      "ticket_id": "VAL-0019",
+      "in_turn_s": 12.25,
+      "concurrent_s": 10.99,
+      "in_turn_again_s": 11.99,
+      "same_verdicts_in_turn_vs_concurrent": true,
+      "same_verdicts_in_turn_twice": true,
+      "verdicts": {
+        "in_turn": [
+          [
+            "pii",
+            true,
+            false
+          ],
+          [
+            "grounding",
+            true,
+            false
+          ],
+          [
+            "instruction_integrity",
+            true,
+            false
+          ],
+          [
+            "tone_scope",
+            true,
+            false
+          ],
+          [
+            "answer_relevance",
+            true,
+            false
+          ],
+          [
+            "confidence_floor",
+            true,
+            false
+          ]
+        ],
+        "concurrent": [
+          [
+            "pii",
+            true,
+            false
+          ],
+          [
+            "grounding",
+            true,
+            false
+          ],
+          [
+            "instruction_integrity",
+            true,
+            false
+          ],
+          [
+            "tone_scope",
+            true,
+            false
+          ],
+          [
+            "answer_relevance",
+            true,
+            false
+          ],
+          [
+            "confidence_floor",
+            true,
+            false
+          ]
+        ],
+        "in_turn_again": [
+          [
+            "pii",
+            true,
+            false
+          ],
+          [
+            "grounding",
+            true,
+            false
+          ],
+          [
+            "instruction_integrity",
+            true,
+            false
+          ],
+          [
+            "tone_scope",
+            true,
+            false
+          ],
+          [
+            "answer_relevance",
+            true,
+            false
+          ],
+          [
+            "confidence_floor",
+            true,
+            false
+          ]
+        ]
+      }
+    },
+    {
+      "ticket_id": "VAL-0021",
+      "in_turn_s": 10.28,
+      "concurrent_s": 9.07,
+      "in_turn_again_s": 10.28,
+      "same_verdicts_in_turn_vs_concurrent": true,
+      "same_verdicts_in_turn_twice": true,
+      "verdicts": {
+        "in_turn": [
+          [
+            "pii",
+            true,
+            false
+          ],
+          [
+            "grounding",
+            true,
+            false
+          ],
+          [
+            "instruction_integrity",
+            true,
+            false
+          ],
+          [
+            "tone_scope",
+            true,
+            false
+          ],
+          [
+            "answer_relevance",
+            true,
+            false
+          ],
+          [
+            "confidence_floor",
+            true,
+            false
+          ]
+        ],
+        "concurrent": [
+          [
+            "pii",
+            true,
+            false
+          ],
+          [
+            "grounding",
+            true,
+            false
+          ],
+          [
+            "instruction_integrity",
+            true,
+            false
+          ],
+          [
+            "tone_scope",
+            true,
+            false
+          ],
+          [
+            "answer_relevance",
+            true,
+            false
+          ],
+          [
+            "confidence_floor",
+            true,
+            false
+          ]
+        ],
+        "in_turn_again": [
+          [
+            "pii",
+            true,
+            false
+          ],
+          [
+            "grounding",
+            true,
+            false
+          ],
+          [
+            "instruction_integrity",
+            true,
+            false
+          ],
+          [
+            "tone_scope",
+            true,
+            false
+          ],
+          [
+            "answer_relevance",
+            true,
+            false
+          ],
+          [
+            "confidence_floor",
+            true,
+            false
+          ]
+        ]
+      }
+    },
+    {
+      "ticket_id": "VAL-0022",
+      "in_turn_s": 11.17,
+      "concurrent_s": 9.62,
+      "in_turn_again_s": 10.39,
+      "same_verdicts_in_turn_vs_concurrent": true,
+      "same_verdicts_in_turn_twice": true,
+      "verdicts": {
+        "in_turn": [
+          [
+            "pii",
+            true,
+            false
+          ],
+          [
+            "grounding",
+            true,
+            false
+          ],
+          [
+            "instruction_integrity",
+            true,
+            false
+          ],
+          [
+            "tone_scope",
+            true,
+            false
+          ],
+          [
+            "answer_relevance",
+            true,
+            false
+          ],
+          [
+            "confidence_floor",
+            true,
+            false
+          ]
+        ],
+        "concurrent": [
+          [
+            "pii",
+            true,
+            false
+          ],
+          [
+            "grounding",
+            true,
+            false
+          ],
+          [
+            "instruction_integrity",
+            true,
+            false
+          ],
+          [
+            "tone_scope",
+            true,
+            false
+          ],
+          [
+            "answer_relevance",
+            true,
+            false
+          ],
+          [
+            "confidence_floor",
+            true,
+            false
+          ]
+        ],
+        "in_turn_again": [
+          [
+            "pii",
+            true,
+            false
+          ],
+          [
+            "grounding",
+            true,
+            false
+          ],
+          [
+            "instruction_integrity",
+            true,
+            false
+          ],
+          [
+            "tone_scope",
+            true,
+            false
+          ],
+          [
+            "answer_relevance",
+            true,
+            false
+          ],
+          [
+            "confidence_floor",
+            true,
+            false
+          ]
+        ]
+      }
+    },
+    {
+      "ticket_id": "VAL-0023",
+      "in_turn_s": 10.68,
+      "concurrent_s": 9.71,
+      "in_turn_again_s": 10.59,
+      "same_verdicts_in_turn_vs_concurrent": true,
+      "same_verdicts_in_turn_twice": true,
+      "verdicts": {
+        "in_turn": [
+          [
+            "pii",
+            true,
+            false
+          ],
+          [
+            "grounding",
+            true,
+            false
+          ],
+          [
+            "instruction_integrity",
+            true,
+            false
+          ],
+          [
+            "tone_scope",
+            true,
+            false
+          ],
+          [
+            "answer_relevance",
+            true,
+            false
+          ],
+          [
+            "confidence_floor",
+            true,
+            false
+          ]
+        ],
+        "concurrent": [
+          [
+            "pii",
+            true,
+            false
+          ],
+          [
+            "grounding",
+            true,
+            false
+          ],
+          [
+            "instruction_integrity",
+            true,
+            false
+          ],
+          [
+            "tone_scope",
+            true,
+            false
+          ],
+          [
+            "answer_relevance",
+            true,
+            false
+          ],
+          [
+            "confidence_floor",
+            true,
+            false
+          ]
+        ],
+        "in_turn_again": [
+          [
+            "pii",
+            true,
+            false
+          ],
+          [
+            "grounding",
+            true,
+            false
+          ],
+          [
+            "instruction_integrity",
+            true,
+            false
+          ],
+          [
+            "tone_scope",
+            true,
+            false
+          ],
+          [
+            "answer_relevance",
+            true,
+            false
+          ],
+          [
+            "confidence_floor",
+            true,
+            false
+          ]
+        ]
+      }
+    },
+    {
+      "ticket_id": "VAL-0024",
+      "in_turn_s": 8.87,
+      "concurrent_s": 7.59,
+      "in_turn_again_s": 8.85,
+      "same_verdicts_in_turn_vs_concurrent": true,
+      "same_verdicts_in_turn_twice": true,
+      "verdicts": {
+        "in_turn": [
+          [
+            "pii",
+            true,
+            false
+          ],
+          [
+            "grounding",
+            true,
+            false
+          ],
+          [
+            "instruction_integrity",
+            true,
+            false
+          ],
+          [
+            "tone_scope",
+            true,
+            false
+          ],
+          [
+            "answer_relevance",
+            false,
+            false
+          ],
+          [
+            "confidence_floor",
+            true,
+            false
+          ]
+        ],
+        "concurrent": [
+          [
+            "pii",
+            true,
+            false
+          ],
+          [
+            "grounding",
+            true,
+            false
+          ],
+          [
+            "instruction_integrity",
+            true,
+            false
+          ],
+          [
+            "tone_scope",
+            true,
+            false
+          ],
+          [
+            "answer_relevance",
+            false,
+            false
+          ],
+          [
+            "confidence_floor",
+            true,
+            false
+          ]
+        ],
+        "in_turn_again": [
+          [
+            "pii",
+            true,
+            false
+          ],
+          [
+            "grounding",
+            true,
+            false
+          ],
+          [
+            "instruction_integrity",
+            true,
+            false
+          ],
+          [
+            "tone_scope",
+            true,
+            false
+          ],
+          [
+            "answer_relevance",
+            false,
+            false
+          ],
+          [
+            "confidence_floor",
+            true,
+            false
+          ]
+        ]
+      }
+    },
+    {
+      "ticket_id": "VAL-0025",
+      "in_turn_s": 10.64,
+      "concurrent_s": 9.55,
+      "in_turn_again_s": 10.48,
+      "same_verdicts_in_turn_vs_concurrent": true,
+      "same_verdicts_in_turn_twice": true,
+      "verdicts": {
+        "in_turn": [
+          [
+            "pii",
+            true,
+            false
+          ],
+          [
+            "grounding",
+            true,
+            false
+          ],
+          [
+            "instruction_integrity",
+            true,
+            false
+          ],
+          [
+            "tone_scope",
+            true,
+            false
+          ],
+          [
+            "answer_relevance",
+            true,
+            false
+          ],
+          [
+            "confidence_floor",
+            true,
+            false
+          ]
+        ],
+        "concurrent": [
+          [
+            "pii",
+            true,
+            false
+          ],
+          [
+            "grounding",
+            true,
+            false
+          ],
+          [
+            "instruction_integrity",
+            true,
+            false
+          ],
+          [
+            "tone_scope",
+            true,
+            false
+          ],
+          [
+            "answer_relevance",
+            true,
+            false
+          ],
+          [
+            "confidence_floor",
+            true,
+            false
+          ]
+        ],
+        "in_turn_again": [
+          [
+            "pii",
+            true,
+            false
+          ],
+          [
+            "grounding",
+            true,
+            false
+          ],
+          [
+            "instruction_integrity",
+            true,
+            false
+          ],
+          [
+            "tone_scope",
+            true,
+            false
+          ],
+          [
+            "answer_relevance",
+            true,
+            false
+          ],
+          [
+            "confidence_floor",
+            true,
+            false
+          ]
+        ]
+      }
+    },
+    {
+      "ticket_id": "VAL-0026",
+      "in_turn_s": 10.54,
+      "concurrent_s": 9.19,
+      "in_turn_again_s": 10.41,
+      "same_verdicts_in_turn_vs_concurrent": true,
+      "same_verdicts_in_turn_twice": true,
+      "verdicts": {
+        "in_turn": [
+          [
+            "pii",
+            true,
+            false
+          ],
+          [
+            "grounding",
+            true,
+            false
+          ],
+          [
+            "instruction_integrity",
+            true,
+            false
+          ],
+          [
+            "tone_scope",
+            true,
+            false
+          ],
+          [
+            "answer_relevance",
+            true,
+            false
+          ],
+          [
+            "confidence_floor",
+            true,
+            false
+          ]
+        ],
+        "concurrent": [
+          [
+            "pii",
+            true,
+            false
+          ],
+          [
+            "grounding",
+            true,
+            false
+          ],
+          [
+            "instruction_integrity",
+            true,
+            false
+          ],
+          [
+            "tone_scope",
+            true,
+            false
+          ],
+          [
+            "answer_relevance",
+            true,
+            false
+          ],
+          [
+            "confidence_floor",
+            true,
+            false
+          ]
+        ],
+        "in_turn_again": [
+          [
+            "pii",
+            true,
+            false
+          ],
+          [
+            "grounding",
+            true,
+            false
+          ],
+          [
+            "instruction_integrity",
+            true,
+            false
+          ],
+          [
+            "tone_scope",
+            true,
+            false
+          ],
+          [
+            "answer_relevance",
+            true,
+            false
+          ],
+          [
+            "confidence_floor",
+            true,
+            false
+          ]
+        ]
+      }
+    }
+  ]
+}

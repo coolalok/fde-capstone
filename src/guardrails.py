@@ -60,6 +60,7 @@ from __future__ import annotations
 import json
 import logging
 import re
+from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass
 from typing import Callable, Optional, Protocol
 
@@ -73,6 +74,7 @@ from src.config import (
     MODEL_MAX_RETRIES,
     MODEL_NAME,
     MODEL_TIMEOUT_SECONDS,
+    GUARDRAIL_MAX_WORKERS,
 )
 from src.generate import strip_citation_markers
 from src.logging_store import log_decision
@@ -1124,7 +1126,8 @@ def run_all(
     call_model: Optional[ModelCall] = None,
     guardrails: Optional[list[Guardrail]] = None,
 ) -> list[GuardrailResult]:
-    """Run every guardrail in order, write one decision-log row, return results.
+    """Run every guardrail (concurrently, D-12), write one decision-log row, return
+    results in guardrail order.
 
     Args:
         response: the GeneratedResponse from ``src.generate.generate``.
@@ -1151,10 +1154,9 @@ def run_all(
             ConfidenceFloorGuardrail(),
         ]
 
-    results: list[GuardrailResult] = []
-    for g in guardrails:
+    def check_one(g: Guardrail) -> GuardrailResult:
         try:
-            results.append(g.check(response, context))
+            return g.check(response, context)
         except Exception as exc:  # last-defence — a guardrail should not raise
             logger.warning(
                 "guardrails.check_raised",
@@ -1165,15 +1167,24 @@ def run_all(
                     "error_type": type(exc).__name__,
                 },
             )
-            results.append(
-                GuardrailResult(
-                    name=getattr(g, "name", type(g).__name__),
-                    passed=False,
-                    blocking=getattr(g, "blocking", True),
-                    reason=f"guardrail_error: {type(exc).__name__}: {exc}",
-                    fail_safe=True,
-                )
+            return GuardrailResult(
+                name=getattr(g, "name", type(g).__name__),
+                passed=False,
+                blocking=getattr(g, "blocking", True),
+                reason=f"guardrail_error: {type(exc).__name__}: {exc}",
+                fail_safe=True,
             )
+
+    # D-12: the checks are independent reads of the same draft, so they run
+    # concurrently; ex.map returns results in guardrail order, so the decision
+    # log, the router and every stored row see the same order as before.
+    workers = min(GUARDRAIL_MAX_WORKERS, len(guardrails))
+    if workers <= 1:
+        results = [check_one(g) for g in guardrails]
+    else:
+        with ThreadPoolExecutor(max_workers=workers,
+                                thread_name_prefix="guardrail") as pool:
+            results = list(pool.map(check_one, guardrails))
 
     # Guardrail activations over time (Setup Guide §06 dashboard). Counts every
     # check that did not pass, including fail-safe blocks: on the dashboard a

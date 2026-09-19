@@ -21,12 +21,15 @@ spacing calls is cheaper than losing tickets.
 Bounded for A9: the interval never exceeds MODEL_RATE_LIMIT_MAX_SECONDS, so an
 unattended run still terminates.
 
-Serial by design: the harness processes one ticket at a time, so this keeps no
-lock. Add one with the first concurrent caller.
+Thread-safe since D-12: the guardrails of one ticket now call the provider
+concurrently, so every read-modify-write of the pacing state holds _lock. wait()
+sleeps while holding it on purpose: when pacing is engaged, spacing concurrent
+callers one interval apart is exactly the point.
 """
 from __future__ import annotations
 
 import logging
+import threading
 import time
 from typing import Callable, TypeVar
 
@@ -47,6 +50,7 @@ _RELAX_AFTER_SUCCESSES = 3
 _interval_seconds = 0.0
 _last_call_at = 0.0
 _consecutive_successes = 0
+_lock = threading.Lock()
 
 
 def state() -> dict:
@@ -58,9 +62,10 @@ def state() -> dict:
 def reset() -> None:
     """Forget any pacing. For tests, and for a new run in the same process."""
     global _interval_seconds, _last_call_at, _consecutive_successes
-    _interval_seconds = 0.0
-    _last_call_at = 0.0
-    _consecutive_successes = 0
+    with _lock:
+        _interval_seconds = 0.0
+        _last_call_at = 0.0
+        _consecutive_successes = 0
 
 
 def _retry_after_seconds(exc: Exception) -> float | None:
@@ -79,6 +84,11 @@ def _retry_after_seconds(exc: Exception) -> float | None:
 
 def penalise(exc: Exception) -> None:
     """A call failed on a rate limit: start pacing, or space calls further apart."""
+    with _lock:
+        _penalise(exc)
+
+
+def _penalise(exc: Exception) -> None:
     global _interval_seconds, _consecutive_successes
     _consecutive_successes = 0
     stated = _retry_after_seconds(exc)
@@ -96,6 +106,11 @@ def penalise(exc: Exception) -> None:
 
 def relax() -> None:
     """A call succeeded. After a few in a row, give the spacing back."""
+    with _lock:
+        _relax()
+
+
+def _relax() -> None:
     global _interval_seconds, _consecutive_successes
     if _interval_seconds == 0.0:
         return
@@ -117,16 +132,17 @@ def wait() -> float:
     the normal case, and the reason this costs nothing on a healthy provider.
     """
     global _last_call_at
-    now = time.monotonic()
-    if _interval_seconds <= 0.0:
-        _last_call_at = now
-        return 0.0
-    due_at = _last_call_at + _interval_seconds
-    delay = max(0.0, due_at - now)
-    if delay > 0:
-        time.sleep(delay)
-    _last_call_at = time.monotonic()
-    return delay
+    with _lock:
+        now = time.monotonic()
+        if _interval_seconds <= 0.0:
+            _last_call_at = now
+            return 0.0
+        due_at = _last_call_at + _interval_seconds
+        delay = max(0.0, due_at - now)
+        if delay > 0:
+            time.sleep(delay)
+        _last_call_at = time.monotonic()
+        return delay
 
 
 def guarded(call: Callable[[], T]) -> T:

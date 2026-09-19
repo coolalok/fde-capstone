@@ -163,6 +163,11 @@ MODEL_RATE_LIMIT_INITIAL_SECONDS: float = float(
 MODEL_RATE_LIMIT_MAX_SECONDS: float = float(
     os.environ.get("MODEL_RATE_LIMIT_MAX_SECONDS", "15.0"))
 
+# Guardrails run concurrently, at most this many at once (D-12). They are
+# independent checks of the same draft, so the order they finish in cannot
+# change a verdict. 1 runs them one after another, as before D-12.
+GUARDRAIL_MAX_WORKERS: int = max(1, int(os.environ.get("GUARDRAIL_MAX_WORKERS", "4")))
+
 # Model response cache (Build Spec: "Caching is encouraged"). A hit costs no
 # tokens and no quota, which is what makes a re-run on a throttled free tier
 # affordable. Set MODEL_CACHE_DISABLED=1 for a run that must call the provider

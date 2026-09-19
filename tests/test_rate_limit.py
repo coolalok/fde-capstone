@@ -127,3 +127,23 @@ def test_time_already_spent_counts_towards_the_interval(clock):
     clock.advance(6.0)  # the failed call's own retries took six seconds
     rate_limit.guarded(lambda: "ok")
     assert clock.slept == [4.0]
+
+
+def test_concurrent_callers_are_each_spaced_one_interval_apart(monkeypatch):
+    """D-12: guardrails call the provider from several threads. Without the lock
+    they read the same last-call time and all sleep the same single interval."""
+    import threading
+    import time
+
+    monkeypatch.setattr(rate_limit, "MODEL_RATE_LIMIT_INITIAL_SECONDS", 0.1)
+    rate_limit.reset()
+    rate_limit.penalise(RateLimitError())
+    rate_limit.wait()  # the first call after engaging sets the reference point
+    started = time.monotonic()
+    threads = [threading.Thread(target=rate_limit.wait) for _ in range(4)]
+    for t in threads:
+        t.start()
+    for t in threads:
+        t.join()
+    assert time.monotonic() - started >= 0.4 - 0.02
+    rate_limit.reset()
