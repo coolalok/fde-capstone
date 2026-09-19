@@ -155,6 +155,14 @@ GENERATE_MAX_RETRIES: int = int(os.environ.get("GENERATE_MAX_RETRIES", "1"))
 # Model temperature for generation — 0.0 = deterministic per D-06 A5.
 GENERATE_TEMPERATURE: float = float(os.environ.get("GENERATE_TEMPERATURE", "0.0"))
 
+# Adaptive pacing between model calls (D-08). Zero until a call actually fails
+# on a rate limit, then calls are spaced and the spacing relaxes as they
+# succeed. The maximum is what keeps an unattended run terminating (A9).
+MODEL_RATE_LIMIT_INITIAL_SECONDS: float = float(
+    os.environ.get("MODEL_RATE_LIMIT_INITIAL_SECONDS", "2.0"))
+MODEL_RATE_LIMIT_MAX_SECONDS: float = float(
+    os.environ.get("MODEL_RATE_LIMIT_MAX_SECONDS", "15.0"))
+
 # Model response cache (Build Spec: "Caching is encouraged"). A hit costs no
 # tokens and no quota, which is what makes a re-run on a throttled free tier
 # affordable. Set MODEL_CACHE_DISABLED=1 for a run that must call the provider
