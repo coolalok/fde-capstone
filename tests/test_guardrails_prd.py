@@ -1223,3 +1223,53 @@ def test_relevance_non_boolean_verdict_is_not_a_pass(grounded_response, context)
     assert result.passed is False
     assert result.fail_safe is True
     assert "contract_violation" in result.reason
+
+
+# ─── D-11: LLM PII detections must be shaped like the value ─────────
+# Source: synthetic drafts, shaped after the two local-judge false positives
+# in b21_local_80_20260919 (VAL-0019 flagged the words "API keys", VAL-0049
+# flagged the citation "DOC-AUTH-004"); not the verbatim drafts.
+
+
+def _llm_pii(category: str, text: str):
+    return _stub_returning({"passed": False, "detections": [
+        {"category": category, "text": text, "start_index": 0, "reason": "llm"}]})
+
+
+def _draft(answer: str) -> GeneratedResponse:
+    return GeneratedResponse(answer=answer, citations=["DOC-AUTH-004"],
+                             confidence=0.9, unknown=False)
+
+
+@pytest.mark.parametrize("category,text", [
+    ("api_key", "API keys"),          # words, not a key
+    ("api_key", "DOC-AUTH-004"),      # a help-article id
+    ("account_number", "[DOC-ACCT-001]"),
+    ("account_number", "account number"),
+    ("phone", "call support"),
+])
+def test_llm_detection_that_cannot_be_the_value_does_not_block(context, category, text):
+    draft = _draft("Revoke any API keys the user created, as DOC-AUTH-004 describes.")
+    r = PIIGuardrail(call_model=_llm_pii(category, text)).check(draft, context)
+    assert r.passed, r.reason
+
+
+@pytest.mark.parametrize("category,text", [
+    ("api_key", "cs_prod_8f3Kq29xLm7Ta"),  # an unbroken token the regex does not know
+    ("phone", "020 7946 0018"),
+    ("account_number", "ACCT-88"),
+    ("email", "rosa at example dot com"),
+    ("person_name", "Tomas Reyes"),  # not the ticket's customer (Alice Anders)
+])
+def test_value_shaped_llm_detection_still_blocks(context, category, text):
+    draft = _draft(f"Your details: {text}.")
+    r = PIIGuardrail(call_model=_llm_pii(category, text)).check(draft, context)
+    assert not r.passed and r.blocking and not r.fail_safe
+
+
+def test_regex_detection_is_not_subject_to_the_shape_filter(context):
+    # The filter applies to the LLM pass only; a regex hit blocks as before.
+    draft = _draft("Reach the admin at ops@cloudserve.co.uk for access.")
+    r = PIIGuardrail(call_model=_stub_returning({"passed": True, "detections": []})
+                     ).check(draft, context)
+    assert not r.passed

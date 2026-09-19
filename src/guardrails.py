@@ -239,6 +239,39 @@ def _mask_citation_markers(text: str) -> str:
     return _RE_CITATION_MARKER.sub(lambda m: " " * len(m.group(0)), text)
 
 
+# A help-article id, bare or as a citation marker ("DOC-AUTH-004", "[DOC-AUTH-004]").
+_RE_DOC_ID = re.compile(r"^\[?DOC-[A-Z]+-\d+\]?$")
+
+
+def _llm_detection_is_value_shaped(category: str, text: str) -> bool:
+    """Is an LLM PII detection shaped like the value its category names? (D-11)
+
+    The LLM pass exists to catch names and structured values the regex misses.
+    A detection whose text cannot BE the value it claims is a misreading of the
+    draft, not a leak: the local qwen2.5-7b judge blocked VAL-0019 for the words
+    "API keys" and VAL-0049 for the citation "DOC-AUTH-004", both as api_key
+    (b21_local_80_20260919). The rules are shape floors, not detectors:
+
+    - any category: a help-article id is never PII (the regex pass already
+      masks citation markers for the same reason, see _mask_citation_markers);
+    - api_key: one unbroken token of at least 12 characters;
+    - phone: at least 7 digits;
+    - account_number: at least one digit;
+    - email and person_name: kept as the LLM reported them.
+    """
+    stripped = text.strip()
+    if _RE_DOC_ID.match(stripped):
+        return False
+    digits = sum(ch.isdigit() for ch in stripped)
+    if category == "api_key":
+        return len(stripped) >= 12 and not any(ch.isspace() for ch in stripped)
+    if category == "phone":
+        return digits >= 7
+    if category == "account_number":
+        return digits >= 1
+    return True
+
+
 # CloudServe-style account IDs + bank / card digit sequences.
 _RE_ACCOUNT = re.compile(
     r"""
@@ -514,6 +547,15 @@ class PIIGuardrail:
             if category not in {"email", "api_key", "phone", "account_number", "person_name"}:
                 continue
             if not text:
+                continue
+            if not _llm_detection_is_value_shaped(category, str(text)):
+                logger.info(
+                    "guardrails.pii.llm_detection_discarded",
+                    # Length, not text: a discarded short token could still
+                    # be part of a secret, and logs are kept.
+                    extra={"ticket_id": ticket_id, "category": category,
+                           "text_len": len(str(text))},
+                )
                 continue
             result.append(
                 {
