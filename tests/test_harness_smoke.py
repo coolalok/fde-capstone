@@ -525,3 +525,95 @@ def test_a_failed_judge_call_is_an_error_not_a_score_and_not_a_crash(db, _no_ret
     assert row["judge"]["scores"] is None and row["judge"]["error"]
     j = build_metrics([row], {}, run_id="smoke", skip_guardrails=False)["judge_scores"]
     assert j["errors"] == 1 and j["flagged_for_review"] == []
+
+
+# ─── routing outcomes, failure stages, stage timing (20 Sep) ─────────
+
+
+def test_routing_outcomes_separate_wrong_sends_from_wrong_holds():
+    from evaluation.harness import routing_outcomes
+
+    truth = {f"T{i}": {"expected_route": e}
+             for i, e in enumerate(["auto_respond", "auto_respond", "escalate",
+                                    "escalate", "auto_respond"], 1)}
+    rows = [
+        {"ticket_id": "T1", "decision": "auto_respond"},  # correct send
+        {"ticket_id": "T2", "decision": "block"},         # wrong hold
+        {"ticket_id": "T3", "decision": "auto_respond"},  # wrong send
+        {"ticket_id": "T4", "decision": "escalate"},      # correct hold
+        {"ticket_id": "T5", "decision": "auto_respond"},  # correct send
+        {"ticket_id": "T9", "decision": "auto_respond"},  # no labels: not counted
+    ]
+    assert routing_outcomes(rows, truth) == {
+        "n": 5, "should_send": 3, "sent": 3, "correct_sends": 2, "wrong_sends": 1,
+        "wrong_holds": 1, "send_precision": 0.6667, "send_coverage": 0.6667,
+        "wrong_send_rate": 0.2, "wrong_hold_rate": 0.2,
+    }
+
+
+def test_failure_stage_names_the_cause_of_each_wrong_decision():
+    from evaluation.harness import failure_stage
+
+    send = {"expected_route": "auto_respond", "answerable_from_docs": True,
+            "expected_doc_ids": ["DOC-A"]}
+    hold_unanswerable = {"expected_route": "escalate", "answerable_from_docs": False}
+    hold_policy = {"expected_route": "escalate", "answerable_from_docs": True,
+                   "must_not_auto_respond": True}
+    blocked = {"decision": "block", "trigger": "guardrail_blocked",
+               "retrieved_doc_ids": ["DOC-A"],
+               "guardrails": [{"name": "pii", "passed": True, "blocking": True},
+                              {"name": "answer_relevance", "passed": False,
+                               "blocking": True, "fail_safe": False},
+                              {"name": "grounding", "passed": False,
+                               "blocking": True, "fail_safe": True}]}
+
+    assert failure_stage({"decision": "auto_respond"}, send) is None
+    assert failure_stage({"decision": "escalate"}, hold_unanswerable) is None
+    assert failure_stage({"decision": "auto_respond"}, hold_unanswerable) == \
+        {"stage": "answerability", "reason": "sent_unanswerable"}
+    assert failure_stage({"decision": "auto_respond"}, hold_policy) == \
+        {"stage": "classification", "reason": "sent_never_auto_intent"}
+    # The first blocking guardrail that failed, in run order.
+    assert failure_stage(blocked, send) == \
+        {"stage": "guardrail", "reason": "answer_relevance:verdict"}
+    # Retrieval missing every expected article outranks the guardrail that blocked.
+    assert failure_stage({**blocked, "retrieved_doc_ids": ["DOC-B"]}, send) == \
+        {"stage": "retrieval", "reason": "no_expected_doc_retrieved"}
+    assert failure_stage({"decision": "escalate", "trigger": "low_confidence",
+                          "retrieved_doc_ids": ["DOC-A"]}, send) == \
+        {"stage": "classification", "reason": "low_confidence"}
+    assert failure_stage({"decision": "escalate", "degraded": True}, send) == \
+        {"stage": "degraded", "reason": "ticket_degraded"}
+    assert failure_stage({"decision": "escalate"}, None) is None
+
+
+def test_fail_safe_guardrail_block_is_not_reported_as_a_verdict():
+    from evaluation.harness import failure_stage
+
+    row = {"decision": "block", "trigger": "guardrail_blocked", "retrieved_doc_ids": [],
+           "guardrails": [{"name": "grounding", "passed": False, "blocking": True,
+                           "fail_safe": True}]}
+    assert failure_stage(row, {"expected_route": "auto_respond"}) == \
+        {"stage": "guardrail", "reason": "grounding:fail_safe"}
+
+
+def test_rows_carry_stage_timings_and_the_report_summarises_them(db, _no_retrieval):
+    rows = [process_ticket(t, call_model=FakeModelClient()) for t in SMOKE_TICKETS]
+    for r in rows:
+        assert set(r["stage_seconds"]) == {"classification", "retrieval",
+                                           "generation", "guardrails"}
+        assert all(v >= 0 for v in r["stage_seconds"].values())
+    truth = {t["ticket_id"]: t["labels"] for t in SMOKE_TICKETS}
+    m = build_metrics(rows, truth, run_id="smoke", skip_guardrails=False)
+    stages = m["technical_metrics"]["stage_latency"]["stages"]
+    assert set(stages) == {"classification", "retrieval", "generation", "guardrails"}
+    assert all(s["p95"] >= s["p50"] for s in stages.values())
+    assert m["business_metrics"]["routing_outcomes"]["n"] == len(rows)
+    b = m["business_metrics"]["failure_breakdown"]
+    assert b["wrong_decisions"] == sum(b["by_stage"].values())
+
+
+def test_stage_latency_is_none_for_runs_that_predate_it():
+    from evaluation.harness import stage_latency
+
+    assert stage_latency([{"ticket_id": "T1", "latency_seconds": 3.0}]) is None

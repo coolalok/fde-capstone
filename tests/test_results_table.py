@@ -150,3 +150,37 @@ def test_code_version_ignores_result_only_commits_and_flags_uncommitted_code(mon
     monkeypatch.setattr(rt.subprocess, "run", fake_run)
     assert rt.git_commit() == "abc1234 + uncommitted changes"
     assert calls[0][-3:] == list(rt.CODE_PATHS), "only code paths decide the version"
+
+
+def test_markdown_splits_wrong_sends_from_wrong_holds_and_names_the_stage():
+    rows = [_row("A", AUTO, answer="ok"), _row("B", AUTO, answer="ok"),
+            _row("C", "block", trigger="guardrail_blocked", retrieved_doc_ids=["DOC-A"],
+                 guardrails=[{"name": "answer_relevance", "passed": False,
+                              "blocking": True, "fail_safe": False}],
+                 stage_seconds={"classification": 2.0, "retrieval": 0.1,
+                                "generation": 9.0, "guardrails": 20.0},
+                 usage={"calls": 5, "cached_calls": 0})]
+    tickets = {
+        "A": {"ticket_id": "A", "labels": {"expected_route": AUTO,
+                                           "answerable_from_docs": True}},
+        "B": {"ticket_id": "B", "labels": {"expected_route": HOLD,
+                                           "answerable_from_docs": False}},
+        "C": {"ticket_id": "C", "labels": {"expected_route": AUTO,
+                                           "answerable_from_docs": True,
+                                           "expected_doc_ids": ["DOC-A"]}},
+    }
+    metrics = {"run_id": "harness-20260920T010000Z-abc", "governance_metrics": {}}
+    md = rt.to_markdown(rt.build(rows, metrics, tickets, evidence={}))
+    assert "| Send precision (sent replies that should have been sent) | 50.0% (1 of 2) |" in md
+    assert "| Send coverage (tickets that should be answered, answered) | 50.0% (1 of 2) |" in md
+    assert "| answerability:sent_unanswerable | 1 |" in md
+    assert "| guardrail:answer_relevance:verdict | 1 |" in md
+    assert "| guardrails | 20.0 | 20.0 | 20.0 |" in md
+
+
+def test_markdown_omits_routing_and_stage_sections_when_there_is_nothing_to_show():
+    rows = [_row("A", AUTO, answer="ok")]
+    metrics = {"run_id": "harness-20260920T010000Z-abc", "governance_metrics": {}}
+    md = rt.to_markdown(rt.build(rows, metrics, {"A": {"ticket_id": "A"}}, evidence={}))
+    assert "## Routing against the labels" not in md
+    assert "## Where the time goes" not in md

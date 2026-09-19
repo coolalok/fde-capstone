@@ -84,6 +84,10 @@ def process_ticket(raw: dict, *, skip_guardrails: bool = False, judge: bool = Fa
     usage.drain()  # calls made outside a ticket are not this ticket's
     ticket_id = str(raw.get("ticket_id", ""))
     row: dict[str, Any] = {"ticket_id": ticket_id, "degraded": False, "error": None}
+    # Wall-clock seconds per stage, so a slow ticket says WHERE it was slow.
+    # A stage the ticket never reached is absent, not zero.
+    stage_seconds: dict[str, float] = {}
+    row["stage_seconds"] = stage_seconds
 
     try:
         ticket = normalise_any(raw)
@@ -116,18 +120,24 @@ def process_ticket(raw: dict, *, skip_guardrails: bool = False, judge: bool = Fa
             },
         }
 
+        t0 = time.perf_counter()
         classification = classify(ticket, call_model=call_model)
+        stage_seconds["classification"] = round(time.perf_counter() - t0, 3)
         row["intent"] = classification.intent
         row["urgency"] = classification.urgency
         row["confidence"] = classification.confidence
         row["classifier_error"] = classification.error
 
+        t0 = time.perf_counter()
         passages = retrieve(ticket.body, ticket_id=ticket_id)
+        stage_seconds["retrieval"] = round(time.perf_counter() - t0, 3)
         row["retrieved_doc_ids"] = [p.doc_id for p in passages]
         row["top_score"] = passages[0].score if passages else 0.0
 
+        t0 = time.perf_counter()
         response = generate(ticket, passages, ticket_id=ticket_id,
                             call_model=call_model)
+        stage_seconds["generation"] = round(time.perf_counter() - t0, 3)
         row["unknown"] = response.unknown
         row["citations"] = response.citations
         row["answer_len"] = len(response.answer)
@@ -160,7 +170,9 @@ def process_ticket(raw: dict, *, skip_guardrails: bool = False, judge: bool = Fa
             ctx = GuardrailContext(
                 ticket=ticket, passages=passages, classification=classification
             )
+            t0 = time.perf_counter()
             guardrail_results = run_all(response, ctx, call_model=call_model)
+            stage_seconds["guardrails"] = round(time.perf_counter() - t0, 3)
         row["guardrails"] = [
             {"name": g.name, "passed": g.passed, "blocking": g.blocking,
              # A block because the JUDGE failed, not because the answer did.
@@ -393,6 +405,123 @@ def _unknown_correctness(rows: list[dict], truth: dict[str, dict]) -> dict:
     }
 
 
+def routing_outcomes(rows: list[dict], truth: dict[str, dict]) -> dict:
+    """Every routing decision against labels.expected_route. Labels required.
+
+    The FCR proxy divides correct sends by ALL tickets, which mixes two
+    failures that need opposite fixes: sending what should be held (a safety
+    failure) and holding what could be sent (a coverage failure). This splits
+    them. Coverage is over the tickets the labels say should be answered.
+    """
+    labelled = [r for r in rows if r["ticket_id"] in truth]
+    should_send = [r for r in labelled
+                   if truth[r["ticket_id"]].get("expected_route") == AUTO_RESPOND]
+    sent = [r for r in labelled if r.get("decision") == AUTO_RESPOND]
+    correct = sum(1 for r in sent
+                  if truth[r["ticket_id"]].get("expected_route") == AUTO_RESPOND)
+    held_wrongly = sum(1 for r in should_send if r.get("decision") != AUTO_RESPOND)
+    n = len(labelled)
+    return {
+        "n": n,
+        "should_send": len(should_send),
+        "sent": len(sent),
+        "correct_sends": correct,
+        "wrong_sends": len(sent) - correct,
+        "wrong_holds": held_wrongly,
+        # Of the replies sent, how many should have been (EV-M3's measure).
+        "send_precision": _pct(correct, len(sent)) if sent else None,
+        # Of the tickets that should be answered, how many were.
+        "send_coverage": _pct(correct, len(should_send)) if should_send else None,
+        "wrong_send_rate": _pct(len(sent) - correct, n),
+        "wrong_hold_rate": _pct(held_wrongly, n),
+    }
+
+
+def failure_stage(row: dict, labels: Optional[dict]) -> Optional[dict]:
+    """Name the stage that caused a wrong routing decision; None when it was right.
+
+    A wrong SEND (labels say hold) is attributed to what the labels say is wrong
+    with sending: the docs cannot answer it (answerability), or its intent must
+    never be auto-answered and the classifier missed that (classification).
+
+    A wrong HOLD (labels say send) is attributed to the earliest stage that
+    explains it: the run failing, retrieval missing every expected article (no
+    draft could then be right), the router's own rule, or the first guardrail
+    that blocked. A guardrail that blocked because its judge failed is
+    reported as fail-safe, not as a verdict on the draft.
+    """
+    if not labels or not row.get("decision"):
+        return None
+    expected_send = labels.get("expected_route") == AUTO_RESPOND
+    sent = row["decision"] == AUTO_RESPOND
+    if sent == expected_send:
+        return None
+    if sent:
+        if not labels.get("answerable_from_docs"):
+            return {"stage": "answerability", "reason": "sent_unanswerable"}
+        if labels.get("must_not_auto_respond"):
+            return {"stage": "classification", "reason": "sent_never_auto_intent"}
+        return {"stage": "other", "reason": "sent_against_label"}
+    if row.get("degraded"):
+        return {"stage": "degraded", "reason": "ticket_degraded"}
+    expected_docs = set(labels.get("expected_doc_ids") or [])
+    if expected_docs and not expected_docs & set(row.get("retrieved_doc_ids") or []):
+        return {"stage": "retrieval", "reason": "no_expected_doc_retrieved"}
+    trigger = row.get("trigger", "")
+    if trigger == "guardrail_blocked":
+        blocked = [g for g in row.get("guardrails", [])
+                   if g.get("blocking") and not g.get("passed")]
+        if blocked:
+            first = blocked[0]
+            kind = "fail_safe" if first.get("fail_safe") else "verdict"
+            return {"stage": "guardrail", "reason": f"{first['name']}:{kind}"}
+    if trigger in ("never_auto_respond_intent", "low_confidence"):
+        return {"stage": "classification", "reason": trigger}
+    if trigger in ("generator_unknown", "empty_retrieval"):
+        return {"stage": "generation" if trigger == "generator_unknown" else "retrieval",
+                "reason": trigger}
+    return {"stage": "other", "reason": trigger or "unknown"}
+
+
+def failure_breakdown(rows: list[dict], truth: dict[str, dict]) -> dict:
+    """Counts of failure_stage over a run, by stage and by stage:reason."""
+    found = [f for f in (failure_stage(r, truth.get(r["ticket_id"])) for r in rows) if f]
+    return {
+        "wrong_decisions": len(found),
+        "by_stage": dict(Counter(f["stage"] for f in found).most_common()),
+        "by_reason": dict(Counter(f"{f['stage']}:{f['reason']}" for f in found)
+                          .most_common()),
+    }
+
+
+def stage_latency(rows: list[dict]) -> Optional[dict]:
+    """Per-stage p50/p95/mean seconds and model calls per ticket, live tickets only.
+
+    A ticket with any call replayed from the model cache (D-08) is excluded: its
+    stages ran at replay speed. None for runs made before stage timing existed.
+    """
+    live = [r for r in rows if r.get("stage_seconds")
+            and not r.get("usage", {}).get("cached_calls")]
+    if not live:
+        return None
+    out: dict[str, Any] = {"n_live_tickets": len(live), "stages": {}}
+    for stage in ("classification", "retrieval", "generation", "guardrails"):
+        values = sorted(r["stage_seconds"][stage] for r in live
+                        if stage in r["stage_seconds"])
+        if not values:
+            continue
+        out["stages"][stage] = {
+            "n": len(values),
+            "p50": round(statistics.median(values), 3),
+            "p95": values[min(len(values) - 1, max(0, math.ceil(0.95 * len(values)) - 1))],
+            "mean": round(statistics.mean(values), 3),
+        }
+    calls = [r.get("usage", {}).get("calls", 0) for r in live]
+    out["model_calls_per_ticket"] = {"mean": round(statistics.mean(calls), 2),
+                                     "max": max(calls)}
+    return out
+
+
 def _judge_scores(rows: list[dict]) -> dict:
     """Summarise PR-EVAL-JUDGE-01 verdicts. For review triage, not measurement.
 
@@ -520,6 +649,9 @@ def build_metrics(rows: list[dict], truth: dict[str, dict], *,
         },
     }
 
+    # Where the time goes: the end-to-end figure alone cannot say which stage to fix.
+    metrics["technical_metrics"]["stage_latency"] = stage_latency(rows)
+
     # ── cost (NFR-08): tokens the provider returned, priced per src/usage.py ──
     metrics["cost_metrics"] = {
         # D-08: a cached run replays earlier replies. State whether the cache
@@ -612,6 +744,8 @@ def build_metrics(rows: list[dict], truth: dict[str, dict], *,
         metrics["technical_metrics"]["intent_accuracy"] = _pct(
             sum(1 for r in rows
                 if r.get("intent") == truth.get(r["ticket_id"], {}).get("intent")), n)
+        metrics["business_metrics"]["routing_outcomes"] = routing_outcomes(rows, truth)
+        metrics["business_metrics"]["failure_breakdown"] = failure_breakdown(rows, truth)
 
     if any(r.get("judge") for r in rows):
         metrics["judge_scores"] = _judge_scores(rows)

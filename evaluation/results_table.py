@@ -30,7 +30,8 @@ from pathlib import Path
 from typing import Any, Optional
 
 from evaluation import fairness_audit as fa
-from evaluation.harness import _citation_accuracy
+from evaluation.harness import (_citation_accuracy, failure_breakdown, routing_outcomes,
+                                stage_latency)
 from src.generate import strip_citation_markers
 from src.guardrails import regex_pii_detections
 
@@ -414,6 +415,9 @@ def build(rows: list[dict], metrics: dict, tickets: dict[str, dict], *,
     return {"header": header, "rows": table,
             "governance": governance_conditions(rows, metrics, pii, variation),
             "business": business_reading(rows, labels),
+            "routing": routing_outcomes(rows, labels) if labels else None,
+            "failures": failure_breakdown(rows, labels) if labels else None,
+            "stages": stage_latency(rows),
             "limitations": limitations(header, table)}
 
 
@@ -480,10 +484,61 @@ def to_markdown(t: dict) -> str:
         out.append(f"| {g['condition']} | {g['requirement']} | {g['result']} | {g['status']} |")
     out += ["", "## What the numbers mean for the queue", ""]
     out += [f"- {line}" for line in t["business"]]
+    out += routing_markdown(t.get("routing"), t.get("failures"))
+    out += stages_markdown(t.get("stages"))
     out += ["", "## Facts for \"the figures above should be treated with caution because\"",
             ""]
     out += [f"- {line}" for line in t["limitations"]]
     return "\n".join(out) + "\n"
+
+
+def routing_markdown(routing: Optional[dict], failures: Optional[dict]) -> list[str]:
+    """Wrong sends and wrong holds kept apart, and the stage each one traces to."""
+    if not routing:
+        return []
+    out = ["", "## Routing against the labels", "",
+           "The FCR figure divides correct sends by every ticket. It hides two failures "
+           "with opposite fixes: sending what should be held, and holding what could "
+           "be sent.", "",
+           "| Measure | Value |", "|---|---|",
+           f"| Replies sent | {routing['sent']} of {routing['n']} |",
+           f"| Send precision (sent replies that should have been sent) | "
+           f"{_maybe_pct(routing['send_precision'])} ({routing['correct_sends']} of "
+           f"{routing['sent']}) |",
+           f"| Send coverage (tickets that should be answered, answered) | "
+           f"{_maybe_pct(routing['send_coverage'])} ({routing['correct_sends']} of "
+           f"{routing['should_send']}) |",
+           f"| Wrong sends | {routing['wrong_sends']} ({pct(routing['wrong_send_rate'])} "
+           f"of tickets) |",
+           f"| Wrong holds | {routing['wrong_holds']} ({pct(routing['wrong_hold_rate'])} "
+           f"of tickets) |"]
+    if failures and failures["wrong_decisions"]:
+        out += ["", f"Where the {failures['wrong_decisions']} wrong decisions come from. "
+                "Each is attributed to one stage by `evaluation.harness.failure_stage`: a "
+                "wrong send to what the labels say is wrong with sending, a wrong hold to "
+                "the earliest stage that explains it.", "",
+                "| Stage: reason | Tickets |", "|---|---|"]
+        out += [f"| {reason} | {n} |" for reason, n in failures["by_reason"].items()]
+    return out
+
+
+def stages_markdown(stages: Optional[dict]) -> list[str]:
+    """Seconds per pipeline stage. Absent for runs made before stage timing existed."""
+    if not stages:
+        return []
+    calls = stages["model_calls_per_ticket"]
+    out = ["", "## Where the time goes", "",
+           f"Live tickets only (n={stages['n_live_tickets']}); tickets with any call "
+           f"replayed from the model cache are excluded. Model calls per ticket: mean "
+           f"{calls['mean']}, max {calls['max']}.", "",
+           "| Stage | p50 s | p95 s | mean s |", "|---|---|---|---|"]
+    out += [f"| {name} | {s['p50']} | {s['p95']} | {s['mean']} |"
+            for name, s in stages["stages"].items()]
+    return out
+
+
+def _maybe_pct(x: Optional[float]) -> str:
+    return pct(x) if x is not None else "n/a"
 
 
 def write(output_dir: Path, rows: list[dict], metrics: dict, tickets: dict[str, dict], *,
