@@ -1,6 +1,6 @@
 # Evaluation results
 
-Run `harness-20260919T131836Z-5fe44f57` on 2026-09-19: 80 tickets. Code `7c8d502` at table generation. Drafting model `llama3.1-8b-ctx8k`, guardrail model `qwen2.5-7b-ctx8k`, confidence threshold 0.85, guardrails on. Model cache not recorded (run predates cache logging); 13 tickets replayed. Runs against the hidden evaluation set: 0.
+Run `harness-20260919T131836Z-5fe44f57` on 2026-09-19: 80 tickets. Code `5672665` at table generation. Drafting model `llama3.1-8b-ctx8k`, guardrail model `qwen2.5-7b-ctx8k`, confidence threshold 0.85, guardrails on. Model cache not recorded (run predates cache logging); 13 tickets replayed. Runs against the hidden evaluation set: 0.
 
 | Measure | Baseline | Target | Achieved | Confidence in the figure | Notes |
 |---|---|---|---|---|---|
