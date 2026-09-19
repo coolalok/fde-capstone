@@ -64,7 +64,7 @@ The lookup happens before the API-key check and before the client is built, so a
 
 ## Revisit trigger
 
-- A free configuration still cannot complete an 80-ticket run with the cache warm and five retries: then either add real queueing (rate-aware pacing between calls) or, per the Build Spec, record that the run cannot complete within the free allowance and say so in the report rather than paying.
+- A free configuration still cannot complete an 80-ticket run with the cache warm, five retries and adaptive pacing: then either make pacing proactive (read the provider's rate-limit headers on every call and slow down before the first refusal) or, per the Build Spec, record that the run cannot complete within the free allowance and say so in the report rather than paying.
 - Concurrency is added to the harness: revisit the semaphore rejected above.
 
 ## Supersedes / superseded by
