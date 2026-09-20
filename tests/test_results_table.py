@@ -184,3 +184,50 @@ def test_markdown_omits_routing_and_stage_sections_when_there_is_nothing_to_show
     md = rt.to_markdown(rt.build(rows, metrics, {"A": {"ticket_id": "A"}}, evidence={}))
     assert "## Routing against the labels" not in md
     assert "## Where the time goes" not in md
+
+
+def _ticket(tid, subject, body, route, answerable=True):
+    return {"ticket_id": tid, "subject": subject, "body": body,
+            "labels": {"expected_route": route, "answerable_from_docs": answerable}}
+
+
+def test_tickets_whose_text_is_labelled_both_ways_are_counted(monkeypatch, tmp_path):
+    # No dev file to compare against: the conflict is inside the run itself.
+    monkeypatch.setattr(rt, "DEV_TICKETS_PATH", tmp_path / "absent.json")
+    tickets = {
+        "A": _ticket("A", "Roll back", "How do I revert?", AUTO, True),
+        "B": _ticket("B", "Roll back", "How do I revert?", HOLD, False),   # same text, opposite
+        "C": _ticket("C", "Billing", "Why is my invoice higher?", AUTO, True),
+    }
+    rows = [_row(t, AUTO) for t in tickets]
+    got = rt.contested_labels(rows, tickets)
+    assert got["n"] == 2 and got["tickets"] == ["A", "B"] and got["pairs_within_run"] == 1
+
+
+def test_agreeing_duplicates_are_not_contested(monkeypatch, tmp_path):
+    monkeypatch.setattr(rt, "DEV_TICKETS_PATH", tmp_path / "absent.json")
+    tickets = {
+        "A": _ticket("A", "Roll back", "How do I revert?", AUTO, True),
+        "B": _ticket("B", "Roll back", "How do I revert?", AUTO, True),
+    }
+    got = rt.contested_labels([_row("A", AUTO), _row("B", AUTO)], tickets)
+    assert got == {"n": 0, "tickets": [], "pairs_within_run": 0}
+
+
+def test_a_ticket_file_without_labels_reports_nothing_contested(monkeypatch, tmp_path):
+    monkeypatch.setattr(rt, "DEV_TICKETS_PATH", tmp_path / "absent.json")
+    tickets = {"A": {"ticket_id": "A", "subject": "s", "body": "b"}}
+    assert rt.contested_labels([_row("A", AUTO)], tickets)["n"] == 0
+
+
+def test_the_limitation_line_names_the_count_and_the_in_run_pairs(monkeypatch, tmp_path):
+    monkeypatch.setattr(rt, "DEV_TICKETS_PATH", tmp_path / "absent.json")
+    tickets = {
+        "A": _ticket("A", "Roll back", "How do I revert?", AUTO, True),
+        "B": _ticket("B", "Roll back", "How do I revert?", HOLD, False),
+    }
+    rows = [_row("A", AUTO, answer="ok"), _row("B", HOLD)]
+    metrics = {"run_id": "harness-20260920T010000Z-abc", "governance_metrics": {}}
+    md = rt.to_markdown(rt.build(rows, metrics, tickets, evidence={}))
+    assert "2 of 2 tickets have text that appears elsewhere" in md
+    assert "1 such pair sits inside this run" in md

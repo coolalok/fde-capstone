@@ -40,6 +40,8 @@ TICKETS_PATH = _ROOT / "data" / "validation_tickets.json"
 # B-18 evidence: blind human scores and the judge's scores on 50 drafts.
 CALIBRATION_FIXTURE = _ROOT / "tests" / "fixtures" / "judge_calibration.json"
 CALIBRATION_RESULTS = _ROOT / "evaluation" / "results" / "judge_calibration_20260917"
+# Read only to find tickets whose text also appears there with a different label.
+DEV_TICKETS_PATH = _ROOT / "data" / "development_tickets.json"
 
 AUTO = "auto_respond"
 MET, NOT_MET, NOT_MEASURED = "MET", "NOT MET", "NOT MEASURED"
@@ -418,7 +420,7 @@ def build(rows: list[dict], metrics: dict, tickets: dict[str, dict], *,
             "routing": routing_outcomes(rows, labels) if labels else None,
             "failures": failure_breakdown(rows, labels) if labels else None,
             "stages": stage_latency(rows),
-            "limitations": limitations(header, table)}
+            "limitations": limitations(header, table, rows, tickets)}
 
 
 def business_reading(rows: list[dict], labels: dict[str, dict]) -> list[str]:
@@ -438,7 +440,47 @@ def business_reading(rows: list[dict], labels: dict[str, dict]) -> list[str]:
     return lines
 
 
-def limitations(header: dict, table: list[dict]) -> list[str]:
+def contested_labels(rows: list[dict], tickets: dict[str, dict]) -> dict:
+    """Tickets in this run whose exact text carries a different label elsewhere.
+
+    The dataset repeats ticket text: 50 groups of identical subject+body across
+    the labelled sets disagree on expected_route or answerable_from_docs, and two
+    such pairs sit inside the validation set itself (VAL-0012/VAL-0034,
+    VAL-0060/VAL-0061). No system can be right on both members of a pair, so a
+    share of any error count here is the dataset disagreeing with itself. Scored
+    against the run's own ticket file plus development_tickets.json when readable;
+    a hidden set with no repeats simply reports zero.
+    """
+    def key(t: dict) -> tuple:
+        return ((t.get("subject") or "").strip(), (t.get("body") or "").strip())
+
+    def label(t: dict) -> tuple:
+        lab = t.get("labels") or {}
+        return (lab.get("expected_route"), lab.get("answerable_from_docs"))
+
+    pool = [t for t in tickets.values() if t.get("labels")]
+    if not pool:
+        return {"n": 0, "tickets": [], "pairs_within_run": 0}
+    try:
+        pool += [t for t in json.loads(DEV_TICKETS_PATH.read_text())
+                 if t.get("ticket_id") not in tickets]
+    except (OSError, ValueError):  # no dev file to compare against; run's own is enough
+        pass
+    by_text: dict[tuple, list[dict]] = {}
+    for t in pool:
+        by_text.setdefault(key(t), []).append(t)
+    ids = {t["ticket_id"] for group in by_text.values() if len(group) > 1
+           and len({label(x) for x in group}) > 1 for t in group}
+    # A pair inside THIS run: both members are the run's own tickets and they
+    # disagree with each other. A dev copy disagreeing does not make one.
+    within = sum(1 for group in by_text.values()
+                 if len({label(x) for x in group if x["ticket_id"] in tickets}) > 1)
+    here = sorted(i for i in ids if i in {r["ticket_id"] for r in rows})
+    return {"n": len(here), "tickets": here, "pairs_within_run": within}
+
+
+def limitations(header: dict, table: list[dict], rows: Optional[list[dict]] = None,
+                tickets: Optional[dict[str, dict]] = None) -> list[str]:
     """Facts for the sentence the report needs: 'the figures above should be treated
     with caution because ...'. The author writes the sentence."""
     items = [f"A single run of {header['tickets']} tickets: one ticket moves a rate by "
@@ -452,6 +494,16 @@ def limitations(header: dict, table: list[dict]) -> list[str]:
     items.append("Correctness is agreement with the dataset's labels, some of which are "
                  "debatable (e.g. VAL-0004 is labelled unanswerable although DOC-AUTH-002 "
                  "covers it).")
+    contested = contested_labels(rows or [], tickets or {})
+    if contested["n"]:
+        pairs = contested["pairs_within_run"]
+        items.append(
+            f"{contested['n']} of {header['tickets']} tickets have text that appears "
+            "elsewhere in the labelled data with a different expected_route or "
+            "answerable_from_docs, so their correct answer is set by which copy was "
+            "filed here, not by the ticket"
+            + (f"; {pairs} such {'pair sits' if pairs == 1 else 'pairs sit'} inside "
+               "this run, where no system can be right on both" if pairs else "") + ".")
     items.append(f"Hidden evaluation set runs: {header['hidden_set_runs']}. These figures are "
                  "from a labelled validation set, not the held-out test set.")
     return items

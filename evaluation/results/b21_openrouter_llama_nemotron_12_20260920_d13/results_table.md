@@ -1,6 +1,6 @@
 # Evaluation results
 
-Run `harness-20260920T025325Z-d5fdedb1` on 2026-09-20: 12 tickets. Code `501ca9d` at table generation. Drafting model `meta-llama/llama-3.1-8b-instruct`, guardrail model `nvidia/nemotron-3-super-120b-a12b:free`, confidence threshold 0.85, guardrails on. Model cache off (0 cached calls, 56 live); 0 tickets replayed. Runs against the hidden evaluation set: 0.
+Run `harness-20260920T025325Z-d5fdedb1` on 2026-09-20: 12 tickets. Code `501ca9d + uncommitted changes` at table generation. Drafting model `meta-llama/llama-3.1-8b-instruct`, guardrail model `nvidia/nemotron-3-super-120b-a12b:free`, confidence threshold 0.85, guardrails on. Model cache off (0 cached calls, 56 live); 0 tickets replayed. Runs against the hidden evaluation set: 0.
 
 | Measure | Baseline | Target | Achieved | Confidence in the figure | Notes |
 |---|---|---|---|---|---|
@@ -67,4 +67,5 @@ Live tickets only (n=12); tickets with any call replayed from the model cache ar
 - A single run of 12 tickets: one ticket moves a rate by 8.3 points, and 95% intervals are wide.
 - Not measured to the Framework's method: Satisfaction proxy, Hallucination rate, Citation accuracy, Cross-group variation.
 - Correctness is agreement with the dataset's labels, some of which are debatable (e.g. VAL-0004 is labelled unanswerable although DOC-AUTH-002 covers it).
+- 3 of 12 tickets have text that appears elsewhere in the labelled data with a different expected_route or answerable_from_docs, so their correct answer is set by which copy was filed here, not by the ticket; 2 such pairs sit inside this run, where no system can be right on both.
 - Hidden evaluation set runs: 0. These figures are from a labelled validation set, not the held-out test set.

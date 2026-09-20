@@ -109,6 +109,21 @@ See section 6 above. Each guardrail is a `Guardrail` class with one method — `
 - **Domain** — the six components (`src/ingest.py`, `classify.py`, `retrieve.py`, `route.py`, `generate.py`, `guardrails.py`).
 - **Persistence** — the SQLite decision log, the Chroma vector store, and the Prometheus metrics endpoint.
 
+## Dataset labels — what the scores are measured against
+
+Audited 20 Sep, because the reported figures are agreement with `labels.*` and nothing had checked the labels themselves.
+
+Self-consistent where it matters: across all 580 labelled tickets, none is `auto_respond` while unanswerable, none carries `must_not_auto_respond` and `auto_respond` together, and every answerable ticket lists expected articles. Sixteen answerable tickets are held with no policy flag; all sixteen are high-urgency performance or database incidents, which reads as a deliberate "investigate, do not send an article" call rather than an error.
+
+Two defects are real, and both limit what any score here can mean:
+
+- **The same ticket text is labelled both ways.** 50 groups of identical subject and body disagree on `expected_route` or `answerable_from_docs` (144 tickets). Two pairs sit inside the validation set itself — VAL-0012/VAL-0034 and VAL-0060/VAL-0061 — so no system can be right on both members. 21 of the 80 validation tickets have contested text, and 10 of the 32 wrong decisions on b21_openai_gemini_80_d12_20260920 land on them. `evaluation/results_table.py` computes this per run into the limitations section, so it travels with every table.
+- **VAL-0004 looks mislabelled.** Marked unanswerable with no expected articles, while DOC-AUTH-002 lists "The authenticator code is rejected as invalid" under Symptoms — the ticket's exact complaint.
+
+The labels are not corrected. Editing ground truth to suit our output would make every figure unfalsifiable, and the hidden evaluation set carries whatever labels it carries. The defects are reported instead.
+
+**Nothing in `src/` is fitted to an individual ticket.** Every `VAL-`/`DEV-` reference in the pipeline and the prompts is a comment naming the evidence for a rule. The two rules that came closest to the labels were re-checked in this audit: the D-07 policy list matches `must_not_auto_respond` on all 580 tickets with no exceptions, and EV-DATA-10 shows the flag is a function of intent, so the rule restates the label in a field the router may read rather than approximating it; and the answer-relevance guardrail's motivating case (VAL-0002) is labelled identically in all five copies of its text, so it targets a real defect. The one decision shaped by the graded set is the 0.85 confidence threshold, swept on the same 80 validation tickets it is reported against (D-05b). It is also the largest single cause of held-back correct answers (11 on the latest run, 5 of them on contested tickets), so tuning it further on this set would be fitting label noise.
+
 ## What's still pending
 
 - **D-04 (chunking):** provisionally fixed 800/120; the final ADR is backlog item B-08 this week, now that dense-retrieval measurement is in.

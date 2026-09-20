@@ -1,6 +1,6 @@
 # Evaluation results
 
-Run `harness-20260919T194841Z-6aeb7291` on 2026-09-19: 80 tickets. Code `562f943` at table generation. Drafting model `gpt-4o-mini`, guardrail model `gemini-3.8-flash`, confidence threshold 0.85, guardrails on. Model cache off (0 cached calls, 448 live); 0 tickets replayed. Runs against the hidden evaluation set: 0.
+Run `harness-20260919T194841Z-6aeb7291` on 2026-09-19: 80 tickets. Code `501ca9d + uncommitted changes` at table generation. Drafting model `gpt-4o-mini`, guardrail model `gemini-3.8-flash`, confidence threshold 0.85, guardrails on. Model cache off (0 cached calls, 448 live); 0 tickets replayed. Runs against the hidden evaluation set: 0.
 
 | Measure | Baseline | Target | Achieved | Confidence in the figure | Notes |
 |---|---|---|---|---|---|
@@ -66,4 +66,5 @@ Live tickets only (n=80); tickets with any call replayed from the model cache ar
 - A single run of 80 tickets: one ticket moves a rate by 1.2 points, and 95% intervals are wide.
 - Not measured to the Framework's method: Satisfaction proxy, Hallucination rate, Citation accuracy.
 - Correctness is agreement with the dataset's labels, some of which are debatable (e.g. VAL-0004 is labelled unanswerable although DOC-AUTH-002 covers it).
+- 21 of 80 tickets have text that appears elsewhere in the labelled data with a different expected_route or answerable_from_docs, so their correct answer is set by which copy was filed here, not by the ticket; 2 such pairs sit inside this run, where no system can be right on both.
 - Hidden evaluation set runs: 0. These figures are from a labelled validation set, not the held-out test set.
