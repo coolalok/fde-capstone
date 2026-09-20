@@ -5,7 +5,7 @@ Built for the Forward Deployed AI Engineering capstone project.
 
 **Author:** Alok Kulkarni
 **Deadline:** 20 September 2026
-**Status:** Week 1 — Discovery and Requirements
+**Status:** Week 3 — submission-ready
 
 ---
 
@@ -35,17 +35,28 @@ python -m scripts.verify_setup
 # 5. Index the documentation corpus (one-time)
 python -m src.index_docs
 
-# 6. Run the API
-python -m src.api
-
-# 7. Run the full evaluation harness (the gate command)
+# 6. Run the full evaluation harness (the gate command — A9/A10)
 python -m evaluation.harness \
     --input data/validation_tickets.json \
-    --output evaluation/results/
+    --output evaluation/results/run_$(date +%Y%m%d)
 
-# 8. Run tests
+# 7. Run tests
 python -m pytest tests/ -v
+
+# 8. (optional) Run the HTTP API for a live demo
+python -m src.api                             # starts on http://127.0.0.1:8000
+curl -s http://127.0.0.1:8000/healthz | jq
+curl -s -X POST http://127.0.0.1:8000/ticket \
+     -H "Content-Type: application/json" \
+     -d '{"ticket_id":"DEMO-1","channel":"email",
+          "body":"How do I revert to the previous release?"}' | jq
+curl -s http://127.0.0.1:8000/metrics | head -20
 ```
+
+The graded artefact is `evaluation/results/<run>/metrics_report.json` produced
+by step 6. The API in step 8 wraps the same pipeline for demonstration and
+Prometheus monitoring; it is not the assessed interface (Build Spec §04
+labels its launch command *illustrative rather than prescriptive*).
 
 ## Repository layout
 
@@ -101,7 +112,7 @@ The hidden evaluation set (120 tickets) is **not** in this repo. The harness mus
 
 ## Architecture at a glance
 
-Ingest → Classify → Retrieve → Route → Generate → Validate
+Ingest → Classify → Retrieve → Generate → Validate → Route
 
 Cross-cutting: decision log, metrics, guardrails.
 

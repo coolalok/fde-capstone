@@ -47,7 +47,7 @@ MODEL_CALL_FAILURES = Counter(
 DECISION_LOG_FAILURES = Counter(
     "decision_log_write_failures_total",
     "Decision-log writes that failed — FR-20 not satisfied for those decisions",
-    ["stage"],  # classification | routing | generation | validation
+    ["stage"],  # classification | retrieval | generation | guardrails | routing
 )
 
 
