@@ -1,0 +1,193 @@
+{
+  "run_id": "harness-20260912T201531Z-d34c4278",
+  "model_name": "meta-llama/llama-3.1-8b-instruct",
+  "guardrail_model": "gpt-4o-mini",
+  "confidence_threshold": 0.85,
+  "guardrails_enabled": true,
+  "labels_available": true,
+  "counts": {
+    "tickets_processed": 80,
+    "auto_respond": 20,
+    "escalate": 2,
+    "block": 58,
+    "degraded": 0,
+    "generator_unknown": 50,
+    "empty_retrieval": 7
+  },
+  "business_metrics": {
+    "fcr_proxy": 0.25,
+    "fcr_correct_proxy": 0.175,
+    "escalation_rate": 0.75,
+    "repeat_contact_proxy": 0.625,
+    "ttr_seconds_median": 5.851
+  },
+  "technical_metrics": {
+    "latency_p50_seconds": 5.851,
+    "latency_p95_seconds": 18.594,
+    "latency_max_seconds": 571.46,
+    "classifier_failures": 46,
+    "generator_failures": 47,
+    "retrieval_hit_at_3": 0.9811,
+    "retrieval_answerable_n": 53,
+    "intent_per_class": {
+      "account_access": {
+        "support": 4,
+        "precision": 1.0,
+        "recall": 0.25
+      },
+      "api_key_issue": {
+        "support": 6,
+        "precision": 1.0,
+        "recall": 0.3333
+      },
+      "api_usage_question": {
+        "support": 4,
+        "precision": 1.0,
+        "recall": 0.25
+      },
+      "authentication_failure": {
+        "support": 3,
+        "precision": 1.0,
+        "recall": 0.6667
+      },
+      "billing_query": {
+        "support": 10,
+        "precision": 1.0,
+        "recall": 0.6
+      },
+      "compliance_request": {
+        "support": 1,
+        "precision": 1.0,
+        "recall": 1.0
+      },
+      "configuration_help": {
+        "support": 3,
+        "precision": 1.0,
+        "recall": 0.3333
+      },
+      "data_export": {
+        "support": 1,
+        "precision": 0.0,
+        "recall": 0.0
+      },
+      "data_residency": {
+        "support": 6,
+        "precision": 1.0,
+        "recall": 0.5
+      },
+      "database_issue": {
+        "support": 1,
+        "precision": 1.0,
+        "recall": 1.0
+      },
+      "deployment_failure": {
+        "support": 5,
+        "precision": 0.5,
+        "recall": 0.2
+      },
+      "feature_request": {
+        "support": 3,
+        "precision": 0.0,
+        "recall": 0.0
+      },
+      "integration_help": {
+        "support": 3,
+        "precision": 0.0,
+        "recall": 0.0
+      },
+      "onboarding": {
+        "support": 4,
+        "precision": 0.0,
+        "recall": 0.0
+      },
+      "performance_degradation": {
+        "support": 3,
+        "precision": 0.5,
+        "recall": 0.3333
+      },
+      "quota_or_overage": {
+        "support": 2,
+        "precision": 1.0,
+        "recall": 0.5
+      },
+      "rate_limit": {
+        "support": 1,
+        "precision": 0.0,
+        "recall": 0.0
+      },
+      "rollback_request": {
+        "support": 6,
+        "precision": 1.0,
+        "recall": 0.3333
+      },
+      "security_incident": {
+        "support": 4,
+        "precision": 1.0,
+        "recall": 0.5
+      },
+      "sso_configuration": {
+        "support": 1,
+        "precision": 0.3333,
+        "recall": 1.0
+      },
+      "unclear_request": {
+        "support": 6,
+        "precision": 1.0,
+        "recall": 0.5
+      },
+      "unknown": {
+        "support": 0,
+        "precision": 0.0,
+        "recall": 0.0
+      },
+      "webhook_issue": {
+        "support": 3,
+        "precision": 0.0,
+        "recall": 0.0
+      }
+    },
+    "intent_accuracy": 0.3625
+  },
+  "governance_metrics": {
+    "decisions_logged": 80,
+    "reconciles": true,
+    "missing_from_log": [],
+    "extra_in_log": [],
+    "guardrail_activations": {
+      "confidence_floor": 52,
+      "grounding": 7
+    },
+    "guardrail_fail_safe_blocks": {},
+    "pii_detections": 0,
+    "confidence_calibration": [
+      {
+        "bucket": "0.0-0.1",
+        "n": 1,
+        "stated_avg": 0.0,
+        "observed": 1.0,
+        "gap_pp": 100.0,
+        "sufficient_n": false
+      },
+      {
+        "bucket": "0.8-0.9",
+        "n": 15,
+        "stated_avg": 0.833,
+        "observed": 0.867,
+        "gap_pp": 3.3,
+        "sufficient_n": true
+      },
+      {
+        "bucket": "0.9-1.0",
+        "n": 18,
+        "stated_avg": 0.928,
+        "observed": 0.833,
+        "gap_pp": -9.4,
+        "sufficient_n": true
+      }
+    ],
+    "calibration_fallbacks_excluded": 46,
+    "max_calibration_gap_pp": 9.4,
+    "calibration_min_bucket_n": 5
+  },
+  "wall_clock_seconds": 1221.5
+}

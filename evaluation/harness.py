@@ -24,9 +24,9 @@ Design decisions worth reading:
   the input file directly, alongside the pipeline rather than through it.
 
 - **Label-dependent metrics are optional.** The hidden evaluation set is a file
-  we have never seen and may carry no labels at all. Intent precision/recall and
-  retrieval hit rate are computed only when labels are present; their absence
-  degrades the report, not the run.
+  we have never seen and may carry no labels at all. Intent precision/recall,
+  retrieval hit rate and citation accuracy are computed only when labels are
+  present; their absence degrades the report, not the run.
 
 - **Every ticket is wrapped.** A single ticket that raises anywhere must not end
   the run (FR-23). The failure is recorded, the ticket is force-escalated, and
@@ -44,14 +44,21 @@ from collections import Counter
 from pathlib import Path
 from typing import Any, Optional
 
+from evaluation.gt_response_check import citation_precision_recall
+from evaluation.judge import DIMENSIONS as JUDGE_DIMENSIONS
+from evaluation.judge import score_item
+from evaluation.retrieval_eval import K_VALUES, recall_at_k
+from src import usage
 from src.classify import classify
-from src.config import CONFIDENCE_THRESHOLD, MODEL_NAME
-from src.generate import generate
+from src.config import (CONFIDENCE_THRESHOLD, GUARDRAIL_MODEL, METRICS_PORT,
+                        MODEL_CACHE_DISABLED, MODEL_NAME, kill_switch_active)
+from src.generate import generate, strip_citation_markers
 from src.guardrails import run_all
 from src.ingest import normalise_any
 from src.logging_config import configure_logging
 from src.logging_store import new_run_id, reconcile, set_run_id
-from src.retrieve import retrieve
+from src.metrics import LATENCY, TICKETS, start_metrics_server
+from src.retrieve import retrieval_query, retrieve, warm
 from src.route import AUTO_RESPOND, BLOCK, ESCALATE, route
 from src.schema import GuardrailContext, Route
 
@@ -60,7 +67,7 @@ import logging
 logger = logging.getLogger(__name__)
 
 
-def process_ticket(raw: dict, *, skip_guardrails: bool = False,
+def process_ticket(raw: dict, *, skip_guardrails: bool = False, judge: bool = False,
                    call_model: Optional[Any] = None) -> dict:
     """Run one ticket through the whole pipeline. Never raises.
 
@@ -74,43 +81,134 @@ def process_ticket(raw: dict, *, skip_guardrails: bool = False,
     know about. Production leaves it None.
     """
     started = time.perf_counter()
+    usage.drain()  # calls made outside a ticket are not this ticket's
     ticket_id = str(raw.get("ticket_id", ""))
     row: dict[str, Any] = {"ticket_id": ticket_id, "degraded": False, "error": None}
+    # Wall-clock seconds per stage, so a slow ticket says WHERE it was slow.
+    # A stage the ticket never reached is absent, not zero.
+    stage_seconds: dict[str, float] = {}
+    row["stage_seconds"] = stage_seconds
 
     try:
         ticket = normalise_any(raw)
         row["channel"] = ticket.channel
         row["warnings"] = ticket.warnings
+        # R-03/D-16: an attempt is evidence. Recorded per ticket whether or not
+        # it changed the outcome, so the report can count attempts rather than
+        # inferring them from a downstream block.
+        row["injection_flags"] = ticket.injection_flags
+        # ── The inbound request, as received and as normalised ────────────
+        # Every field the pipeline was given, for all four channels. Until
+        # now only LENGTHS were recorded (input_summary="body_len=310"),
+        # which is useless for debugging: you cannot tell why a ticket was
+        # misclassified, why retrieval missed, or whether ingest mangled the
+        # text, without the text. `raw` is the payload exactly as it arrived
+        # (channel-specific keys differ per channel); `normalised` is what the
+        # pipeline actually saw after ingest. Keeping both is the point — a
+        # difference between them IS the ingest bug.
+        #
+        # Labels are deliberately excluded: they are evaluation ground truth
+        # and must never appear in a production-shaped record.
+        row["request"] = {
+            "raw": {k: v for k, v in raw.items() if k != "labels"},
+            "normalised": {
+                "channel": ticket.channel,
+                "subject": ticket.subject,
+                "body": ticket.body,
+                "original_body": ticket.original_body,
+                "received_at": ticket.received_at,
+                "customer_id": ticket.customer_id,
+                "customer_tier": ticket.customer_tier,
+                "customer_region": ticket.customer_region,
+                "language_fluency": ticket.language_fluency,
+            },
+        }
 
+        t0 = time.perf_counter()
         classification = classify(ticket, call_model=call_model)
+        stage_seconds["classification"] = round(time.perf_counter() - t0, 3)
         row["intent"] = classification.intent
         row["urgency"] = classification.urgency
         row["confidence"] = classification.confidence
         row["classifier_error"] = classification.error
 
-        passages = retrieve(ticket.body, ticket_id=ticket_id)
+        t0 = time.perf_counter()
+        passages = retrieve(retrieval_query(ticket), ticket_id=ticket_id)
+        stage_seconds["retrieval"] = round(time.perf_counter() - t0, 3)
         row["retrieved_doc_ids"] = [p.doc_id for p in passages]
         row["top_score"] = passages[0].score if passages else 0.0
 
+        t0 = time.perf_counter()
         response = generate(ticket, passages, ticket_id=ticket_id,
                             call_model=call_model)
+        stage_seconds["generation"] = round(time.perf_counter() - t0, 3)
         row["unknown"] = response.unknown
         row["citations"] = response.citations
         row["answer_len"] = len(response.answer)
+        # The draft itself, not just its length. Diagnosing why a guardrail
+        # blocked needs the text that was judged: the DEV-0485 / VAL-0008 /
+        # VAL-0019 PII false positive could not be identified from these rows
+        # and cost a re-run against the live provider to reproduce. A blocked
+        # draft is never sent to the customer, so this file is the only place
+        # it survives. Drafts blocked for PII are retained deliberately —
+        # withholding them here would make exactly the tickets that most need
+        # review the ones that cannot be reviewed. Treat results.jsonl as
+        # carrying reply text (it is gitignored by default at the top level;
+        # committed run directories are diagnostic runs on synthetic data).
+        row["answer"] = response.answer
         row["generator_error"] = response.error
         row["retries"] = response.retries
+        # ── The response BEFORE the guardrails ────────────────────────────
+        # The draft exactly as the generator produced it. This is what every
+        # guardrail is handed and what their verdicts refer to. `answer` above
+        # is the same string, kept because existing analysis and tests read it.
+        row["response_pre_guardrail"] = {
+            "answer": response.answer,
+            "citations": response.citations,
+            "confidence": response.confidence,
+            "unknown": response.unknown,
+        }
 
         guardrail_results = []
         if not skip_guardrails:
             ctx = GuardrailContext(
                 ticket=ticket, passages=passages, classification=classification
             )
+            t0 = time.perf_counter()
             guardrail_results = run_all(response, ctx, call_model=call_model)
+            stage_seconds["guardrails"] = round(time.perf_counter() - t0, 3)
         row["guardrails"] = [
             {"name": g.name, "passed": g.passed, "blocking": g.blocking,
-             "reason": g.reason[:200]}
+             # A block because the JUDGE failed, not because the answer did.
+             # Both block; they mean opposite things to a reader.
+             "fail_safe": g.fail_safe,
+             # Full reason, not a 200-char prefix. The truncation cut the
+             # judge's argument mid-sentence — on VAL-0004 it left
+             # "The passage states that device clock drift of more than thirty
+             # seconds invalidat", which read as the judge contradicting
+             # itself when it was actually making a precise point about the
+             # draft over-claiming "the most common cause". A debug record
+             # that cuts off the reasoning is not a debug record.
+             "reason": g.reason,
+             # The structured verdict: which claims, and why each failed.
+             # This is what distinguishes a good block from a bad one.
+             "details": g.details}
             for g in guardrail_results
         ]
+
+        # PR-EVAL-JUDGE-01 on the draft, as B-18 calibrated it: the raw draft
+        # with its [DOC-ID] markers, and the passages retrieval returned.
+        # Abstentions have no content to score and are not sent.
+        if judge and not response.unknown and response.answer.strip():
+            row["judge"] = score_item(
+                {"item_id": ticket_id, "ticket_id": ticket_id,
+                 "ticket": {"channel": ticket.channel, "subject": ticket.subject,
+                            "body": ticket.body},
+                 "passages": [{"doc_id": p.doc_id, "title": p.title,
+                               "category": p.category, "text": p.text}
+                              for p in passages],
+                 "reply": response.answer},
+                call_model=call_model)
 
         decision: Route = route(
             ticket, classification, passages, response, guardrail_results
@@ -119,6 +217,54 @@ def process_ticket(raw: dict, *, skip_guardrails: bool = False,
         row["trigger"] = decision.trigger
         row["reason"] = decision.reason
         row["bundle_present"] = decision.bundle is not None
+        # The bundle itself, not just that there was one (FR-11). A reviewer
+        # reading this file sees exactly what the human handling the
+        # escalation would receive: the passages already retrieved, what else
+        # the classifier considered, the draft (flagged when a check found a
+        # fault in it), and the rule that stopped the send. Without this the
+        # object was built for every escalation and discarded.
+        row["escalation_bundle"] = None if decision.bundle is None else {
+            "passages": [{"doc_id": p.doc_id, "title": p.title, "score": p.score,
+                          "text": p.text} for p in decision.bundle.passages],
+            "alternatives": [{"intent": a.intent, "confidence": a.confidence}
+                             for a in decision.bundle.alternatives],
+            "draft": decision.bundle.draft,
+            "draft_blocked": decision.bundle.draft_blocked,
+            "uncertainty": decision.bundle.uncertainty,
+        }
+        # ── The response AFTER the guardrails ─────────────────────────────
+        # What the customer actually receives. Today the guardrails only
+        # permit or withhold — they never rewrite — so on the auto_respond
+        # path this equals the draft, and everywhere else it is empty. That
+        # equality is worth recording rather than assuming: it is the claim
+        # "nothing modified the reply between drafting and sending", and if a
+        # rewriting step is ever added (stripping inline [DOC-ID] markers is
+        # the obvious candidate) this field is where the difference shows up.
+        withheld_by = [
+            g.name for g in guardrail_results if g.blocking and not g.passed
+        ]
+        sent = decision.decision == AUTO_RESPOND
+        # Inline [DOC-ID] markers are an internal mechanism (grounding uses
+        # them to anchor each claim). They are removed here, at the delivery
+        # point, so the generator prompt and every measurement against it stay
+        # unchanged, the guardrails keep their anchors, and an escalated draft
+        # still shows a human where each claim came from.
+        customer_text = strip_citation_markers(response.answer) if sent else ""
+        row["response_post_guardrail"] = {
+            "answer": customer_text,
+            "sent_to_customer": sent,
+            "withheld_by": withheld_by,
+            "withheld_reason": decision.reason if not sent else "",
+            # True once anything rewrites the reply between drafting and
+            # sending. Marker stripping is the first such step, so on the
+            # auto_respond path this now reports whether markers were present.
+            "modified_from_draft": (
+                sent and customer_text != row["response_pre_guardrail"]["answer"]
+            ),
+            "markers_stripped": (
+                sent and len(response.answer) != len(customer_text)
+            ),
+        }
 
     except Exception as exc:  # FR-23 — one bad ticket must not end the run
         logger.error(
@@ -134,8 +280,32 @@ def process_ticket(raw: dict, *, skip_guardrails: bool = False,
             trigger="degraded",
             reason=f"degraded: {type(exc).__name__}: {exc}",
         )
+        # A ticket that crashed is the one you most want to inspect, so the
+        # debug fields must exist on every row rather than only the happy
+        # path — otherwise reading the file means guarding every access. The
+        # request may already have been captured before the failure; whatever
+        # stage was not reached stays empty.
+        row.setdefault("request", {"raw": {k: v for k, v in raw.items()
+                                           if k != "labels"},
+                                   "normalised": {}})
+        row.setdefault("response_pre_guardrail",
+                       {"answer": "", "citations": [], "confidence": 0.0,
+                        "unknown": True})
+        row.setdefault("response_post_guardrail",
+                       {"answer": "", "sent_to_customer": False,
+                        "withheld_by": [], "modified_from_draft": False,
+                        "withheld_reason": f"degraded: {type(exc).__name__}"})
 
+    calls = usage.drain()
+    row["usage"] = {**usage.summarise(calls), "per_call": calls}
     row["latency_seconds"] = round(time.perf_counter() - started, 3)
+    # Live counters for the Setup Guide §06 dashboard: tickets by channel and
+    # outcome, and end-to-end latency. The same figures are recomputed from the
+    # rows for metrics_report.json (A10); these exist to be watchable DURING a
+    # run, which a report written at the end cannot be.
+    TICKETS.labels(channel=row.get("channel") or "unknown",
+                   outcome=row.get("decision") or "unknown").inc()
+    LATENCY.observe(row["latency_seconds"])
     return row
 
 
@@ -147,6 +317,10 @@ def process_ticket(raw: dict, *, skip_guardrails: bool = False,
 # buckets are still REPORTED (with their n) but excluded from the headline
 # max-gap figure, which would otherwise be driven by a single ticket.
 MIN_CALIBRATION_BUCKET_N = 5
+
+# A judged draft with any dimension below this is listed for a human to read.
+# 4 is the rubric's "minor issue"; below it the rubric describes a material one.
+JUDGE_FLAG_BELOW = 4
 
 
 def _pct(n: int, d: int) -> float:
@@ -178,6 +352,228 @@ def _intent_precision_recall(rows: list[dict], truth: dict[str, dict]) -> dict:
     }
 
 
+def _citation_accuracy(rows: list[dict], truth: dict[str, dict]) -> dict:
+    """Citation precision and recall against labels.expected_doc_ids. Labels required.
+
+    Document level, as the Dataset Guide defines that label: did the draft cite
+    the article that answers the ticket? It does NOT check that a cited passage
+    supports the sentence it is attached to (Evaluation Framework Tier 2); a set
+    comparison cannot see that.
+
+    Averaged per ticket over drafts that cite something. A draft citing
+    documents for a ticket whose labels expect none is not a precision data
+    point — nothing in the corpus answers it, and the routing metrics already
+    score that failure — so it is counted on its own.
+    """
+    precisions: list[float] = []
+    recalls: list[float] = []
+    no_expected = 0
+    for r in rows:
+        cited = r.get("citations") or []
+        if not cited or r["ticket_id"] not in truth:
+            continue
+        precision, recall = citation_precision_recall(
+            cited, truth[r["ticket_id"]].get("expected_doc_ids", []))
+        if precision is None or recall is None:
+            no_expected += 1
+            continue
+        precisions.append(precision)
+        recalls.append(recall)
+    n = len(precisions)
+    return {
+        "n": n,
+        "precision": round(sum(precisions) / n, 4) if n else None,
+        "recall": round(sum(recalls) / n, 4) if n else None,
+        "citing_with_no_expected_doc": no_expected,
+    }
+
+
+def _unknown_correctness(rows: list[dict], truth: dict[str, dict]) -> dict:
+    """Did the generator decline exactly the tickets the docs cannot answer? Labels required.
+
+    Scored against labels.answerable_from_docs. A declined draft ("unknown") is
+    correct on an unanswerable ticket and a miss on an answerable one. Generator
+    failures also come back unknown, but nothing was decided, so they are
+    excluded and counted, as the calibration block does for classifier fallbacks.
+    """
+    tp = fp = fn = excluded = 0
+    for r in rows:
+        labels = truth.get(r["ticket_id"])
+        if labels is None or r.get("unknown") is None:
+            continue
+        if r.get("generator_error"):
+            excluded += 1
+            continue
+        unanswerable = not labels.get("answerable_from_docs")
+        if r["unknown"] and unanswerable:
+            tp += 1
+        elif r["unknown"]:
+            fp += 1
+        elif unanswerable:
+            fn += 1
+    return {
+        "unanswerable_n": tp + fn,
+        "declined_unanswerable": tp,
+        "answered_unanswerable": fn,
+        "declined_answerable": fp,
+        # Of the drafts declined, how many should have been.
+        "precision": round(tp / (tp + fp), 4) if tp + fp else None,
+        # Of the unanswerable tickets, how many were declined.
+        "recall": round(tp / (tp + fn), 4) if tp + fn else None,
+        "generator_failures_excluded": excluded,
+    }
+
+
+def routing_outcomes(rows: list[dict], truth: dict[str, dict]) -> dict:
+    """Every routing decision against labels.expected_route. Labels required.
+
+    The FCR proxy divides correct sends by ALL tickets, which mixes two
+    failures that need opposite fixes: sending what should be held (a safety
+    failure) and holding what could be sent (a coverage failure). This splits
+    them. Coverage is over the tickets the labels say should be answered.
+    """
+    labelled = [r for r in rows if r["ticket_id"] in truth]
+    should_send = [r for r in labelled
+                   if truth[r["ticket_id"]].get("expected_route") == AUTO_RESPOND]
+    sent = [r for r in labelled if r.get("decision") == AUTO_RESPOND]
+    correct = sum(1 for r in sent
+                  if truth[r["ticket_id"]].get("expected_route") == AUTO_RESPOND)
+    held_wrongly = sum(1 for r in should_send if r.get("decision") != AUTO_RESPOND)
+    n = len(labelled)
+    return {
+        "n": n,
+        "should_send": len(should_send),
+        "sent": len(sent),
+        "correct_sends": correct,
+        "wrong_sends": len(sent) - correct,
+        "wrong_holds": held_wrongly,
+        # Of the replies sent, how many should have been (EV-M3's measure).
+        "send_precision": _pct(correct, len(sent)) if sent else None,
+        # Of the tickets that should be answered, how many were.
+        "send_coverage": _pct(correct, len(should_send)) if should_send else None,
+        "wrong_send_rate": _pct(len(sent) - correct, n),
+        "wrong_hold_rate": _pct(held_wrongly, n),
+    }
+
+
+def failure_stage(row: dict, labels: Optional[dict]) -> Optional[dict]:
+    """Name the stage that caused a wrong routing decision; None when it was right.
+
+    A wrong SEND (labels say hold) is attributed to what the labels say is wrong
+    with sending: the docs cannot answer it (answerability), or its intent must
+    never be auto-answered and the classifier missed that (classification).
+
+    A wrong HOLD (labels say send) is attributed to the earliest stage that
+    explains it: the run failing, retrieval missing every expected article (no
+    draft could then be right), the router's own rule, or the first guardrail
+    that blocked. A guardrail that blocked because its judge failed is
+    reported as fail-safe, not as a verdict on the draft.
+    """
+    if not labels or not row.get("decision"):
+        return None
+    expected_send = labels.get("expected_route") == AUTO_RESPOND
+    sent = row["decision"] == AUTO_RESPOND
+    if sent == expected_send:
+        return None
+    if sent:
+        if not labels.get("answerable_from_docs"):
+            return {"stage": "answerability", "reason": "sent_unanswerable"}
+        if labels.get("must_not_auto_respond"):
+            return {"stage": "classification", "reason": "sent_never_auto_intent"}
+        return {"stage": "other", "reason": "sent_against_label"}
+    if row.get("degraded"):
+        return {"stage": "degraded", "reason": "ticket_degraded"}
+    expected_docs = set(labels.get("expected_doc_ids") or [])
+    if expected_docs and not expected_docs & set(row.get("retrieved_doc_ids") or []):
+        return {"stage": "retrieval", "reason": "no_expected_doc_retrieved"}
+    trigger = row.get("trigger", "")
+    if trigger == "guardrail_blocked":
+        blocked = [g for g in row.get("guardrails", [])
+                   if g.get("blocking") and not g.get("passed")]
+        if blocked:
+            first = blocked[0]
+            kind = "fail_safe" if first.get("fail_safe") else "verdict"
+            return {"stage": "guardrail", "reason": f"{first['name']}:{kind}"}
+    if trigger in ("never_auto_respond_intent", "low_confidence"):
+        return {"stage": "classification", "reason": trigger}
+    if trigger in ("generator_unknown", "empty_retrieval"):
+        return {"stage": "generation" if trigger == "generator_unknown" else "retrieval",
+                "reason": trigger}
+    return {"stage": "other", "reason": trigger or "unknown"}
+
+
+def failure_breakdown(rows: list[dict], truth: dict[str, dict]) -> dict:
+    """Counts of failure_stage over a run, by stage and by stage:reason."""
+    found = [f for f in (failure_stage(r, truth.get(r["ticket_id"])) for r in rows) if f]
+    return {
+        "wrong_decisions": len(found),
+        "by_stage": dict(Counter(f["stage"] for f in found).most_common()),
+        "by_reason": dict(Counter(f"{f['stage']}:{f['reason']}" for f in found)
+                          .most_common()),
+    }
+
+
+def stage_latency(rows: list[dict]) -> Optional[dict]:
+    """Per-stage p50/p95/mean seconds and model calls per ticket, live tickets only.
+
+    A ticket with any call replayed from the model cache (D-08) is excluded: its
+    stages ran at replay speed. None for runs made before stage timing existed.
+    """
+    live = [r for r in rows if r.get("stage_seconds")
+            and not r.get("usage", {}).get("cached_calls")]
+    if not live:
+        return None
+    out: dict[str, Any] = {"n_live_tickets": len(live), "stages": {}}
+    for stage in ("classification", "retrieval", "generation", "guardrails"):
+        values = sorted(r["stage_seconds"][stage] for r in live
+                        if stage in r["stage_seconds"])
+        if not values:
+            continue
+        out["stages"][stage] = {
+            "n": len(values),
+            "p50": round(statistics.median(values), 3),
+            "p95": values[min(len(values) - 1, max(0, math.ceil(0.95 * len(values)) - 1))],
+            "mean": round(statistics.mean(values), 3),
+        }
+    calls = [r.get("usage", {}).get("calls", 0) for r in live]
+    out["model_calls_per_ticket"] = {"mean": round(statistics.mean(calls), 2),
+                                     "max": max(calls)}
+    return out
+
+
+def _judge_scores(rows: list[dict]) -> dict:
+    """Summarise PR-EVAL-JUDGE-01 verdicts. For review triage, not measurement.
+
+    B-18 (evaluation/results/judge_calibration_20260917) put the judge's pooled
+    Spearman against blind human scores at 0.35, below the 0.70 floor, so these
+    scores are not reported as quality figures. The means are here only to show
+    the spread; the flagged list is what the block is for.
+    """
+    judged = [r for r in rows if r.get("judge")]
+    scored = [r for r in judged if r["judge"].get("scores")]
+    return {
+        "trusted": False,
+        "use": ("flags drafts for a human to read; not a quality measurement "
+                "(B-18 pooled Spearman 0.35 < 0.70)"),
+        "prompt_version": judged[0]["judge"]["prompt_version"] if judged else None,
+        "judge_model": GUARDRAIL_MODEL,
+        "n_judged": len(judged),
+        "errors": len(judged) - len(scored),
+        "mean": {
+            dim: round(statistics.mean(r["judge"]["scores"][dim] for r in scored), 3)
+            if scored else None
+            for dim in JUDGE_DIMENSIONS
+        },
+        "flag_below": JUDGE_FLAG_BELOW,
+        "flagged_for_review": [
+            {"ticket_id": r["ticket_id"], "decision": r.get("decision"),
+             "scores": r["judge"]["scores"]}
+            for r in scored
+            if min(r["judge"]["scores"].values()) < JUDGE_FLAG_BELOW
+        ],
+    }
+
+
 def build_metrics(rows: list[dict], truth: dict[str, dict], *,
                   run_id: str, skip_guardrails: bool) -> dict:
     """Every number here is computed, never hand-entered (FR-22 acceptance)."""
@@ -188,12 +584,22 @@ def build_metrics(rows: list[dict], truth: dict[str, dict], *,
     # ── governance ────────────────────────────────────────────────────
     recon = reconcile([r["ticket_id"] for r in rows], run_id=run_id)
     guardrail_activations: Counter = Counter()
+    # Split out separately: a fail-safe block means the judge model errored or
+    # broke its output contract, NOT that the answer was bad. Both block, so
+    # both land in guardrail_activations — but a report that cannot tell them
+    # apart reads a judge outage as rampant fabrication. If
+    # guardrail_fail_safe_blocks is a large share of guardrail_activations,
+    # the block rate is measuring provider health, not model quality.
+    guardrail_fail_safe: Counter = Counter()
     pii_detections = 0
     for r in rows:
         for g in r.get("guardrails", []):
             if not g["passed"]:
                 guardrail_activations[g["name"]] += 1
-                if g["name"] == "pii":
+                if g.get("fail_safe"):
+                    guardrail_fail_safe[g["name"]] += 1
+                elif g["name"] == "pii":
+                    # Only a real detection counts as PII found in a draft.
                     pii_detections += 1
 
     # ── business ──────────────────────────────────────────────────────
@@ -211,6 +617,10 @@ def build_metrics(rows: list[dict], truth: dict[str, dict], *,
     metrics: dict[str, Any] = {
         "run_id": run_id,
         "model_name": MODEL_NAME,
+        # Recorded separately: the guardrails judge with a different model on
+        # purpose (D-07/Bug 5), so a reader cannot tell which model produced a
+        # verdict from model_name alone.
+        "guardrail_model": GUARDRAIL_MODEL if not skip_guardrails else None,
         "confidence_threshold": CONFIDENCE_THRESHOLD,
         "guardrails_enabled": not skip_guardrails,
         "labels_available": bool(truth),
@@ -253,8 +663,24 @@ def build_metrics(rows: list[dict], truth: dict[str, dict], *,
             "missing_from_log": recon["missing_from_log"],
             "extra_in_log": recon["extra_in_log"],
             "guardrail_activations": dict(guardrail_activations),
+            "guardrail_fail_safe_blocks": dict(guardrail_fail_safe),
             "pii_detections": pii_detections,
+            # A run made with the kill switch on describes a halted system,
+            # not a working one: every ticket escalates by rule 0 (D-15).
+            "kill_switch_active": kill_switch_active(),
+            "injection_suspected": sum(1 for r in rows if r.get("injection_flags")),
         },
+    }
+
+    # Where the time goes: the end-to-end figure alone cannot say which stage to fix.
+    metrics["technical_metrics"]["stage_latency"] = stage_latency(rows)
+
+    # ── cost (NFR-08): tokens the provider returned, priced per src/usage.py ──
+    metrics["cost_metrics"] = {
+        # D-08: a cached run replays earlier replies. State whether the cache
+        # was on, so no reader takes replayed figures for live behaviour.
+        "model_cache_enabled": not MODEL_CACHE_DISABLED,
+        **usage.summarise([c for r in rows for c in r.get("usage", {}).get("per_call", [])]),
     }
 
     # ── confidence calibration (governance) ───────────────────────────
@@ -265,6 +691,7 @@ def build_metrics(rows: list[dict], truth: dict[str, dict], *,
         buckets: list[list[float]] = [[] for _ in range(10)]
         correct = [0] * 10
         skipped_fallbacks = 0
+        brier_terms: list[float] = []
         for r in rows:
             gold = truth.get(r["ticket_id"], {}).get("intent")
             pred, conf = r.get("intent"), r.get("confidence")
@@ -280,6 +707,7 @@ def build_metrics(rows: list[dict], truth: dict[str, dict], *,
             buckets[b].append(conf)
             if pred == gold:
                 correct[b] += 1
+            brier_terms.append((conf - (1.0 if pred == gold else 0.0)) ** 2)
         calibration = []
         for i, confs in enumerate(buckets):
             if not confs:
@@ -304,6 +732,12 @@ def build_metrics(rows: list[dict], truth: dict[str, dict], *,
         metrics["governance_metrics"]["max_calibration_gap_pp"] = max(
             (abs(c["gap_pp"]) for c in calibration if c["sufficient_n"]), default=None)
         metrics["governance_metrics"]["calibration_min_bucket_n"] = MIN_CALIBRATION_BUCKET_N
+        # One number for the whole table: mean squared gap between stated
+        # confidence and whether the intent was right. 0 is perfect; always
+        # stating 0.5 scores 0.25. Unlike the bucket gaps it needs no binning.
+        metrics["governance_metrics"]["brier_score"] = (
+            round(statistics.mean(brier_terms), 4) if brier_terms else None)
+        metrics["governance_metrics"]["brier_n"] = len(brier_terms)
 
     # ── label-dependent technical metrics ─────────────────────────────
     if truth:
@@ -316,10 +750,28 @@ def build_metrics(rows: list[dict], truth: dict[str, dict], *,
         )
         metrics["technical_metrics"]["retrieval_hit_at_3"] = _pct(hits, len(answerable))
         metrics["technical_metrics"]["retrieval_answerable_n"] = len(answerable)
+        # Same definition as evaluation/retrieval_eval.py, on the chunks this run retrieved.
+        metrics["technical_metrics"]["retrieval_recall_at_k"] = {
+            f"recall@{k}": round(statistics.mean(
+                recall_at_k(r.get("retrieved_doc_ids", []),
+                            set(truth[r["ticket_id"]].get("expected_doc_ids", [])), k)
+                for r in answerable), 4) if answerable else None
+            for k in K_VALUES
+        }
+        metrics["technical_metrics"]["unknown_correctness"] = _unknown_correctness(rows, truth)
+        # Every draft, then only what reached a customer.
+        metrics["technical_metrics"]["citation_accuracy"] = _citation_accuracy(rows, truth)
+        metrics["technical_metrics"]["citation_accuracy_sent"] = _citation_accuracy(
+            [r for r in rows if r.get("decision") == AUTO_RESPOND], truth)
         metrics["technical_metrics"]["intent_per_class"] = _intent_precision_recall(rows, truth)
         metrics["technical_metrics"]["intent_accuracy"] = _pct(
             sum(1 for r in rows
                 if r.get("intent") == truth.get(r["ticket_id"], {}).get("intent")), n)
+        metrics["business_metrics"]["routing_outcomes"] = routing_outcomes(rows, truth)
+        metrics["business_metrics"]["failure_breakdown"] = failure_breakdown(rows, truth)
+
+    if any(r.get("judge") for r in rows):
+        metrics["judge_scores"] = _judge_scores(rows)
     return metrics
 
 
@@ -331,6 +783,13 @@ def main(argv: Optional[list[str]] = None) -> int:
     parser.add_argument("--limit", type=int, default=0, help="process only the first N tickets")
     parser.add_argument("--skip-guardrails", action="store_true",
                         help="run without the guardrail layer (diagnostic only)")
+    # Off by default: one more paid call per draft, and B-18 found the judge
+    # untrusted, so a graded run should not depend on it.
+    parser.add_argument("--judge", action="store_true",
+                        help="score each draft with PR-EVAL-JUDGE-01 (review flags only)")
+    parser.add_argument("--metrics-port", type=int, default=METRICS_PORT,
+                        help="serve Prometheus metrics on this port during the run "
+                             "(0 = off; or set METRICS_PORT)")
     args = parser.parse_args(argv)
 
     configure_logging()
@@ -343,33 +802,82 @@ def main(argv: Optional[list[str]] = None) -> int:
     # Ground truth is read here, from the raw file — never through the Ticket.
     truth = {t["ticket_id"]: t["labels"] for t in tickets if "labels" in t}
 
+    if args.metrics_port:
+        # A dashboard is only useful while the run is happening, and an 80-ticket
+        # run is ~26 minutes of it. Failing to bind must not cost the run (A9).
+        try:
+            start_metrics_server(args.metrics_port)
+            print(f"[harness] metrics on http://localhost:{args.metrics_port}/metrics",
+                  flush=True)
+        except OSError as exc:
+            print(f"[harness] metrics server not started ({exc}); run continues",
+                  flush=True)
+
     run_id = set_run_id(new_run_id("harness"))
-    print(f"[harness] run_id={run_id}")
+    print(f"[harness] run_id={run_id}", flush=True)
     print(f"[harness] input={input_path} tickets={len(tickets)} "
-          f"labels={'yes' if truth else 'no'} guardrails={not args.skip_guardrails}")
+          f"labels={'yes' if truth else 'no'} guardrails={not args.skip_guardrails} "
+          f"judge={args.judge}",
+          flush=True)
+
+    # Load the embedder and open the index BEFORE the clock starts. It costs
+    # ~15s once per process; inside the loop it lands on ticket 1 and inflates
+    # both that ticket's latency and the run's reported p95.
+    warm_started = time.perf_counter()
+    index_ready = warm()
+    print(f"[harness] index warm: {'ready' if index_ready else 'FAILED — see log'} "
+          f"({time.perf_counter() - warm_started:.1f}s)", flush=True)
 
     started = time.perf_counter()
     rows = []
-    for i, raw in enumerate(tickets, 1):
-        rows.append(process_ticket(raw, skip_guardrails=args.skip_guardrails))
-        if i % 10 == 0 or i == len(tickets):
-            print(f"[harness]   {i}/{len(tickets)} ({time.perf_counter() - started:.0f}s)")
-
     results_path = output_dir / "results.jsonl"
+    # Stream each row as it completes and flush. An 80-ticket run takes ~40
+    # minutes against a live provider; buffering everything to the end means a
+    # kill, a crash, or an exhausted quota at ticket 79 destroys the whole run.
+    # That happened — a 40-minute B-21 run was lost with an empty results file.
+    # Partial output from an interrupted run is still evidence; nothing is.
     with results_path.open("w", encoding="utf-8") as fh:
-        for r in rows:
-            fh.write(json.dumps(r) + "\n")
+        for i, raw in enumerate(tickets, 1):
+            row = process_ticket(raw, skip_guardrails=args.skip_guardrails,
+                                 judge=args.judge)
+            rows.append(row)
+            fh.write(json.dumps(row) + "\n")
+            fh.flush()
+            if i % 10 == 0 or i == len(tickets):
+                print(f"[harness]   {i}/{len(tickets)} "
+                      f"({time.perf_counter() - started:.0f}s)", flush=True)
 
     metrics = build_metrics(rows, truth, run_id=run_id,
                             skip_guardrails=args.skip_guardrails)
     metrics["wall_clock_seconds"] = round(time.perf_counter() - started, 1)
     report_path = output_dir / "metrics_report.json"
     report_path.write_text(json.dumps(metrics, indent=2))
+    # The Evaluation Framework's results table, produced by this run rather than
+    # by hand afterwards (Framework §4). A failure here must not fail the run (A9).
+    try:
+        from evaluation.results_table import write as write_results_table
+
+        write_results_table(output_dir, rows, metrics,
+                            {t.get("ticket_id"): t for t in tickets})
+        print(f"[harness] wrote {output_dir / 'results_table.md'}")
+    except Exception:  # noqa: BLE001 - reporting must never end a completed run
+        logger.warning("harness.results_table_failed", exc_info=True)
 
     c = metrics["counts"]
     print(f"[harness] auto_respond={c['auto_respond']} escalate={c['escalate']} "
           f"block={c['block']} degraded={c['degraded']}")
     print(f"[harness] A8 reconciles={metrics['governance_metrics']['reconciles']}")
+    if metrics["governance_metrics"]["kill_switch_active"]:
+        print("[harness] KILL SWITCH ACTIVE — every ticket escalated by rule 0; "
+              "this run does not describe normal behaviour")
+    cost = metrics["cost_metrics"]
+    print(f"[harness] model calls={cost['calls']} (live={cost['live_calls']} "
+          f"cached={cost['cached_calls']}, cache "
+          f"{'on' if cost['model_cache_enabled'] else 'off'}) "
+          f"tokens in={cost['prompt_tokens']} out={cost['completion_tokens']} "
+          f"cost_usd={cost['cost_usd']} (unpriced calls={cost['unpriced_calls']}) "
+          f"replayed tokens in={cost['cached_prompt_tokens']} "
+          f"out={cost['cached_completion_tokens']} cost_saved_usd={cost['cost_saved_usd']}")
     print(f"[harness] wrote {results_path}")
     print(f"[harness] wrote {report_path}")
     # A9/FR-23: a degraded run is still a completed run.

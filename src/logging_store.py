@@ -64,7 +64,7 @@ CREATE TABLE IF NOT EXISTS decisions (
     created_at       TEXT NOT NULL,
     run_id           TEXT NOT NULL DEFAULT 'legacy',  -- scopes reconciliation; see set_run_id
     ticket_id        TEXT NOT NULL,
-    -- stage is the pipeline step (classification / routing / generation / validation)
+    -- stage is the pipeline step (classification / retrieval / generation / guardrails / routing)
     stage            TEXT NOT NULL,
     input_summary    TEXT,
     model_name       TEXT,

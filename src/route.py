@@ -21,6 +21,18 @@ Design decisions worth reading:
   implementation detail. Governance failures outrank safety failures, which
   outrank policy, which outranks quality signals.
 
+- **Only a check that read the draft can return ``block``** (D-14). The FR-19
+  confidence floor is rule 6 restated as a guardrail (D-05a), and it reads
+  classifier confidence, not the reply. It is held back from rule 2 so that a
+  ticket the classifier was unsure about escalates rather than joining the PII
+  and grounding failures in the block queue.
+
+- **An injection attempt escalates and is recorded** (R-03, D-16). Detection is
+  input-side and deterministic (``src/injection.py``); the router never refuses
+  the customer, because a ticket quoting "ignore previous instructions" may be
+  an attack, a pasted error, or a developer describing their own prompt. All
+  three belong with a person.
+
 - **The never-auto-respond policy is on intent, not on the label** (D-07).
   ``labels.must_not_auto_respond`` is evaluation ground truth and is not on
   the Ticket (FR-01 v2). The policy set reproduces that flag exactly on both
@@ -37,8 +49,9 @@ from __future__ import annotations
 import logging
 from typing import Optional
 
-from src.config import CONFIDENCE_THRESHOLD, MODEL_NAME
+from src.config import CONFIDENCE_THRESHOLD, KILL_SWITCH_ENV, MODEL_NAME, kill_switch_active
 from src.logging_store import log_decision
+from src.metrics import INJECTION_FLAGS, KILL_SWITCH
 from src.schema import (
     ClassificationResult,
     EscalationBundle,
@@ -56,19 +69,65 @@ ESCALATE = "escalate"
 BLOCK = "block"
 
 # D-07 — intents that never auto-answer, whatever the confidence.
-# Reproduces labels.must_not_auto_respond at precision 1.000 / recall 1.000
-# on the 500-ticket dev set (87/87) and the 80-ticket validation set (14/14).
+# The first four reproduce labels.must_not_auto_respond at precision 1.000 /
+# recall 1.000 on the 500-ticket dev set (87/87) and the 80-ticket validation
+# set (14/14).
+#
+# "unknown" is a different KIND of entry and does not affect that derivation:
+# it never appears as a labelled intent in either dataset (checked), because it
+# is not a category of ticket at all. It is the fallback src/classify.py
+# returns when classification FAILED — bad JSON, an unrecognised code, a dead
+# provider. The system is saying it could not tell what the ticket is about.
+#
+# Auto-answering that is indefensible, and it was not hypothetical: on 13 Sep
+# VAL-0002 ("Following up on my previous message. Any update?") classified as
+# unknown, and a reply inventing a log-forwarding problem the customer had
+# never mentioned was sent, with all five guardrails passing. The same ticket
+# on an earlier run classified as unclear_request and was correctly escalated
+# by this list — so the only thing separating a fabrication from a customer
+# was which fallback the classifier happened to land on.
+#
+# This is the abstention principle applied at the classification stage: a
+# system that cannot identify the question must not answer it. See the RAG
+# triad note in D-07 for the complementary check on the generated answer.
 NEVER_AUTO_RESPOND: frozenset[str] = frozenset(
     {
         "compliance_request",
         "security_incident",
         "feature_request",
         "unclear_request",
+        "unknown",
     }
 )
 
+# Guardrails that do not read the draft, and so cannot say anything is wrong
+# with it (D-14). The FR-19 confidence floor is a restatement of rule 6 as a
+# guardrail (D-05a's defence-in-depth): it reads classifier confidence, which
+# was known before a word was generated. A failure here is a coverage hold, not
+# a safety failure, so it falls through rule 2 and lands on rule 6 as
+# `escalate` — which is what FR-10 and FR-19 both say it should be.
+COVERAGE_GUARDRAILS: frozenset[str] = frozenset({"confidence_floor"})
+
 # How many classifier alternatives travel in the bundle. FR-11 says top-3.
 _BUNDLE_ALTERNATIVES = 3
+
+
+def _safety_failures(results: list[GuardrailResult]) -> list[GuardrailResult]:
+    """Failing blocking guardrails that found a fault in the draft (D-14)."""
+    return [
+        g
+        for g in results
+        if g.blocking and not g.passed and g.name not in COVERAGE_GUARDRAILS
+    ]
+
+
+def _floor_failures(results: list[GuardrailResult]) -> list[GuardrailResult]:
+    """Failing blocking guardrails that held the ticket on coverage (D-14)."""
+    return [
+        g
+        for g in results
+        if g.blocking and not g.passed and g.name in COVERAGE_GUARDRAILS
+    ]
 
 
 def route(
@@ -100,7 +159,7 @@ def route(
     """
     guardrail_results = guardrail_results or []
     decision, trigger, reason = _decide(
-        classification, passages, response, guardrail_results, threshold
+        ticket, classification, passages, response, guardrail_results, threshold
     )
 
     bundle = (
@@ -120,6 +179,7 @@ def route(
 
 
 def _decide(
+    ticket: Ticket,
     classification: ClassificationResult,
     passages: list[Passage],
     response: Optional[GeneratedResponse],
@@ -129,13 +189,33 @@ def _decide(
     """The ordered rules. Returns (decision, trigger, reason).
 
     Precedence, highest first:
+      0. kill switch — automatic answering halted by a human (D-15)
       1. governance  — an unlogged upstream decision (D-03b)
       2. safety      — a blocking guardrail did not pass
+      2b. injection  — the ticket text tried to give instructions (R-03, D-16)
       3. policy      — intent never auto-answers (D-07)
       4. coverage    — retrieval found nothing
       5. honesty     — the generator declined to answer
       6. quality     — confidence below the floor
     """
+    # 0. Kill switch (Governance Framework §5, D-15). Outranks everything:
+    #    a human has said stop, so nothing is auto-answered whatever the
+    #    confidence, the intent or the guardrails. The pipeline still
+    #    classifies, retrieves, drafts and checks, so the escalation bundle
+    #    the reviewer receives is as complete as on any other day.
+    halted = kill_switch_active()
+    KILL_SWITCH.set(1 if halted else 0)
+    if halted:
+        logger.warning("route.kill_switch_active", extra={"env": KILL_SWITCH_ENV})
+        return (
+            ESCALATE,
+            "kill_switch_active",
+            f"escalate: the {KILL_SWITCH_ENV} kill switch is set, so automatic "
+            f"answering is halted at the system level (Governance Framework §5); "
+            f"every ticket goes to a person regardless of confidence "
+            f"{classification.confidence:.2f}, intent or guardrail verdicts",
+        )
+
     # 1. Governance. An unlogged decision cannot be reconstructed by the
     #    autumn compliance review (EV-M5), so it must not be auto-sent —
     #    checked BEFORE the confidence threshold, per D-03b.
@@ -154,7 +234,9 @@ def _decide(
         )
 
     # 2. Safety. Every guardrail in this project blocks rather than warns (A7).
-    blocked = [g for g in guardrail_results if g.blocking and not g.passed]
+    #    The confidence floor is held back from this rule and read at rule 6
+    #    instead, because it never looks at the draft (D-14).
+    blocked = _safety_failures(guardrail_results)
     if blocked:
         names = ", ".join(g.name for g in blocked)
         detail = "; ".join(f"{g.name}: {g.reason}" for g in blocked)
@@ -163,6 +245,26 @@ def _decide(
             "guardrail_blocked",
             f"block: {len(blocked)} blocking guardrail(s) did not pass ({names}); "
             f"the drafted reply is withheld and a human must review it — {detail}",
+        )
+
+    # 2b. Injection attempt in the ticket text (R-03, D-16). Escalate and
+    #     record: the input is evidence, and a person decides what to do with
+    #     the customer. It sits AFTER the safety block — a draft with a real
+    #     fault is still a block — and BEFORE the policy and quality rules, so
+    #     the reason names the attempt rather than a downstream symptom.
+    if ticket.injection_flags:
+        INJECTION_FLAGS.labels(pattern=ticket.injection_flags[0]).inc()
+        logger.warning(
+            "route.injection_suspected",
+            extra={"ticket_id": ticket.ticket_id, "flags": ticket.injection_flags},
+        )
+        return (
+            ESCALATE,
+            "injection_suspected",
+            f"escalate: the ticket text contains "
+            f"{', '.join(ticket.injection_flags)} — a possible attempt to give the "
+            f"system instructions (R-03). The input is recorded for review and a "
+            f"person decides the reply; no automated answer is sent",
         )
 
     # 3. Policy (D-07). These intents never auto-answer at any confidence.
@@ -194,7 +296,9 @@ def _decide(
             f"escalate: the generator declined to answer rather than guess — {why}",
         )
 
-    # 6. Quality. Confidence below the floor (FR-10, D-05).
+    # 6. Quality. Confidence below the floor (FR-10, D-05) — either the
+    #    router's own threshold, or the FR-19 guardrail's verdict when a
+    #    sweep injected a lower one (D-14).
     if classification.confidence < threshold:
         return (
             ESCALATE,
@@ -202,6 +306,13 @@ def _decide(
             f"escalate: classifier confidence {classification.confidence:.2f} is below "
             f"the {threshold:.2f} auto-respond threshold for intent "
             f"'{classification.intent}'",
+        )
+    floor = _floor_failures(guardrail_results)
+    if floor:
+        return (
+            ESCALATE,
+            "low_confidence",
+            f"escalate: the confidence-floor guardrail held it — {floor[0].reason}",
         )
 
     top = passages[0]
@@ -228,8 +339,11 @@ def _build_bundle(
     why, and a blocked draft is still a faster starting point than a blank
     page (EV-D3). It must never be sent as-is, which ``draft_blocked``
     signals to the caller.
+
+    A confidence-floor failure does not set the flag: nothing looked at the
+    draft, so there is nothing for the reviewer to be warned about (D-14).
     """
-    blocked = bool([g for g in guardrail_results if g.blocking and not g.passed])
+    blocked = bool(_safety_failures(guardrail_results))
     return EscalationBundle(
         passages=list(passages),
         alternatives=list(classification.alternatives[:_BUNDLE_ALTERNATIVES]),

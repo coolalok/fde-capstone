@@ -23,7 +23,17 @@ def test_timeout_is_configured_and_sane():
     assert 0 < MODEL_TIMEOUT_SECONDS <= 120, (
         "a healthy call runs ~2s; a bound above 120s defeats the purpose"
     )
-    assert 0 <= MODEL_MAX_RETRIES <= 3
+    # The bound that matters for A9 is the worst case for ONE call, not the
+    # retry count on its own. Retries went 2 -> 5 on 19 Sep so a throttled free
+    # tier gets a real chance to answer: the SDK backs off exponentially with
+    # jitter and honours Retry-After, but starting at 0.5s and capping at 8s,
+    # two retries spend under 2 seconds. Five still leaves a call bounded.
+    assert 0 <= MODEL_MAX_RETRIES <= 6
+    worst_case_seconds = (1 + MODEL_MAX_RETRIES) * MODEL_TIMEOUT_SECONDS
+    assert worst_case_seconds <= 400, (
+        f"one call could occupy {worst_case_seconds}s; an unattended run (A9) "
+        f"must terminate — lower MODEL_MAX_RETRIES or MODEL_TIMEOUT_SECONDS"
+    )
 
 
 @pytest.mark.parametrize("module", CALL_SITES)
@@ -45,6 +55,9 @@ def test_every_client_is_bounded(module, monkeypatch):
     monkeypatch.setattr(openai, "OpenAI", _FakeOpenAI)
     monkeypatch.setattr(mod, "OPENROUTER_API_KEY", "test-key", raising=False)
     monkeypatch.setattr(mod, "require_key", lambda: "test-key", raising=False)
+    # The judge checks its own key, not require_key(); without this the test
+    # passes only on a machine whose .env holds a real one.
+    monkeypatch.setattr(mod, "GUARDRAIL_API_KEY", "test-key", raising=False)
 
     with pytest.raises(RuntimeError):
         mod._openrouter_call("system", "user", 0)
@@ -173,8 +186,18 @@ def test_guardrail_judge_is_not_the_generator_model():
     passage. Prompt recalibration did not move it, so the judge must be a
     different, stronger model. capstone-prompt-writer sets the same rule for
     evaluation judges (self-preference bias)."""
+    import os
+
     from src.config import GUARDRAIL_MODEL, MODEL_NAME
 
+    if os.environ.get("GUARDRAIL_MODEL"):
+        pytest.skip(
+            "GUARDRAIL_MODEL overridden locally. This test guards the COMMITTED "
+            "defaults, which is what the assessor runs. If your override makes "
+            "judge == generator, the model is grading its own output and any "
+            "guardrail pass-rate from that run is confounded by self-preference "
+            "bias — capstone-prompt-writer forbids it for judges."
+        )
     assert GUARDRAIL_MODEL, "guardrails need an explicit judge model"
     assert GUARDRAIL_MODEL != MODEL_NAME
     assert GUARDRAIL_MODEL.split("/")[0] != MODEL_NAME.split("/")[0], (
@@ -204,6 +227,7 @@ def test_guardrail_call_site_uses_the_judge_model(monkeypatch):
 
     monkeypatch.setattr(openai, "OpenAI", _FakeClient)
     monkeypatch.setattr(g, "require_key", lambda: "k", raising=False)
+    monkeypatch.setattr(g, "GUARDRAIL_API_KEY", "k")
     with pytest.raises(RuntimeError):
         g._openrouter_call("system", "user", 0)
     assert captured.get("model") == GUARDRAIL_MODEL
@@ -237,5 +261,180 @@ def test_empty_provider_content_raises_its_true_cause(monkeypatch):
 
     monkeypatch.setattr(openai, "OpenAI", _FakeClient)
     monkeypatch.setattr(g, "require_key", lambda: "k", raising=False)
+    monkeypatch.setattr(g, "GUARDRAIL_API_KEY", "k")
     with pytest.raises(ValueError, match="empty content"):
+        g._openrouter_call("system", "user", 0)
+
+
+# ─── malformed provider envelope (VAL-0011, 2026-09-09) ──────────────
+#
+# OpenRouter answered 200 with choices=None. Subscripting it raised
+# "TypeError: 'NoneType' object is not subscriptable" from inside the caller's
+# broad except, so the guardrail recorded the symptom instead of the cause.
+# Fail-safe still blocked the ticket (A7 held) — the defect was diagnostic, and
+# it is the class of thing that only shows up under provider load.
+
+
+def _client_returning(choices):
+    class _Completion:
+        pass
+
+    completion = _Completion()
+    completion.choices = choices
+
+    class _FakeClient:
+        def __init__(self, **kwargs):
+            pass
+
+        class chat:  # noqa: N801 - mirrors the SDK shape
+            class completions:
+                @staticmethod
+                def create(**kwargs):
+                    return completion
+
+    return _FakeClient
+
+
+@pytest.mark.parametrize("module", CALL_SITES)
+def test_null_choices_raises_its_true_cause(module, monkeypatch):
+    import importlib
+
+    import openai
+
+    mod = importlib.import_module(module)
+    monkeypatch.setattr(openai, "OpenAI", _client_returning(None))
+    monkeypatch.setattr(mod, "require_key", lambda: "k", raising=False)
+    monkeypatch.setattr(mod, "GUARDRAIL_API_KEY", "k", raising=False)
+
+    with pytest.raises(ValueError, match="no choices"):
+        mod._openrouter_call("system", "user", 0)
+
+
+@pytest.mark.parametrize("module", CALL_SITES)
+def test_empty_choices_list_also_raises_the_cause(module, monkeypatch):
+    """[] is the other malformed shape; it raised IndexError before."""
+    import importlib
+
+    import openai
+
+    mod = importlib.import_module(module)
+    monkeypatch.setattr(openai, "OpenAI", _client_returning([]))
+    monkeypatch.setattr(mod, "require_key", lambda: "k", raising=False)
+    monkeypatch.setattr(mod, "GUARDRAIL_API_KEY", "k", raising=False)
+
+    with pytest.raises(ValueError, match="no choices"):
+        mod._openrouter_call("system", "user", 0)
+
+
+def test_malformed_envelope_is_counted_as_its_own_failure_type(db, monkeypatch):
+    """The point of raising the cause: MODEL_CALL_FAILURES must separate a
+    malformed envelope from a rate limit. Yesterday's gate run was only
+    interpretable because those were distinguishable."""
+    import openai
+
+    import src.classify as c
+    from src.schema import Ticket
+
+    before = _failure_count("classification", "ValueError")
+    monkeypatch.setattr(openai, "OpenAI", _client_returning(None))
+    monkeypatch.setattr(c, "require_key", lambda: "k", raising=False)
+
+    result = c.classify(Ticket(ticket_id="ENV-1", channel="email", subject="s", body="b"))
+    assert result.intent == "unknown"
+    assert "no choices" in (result.error or "")
+    assert _failure_count("classification", "ValueError") == before + 1
+
+
+# ─── provider seam defaults (cost-nothing rule / D-01) ───────────────
+
+
+def test_provider_defaults_stay_on_the_free_tier():
+    """The assessor runs this on their own machine with their own free-tier
+    key. capstone-conventions' cost-nothing rule and D-01 both require the
+    committed defaults to point at OpenRouter. The seam exists only so a paid
+    endpoint can be pointed at for DIAGNOSIS, via .env, which is gitignored."""
+    import os
+
+    from src.config import MODEL_BASE_URL
+
+    if os.environ.get("MODEL_BASE_URL"):
+        pytest.skip("MODEL_BASE_URL overridden in this environment")
+    assert MODEL_BASE_URL == "https://openrouter.ai/api/v1"
+
+
+def test_model_api_key_falls_back_to_the_openrouter_key():
+    """Existing .env files set only OPENROUTER_API_KEY; they must keep working."""
+    import os
+
+    from src.config import MODEL_API_KEY, OPENROUTER_API_KEY
+
+    if os.environ.get("MODEL_API_KEY"):
+        pytest.skip("MODEL_API_KEY set explicitly in this environment")
+    assert MODEL_API_KEY == OPENROUTER_API_KEY
+
+
+@pytest.mark.parametrize("module", CALL_SITES)
+def test_call_sites_read_the_configured_endpoint(module, monkeypatch):
+    """Catches a future edit that re-hardcodes the OpenRouter URL."""
+    import importlib
+
+    import openai
+
+    mod = importlib.import_module(module)
+    captured: dict = {}
+
+    class _FakeOpenAI:
+        def __init__(self, **kwargs):
+            captured.update(kwargs)
+            raise RuntimeError("stop after construction")
+
+    monkeypatch.setattr(openai, "OpenAI", _FakeOpenAI)
+    # The judge reads its OWN endpoint and key, so it can sit on a different
+    # provider from the generator — independence (D-07/Bug 5) can require a
+    # different provider, not just a different model name. Everything else
+    # reads the generator's.
+    if module == "src.guardrails":
+        prefix = "GUARDRAIL"
+    else:
+        prefix = "MODEL"
+        monkeypatch.setattr(mod, "require_key", lambda: "test-key", raising=False)
+    monkeypatch.setattr(mod, f"{prefix}_BASE_URL", "https://example.test/v1",
+                        raising=False)
+    monkeypatch.setattr(mod, f"{prefix}_API_KEY", "test-key", raising=False)
+
+    with pytest.raises(RuntimeError):
+        mod._openrouter_call("system", "user", 0)
+    assert captured.get("base_url") == "https://example.test/v1"
+    assert captured.get("api_key") == "test-key"
+
+
+def test_judge_endpoint_defaults_to_the_generators():
+    """An unset GUARDRAIL_BASE_URL/KEY must behave exactly as before the split,
+    so existing .env files keep working untouched.
+    """
+    import os
+
+    from src.config import (
+        GUARDRAIL_API_KEY,
+        GUARDRAIL_BASE_URL,
+        MODEL_API_KEY,
+        MODEL_BASE_URL,
+    )
+
+    if os.environ.get("GUARDRAIL_BASE_URL") or os.environ.get("GUARDRAIL_API_KEY"):
+        pytest.skip("judge endpoint overridden in this environment")
+    assert GUARDRAIL_BASE_URL == MODEL_BASE_URL
+    assert GUARDRAIL_API_KEY == MODEL_API_KEY
+
+
+def test_guardrails_refuses_to_run_without_a_judge_key(monkeypatch):
+    """require_key() checks the GENERATOR's key. Since the judge can now be on
+    another provider, that check can pass while the judge has no credentials —
+    every guardrail would then fail safe and block the run without the log
+    naming why.
+    """
+    import src.guardrails as g
+
+    monkeypatch.setattr(g, "GUARDRAIL_API_KEY", "", raising=False)
+    with pytest.raises(RuntimeError, match="No judge key set"):
         g._openrouter_call("system", "user", 0)

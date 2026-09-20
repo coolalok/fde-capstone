@@ -5,7 +5,7 @@ description: Load the shared conventions for Alok's FDE Capstone project (CloudS
 
 # FDE Capstone — Conventions
 
-The Forward Deployed AI Engineering capstone for CloudServe Solutions (fictional client). Individual project. Deadline 13 September 2026, 23:59.
+The Forward Deployed AI Engineering capstone for CloudServe Solutions (fictional client). Individual project. Deadline 20 September 2026, 23:59 (moved from 13 September).
 
 Load this at the top of every capstone session before other capstone skills. The other five capstone skills assume these are in play.
 

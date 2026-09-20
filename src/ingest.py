@@ -36,6 +36,7 @@ import re
 import unicodedata
 from typing import Any
 
+from src.injection import detect as detect_injection
 from src.schema import Ticket
 
 logger = logging.getLogger(__name__)
@@ -183,6 +184,9 @@ def _build_ticket(raw: dict, *, expect_subject: bool) -> Ticket:
         received_at=_coerce_str(raw.get("received_at"))[0],
         original_body=raw_body,
         warnings=warnings,
+        # Detected on the RAW text: cleaning normalises whitespace, and an
+        # attempt should be recorded as the customer wrote it (R-03, D-16).
+        injection_flags=detect_injection(raw_subject, raw_body),
         # Segment fields — carried, not classifier-exposed
         customer_id=_coerce_str(raw.get("customer_id"))[0],
         customer_name=_coerce_str(raw.get("customer_name"))[0],

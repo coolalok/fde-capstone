@@ -1,0 +1,456 @@
+[harness] run_id=harness-20260912T201531Z-d34c4278
+[harness] input=data/validation_tickets.json tickets=80 labels=yes guardrails=True
+{"asctime": "2026-09-13 01:45:33,923", "levelname": "INFO", "name": "httpx", "message": "HTTP Request: POST https://openrouter.ai/api/v1/chat/completions \"HTTP/1.1 200 OK\""}
+{"asctime": "2026-09-13 01:45:57,042", "levelname": "INFO", "name": "sentence_transformers.SentenceTransformer", "message": "Use pytorch device_name: mps"}
+{"asctime": "2026-09-13 01:45:57,042", "levelname": "INFO", "name": "sentence_transformers.SentenceTransformer", "message": "Load pretrained SentenceTransformer: all-MiniLM-L6-v2"}
+{"asctime": "2026-09-13 01:46:03,205", "levelname": "INFO", "name": "httpx", "message": "HTTP Request: POST https://openrouter.ai/api/v1/chat/completions \"HTTP/1.1 200 OK\""}
+{"asctime": "2026-09-13 01:46:13,932", "levelname": "INFO", "name": "httpx", "message": "HTTP Request: POST https://api.openai.com/v1/chat/completions \"HTTP/1.1 200 OK\""}
+{"asctime": "2026-09-13 01:46:15,057", "levelname": "INFO", "name": "httpx", "message": "HTTP Request: POST https://api.openai.com/v1/chat/completions \"HTTP/1.1 200 OK\""}
+{"asctime": "2026-09-13 01:46:15,845", "levelname": "INFO", "name": "httpx", "message": "HTTP Request: POST https://api.openai.com/v1/chat/completions \"HTTP/1.1 200 OK\""}
+{"asctime": "2026-09-13 01:46:16,630", "levelname": "INFO", "name": "httpx", "message": "HTTP Request: POST https://openrouter.ai/api/v1/chat/completions \"HTTP/1.1 200 OK\""}
+{"asctime": "2026-09-13 01:46:22,376", "levelname": "INFO", "name": "httpx", "message": "HTTP Request: POST https://openrouter.ai/api/v1/chat/completions \"HTTP/1.1 200 OK\""}
+{"asctime": "2026-09-13 01:46:39,058", "levelname": "INFO", "name": "httpx", "message": "HTTP Request: POST https://api.openai.com/v1/chat/completions \"HTTP/1.1 200 OK\""}
+{"asctime": "2026-09-13 01:46:40,049", "levelname": "INFO", "name": "httpx", "message": "HTTP Request: POST https://api.openai.com/v1/chat/completions \"HTTP/1.1 200 OK\""}
+{"asctime": "2026-09-13 01:46:40,770", "levelname": "INFO", "name": "httpx", "message": "HTTP Request: POST https://api.openai.com/v1/chat/completions \"HTTP/1.1 200 OK\""}
+{"asctime": "2026-09-13 01:46:41,504", "levelname": "INFO", "name": "httpx", "message": "HTTP Request: POST https://openrouter.ai/api/v1/chat/completions \"HTTP/1.1 200 OK\""}
+{"asctime": "2026-09-13 01:46:47,308", "levelname": "INFO", "name": "httpx", "message": "HTTP Request: POST https://openrouter.ai/api/v1/chat/completions \"HTTP/1.1 200 OK\""}
+{"asctime": "2026-09-13 01:46:48,440", "levelname": "INFO", "name": "httpx", "message": "HTTP Request: POST https://openrouter.ai/api/v1/chat/completions \"HTTP/1.1 200 OK\""}
+{"asctime": "2026-09-13 01:46:49,840", "levelname": "INFO", "name": "httpx", "message": "HTTP Request: POST https://openrouter.ai/api/v1/chat/completions \"HTTP/1.1 200 OK\""}
+{"asctime": "2026-09-13 01:46:51,626", "levelname": "INFO", "name": "httpx", "message": "HTTP Request: POST https://api.openai.com/v1/chat/completions \"HTTP/1.1 200 OK\""}
+{"asctime": "2026-09-13 01:46:52,734", "levelname": "INFO", "name": "httpx", "message": "HTTP Request: POST https://api.openai.com/v1/chat/completions \"HTTP/1.1 200 OK\""}
+{"asctime": "2026-09-13 01:46:53,696", "levelname": "INFO", "name": "httpx", "message": "HTTP Request: POST https://api.openai.com/v1/chat/completions \"HTTP/1.1 200 OK\""}
+{"asctime": "2026-09-13 01:46:54,416", "levelname": "INFO", "name": "httpx", "message": "HTTP Request: POST https://openrouter.ai/api/v1/chat/completions \"HTTP/1.1 200 OK\""}
+{"asctime": "2026-09-13 01:46:55,712", "levelname": "INFO", "name": "httpx", "message": "HTTP Request: POST https://openrouter.ai/api/v1/chat/completions \"HTTP/1.1 200 OK\""}
+{"asctime": "2026-09-13 01:47:01,130", "levelname": "INFO", "name": "httpx", "message": "HTTP Request: POST https://api.openai.com/v1/chat/completions \"HTTP/1.1 200 OK\""}
+{"asctime": "2026-09-13 01:47:02,107", "levelname": "INFO", "name": "httpx", "message": "HTTP Request: POST https://api.openai.com/v1/chat/completions \"HTTP/1.1 200 OK\""}
+{"asctime": "2026-09-13 01:47:02,800", "levelname": "INFO", "name": "httpx", "message": "HTTP Request: POST https://api.openai.com/v1/chat/completions \"HTTP/1.1 200 OK\""}
+{"asctime": "2026-09-13 01:47:03,358", "levelname": "INFO", "name": "httpx", "message": "HTTP Request: POST https://openrouter.ai/api/v1/chat/completions \"HTTP/1.1 200 OK\""}
+{"asctime": "2026-09-13 01:47:09,477", "levelname": "INFO", "name": "httpx", "message": "HTTP Request: POST https://openrouter.ai/api/v1/chat/completions \"HTTP/1.1 200 OK\""}
+{"asctime": "2026-09-13 01:47:19,016", "levelname": "INFO", "name": "httpx", "message": "HTTP Request: POST https://api.openai.com/v1/chat/completions \"HTTP/1.1 200 OK\""}
+{"asctime": "2026-09-13 01:47:20,749", "levelname": "INFO", "name": "httpx", "message": "HTTP Request: POST https://api.openai.com/v1/chat/completions \"HTTP/1.1 200 OK\""}
+{"asctime": "2026-09-13 01:47:21,500", "levelname": "INFO", "name": "httpx", "message": "HTTP Request: POST https://api.openai.com/v1/chat/completions \"HTTP/1.1 200 OK\""}
+{"asctime": "2026-09-13 01:47:22,393", "levelname": "INFO", "name": "httpx", "message": "HTTP Request: POST https://openrouter.ai/api/v1/chat/completions \"HTTP/1.1 200 OK\""}
+{"asctime": "2026-09-13 01:47:27,846", "levelname": "INFO", "name": "httpx", "message": "HTTP Request: POST https://openrouter.ai/api/v1/chat/completions \"HTTP/1.1 200 OK\""}
+{"asctime": "2026-09-13 01:47:30,634", "levelname": "INFO", "name": "httpx", "message": "HTTP Request: POST https://openrouter.ai/api/v1/chat/completions \"HTTP/1.1 200 OK\""}
+{"asctime": "2026-09-13 01:47:31,355", "levelname": "INFO", "name": "httpx", "message": "HTTP Request: POST https://openrouter.ai/api/v1/chat/completions \"HTTP/1.1 200 OK\""}
+{"asctime": "2026-09-13 01:47:32,498", "levelname": "INFO", "name": "httpx", "message": "HTTP Request: POST https://api.openai.com/v1/chat/completions \"HTTP/1.1 200 OK\""}
+{"asctime": "2026-09-13 01:47:33,491", "levelname": "INFO", "name": "httpx", "message": "HTTP Request: POST https://api.openai.com/v1/chat/completions \"HTTP/1.1 200 OK\""}
+{"asctime": "2026-09-13 01:47:34,792", "levelname": "INFO", "name": "httpx", "message": "HTTP Request: POST https://api.openai.com/v1/chat/completions \"HTTP/1.1 200 OK\""}
+{"asctime": "2026-09-13 01:47:35,283", "levelname": "INFO", "name": "httpx", "message": "HTTP Request: POST https://openrouter.ai/api/v1/chat/completions \"HTTP/1.1 200 OK\""}
+{"asctime": "2026-09-13 01:47:45,810", "levelname": "INFO", "name": "httpx", "message": "HTTP Request: POST https://openrouter.ai/api/v1/chat/completions \"HTTP/1.1 200 OK\""}
+{"asctime": "2026-09-13 01:47:46,953", "levelname": "INFO", "name": "httpx", "message": "HTTP Request: POST https://api.openai.com/v1/chat/completions \"HTTP/1.1 200 OK\""}
+{"asctime": "2026-09-13 01:47:48,180", "levelname": "INFO", "name": "httpx", "message": "HTTP Request: POST https://api.openai.com/v1/chat/completions \"HTTP/1.1 200 OK\""}
+{"asctime": "2026-09-13 01:47:48,906", "levelname": "INFO", "name": "httpx", "message": "HTTP Request: POST https://api.openai.com/v1/chat/completions \"HTTP/1.1 200 OK\""}
+{"asctime": "2026-09-13 01:47:49,639", "levelname": "INFO", "name": "httpx", "message": "HTTP Request: POST https://openrouter.ai/api/v1/chat/completions \"HTTP/1.1 200 OK\""}
+{"asctime": "2026-09-13 01:47:54,114", "levelname": "INFO", "name": "src.classify", "message": "classify.no_alternatives_below_09", "confidence": 0.85, "intent": "billing_query"}
+{"asctime": "2026-09-13 01:47:54,831", "levelname": "INFO", "name": "httpx", "message": "HTTP Request: POST https://openrouter.ai/api/v1/chat/completions \"HTTP/1.1 200 OK\""}
+{"asctime": "2026-09-13 01:48:05,108", "levelname": "INFO", "name": "httpx", "message": "HTTP Request: POST https://api.openai.com/v1/chat/completions \"HTTP/1.1 200 OK\""}
+{"asctime": "2026-09-13 01:48:06,155", "levelname": "INFO", "name": "httpx", "message": "HTTP Request: POST https://api.openai.com/v1/chat/completions \"HTTP/1.1 200 OK\""}
+{"asctime": "2026-09-13 01:48:06,906", "levelname": "INFO", "name": "httpx", "message": "HTTP Request: POST https://api.openai.com/v1/chat/completions \"HTTP/1.1 200 OK\""}
+[harness]   10/80 (156s)
+{"asctime": "2026-09-13 01:48:07,377", "levelname": "INFO", "name": "httpx", "message": "HTTP Request: POST https://openrouter.ai/api/v1/chat/completions \"HTTP/1.1 200 OK\""}
+{"asctime": "2026-09-13 01:48:13,630", "levelname": "INFO", "name": "httpx", "message": "HTTP Request: POST https://openrouter.ai/api/v1/chat/completions \"HTTP/1.1 200 OK\""}
+{"asctime": "2026-09-13 01:48:15,252", "levelname": "INFO", "name": "httpx", "message": "HTTP Request: POST https://api.openai.com/v1/chat/completions \"HTTP/1.1 200 OK\""}
+{"asctime": "2026-09-13 01:48:16,283", "levelname": "INFO", "name": "httpx", "message": "HTTP Request: POST https://api.openai.com/v1/chat/completions \"HTTP/1.1 200 OK\""}
+{"asctime": "2026-09-13 01:48:16,976", "levelname": "INFO", "name": "httpx", "message": "HTTP Request: POST https://api.openai.com/v1/chat/completions \"HTTP/1.1 200 OK\""}
+{"asctime": "2026-09-13 01:48:17,944", "levelname": "INFO", "name": "httpx", "message": "HTTP Request: POST https://openrouter.ai/api/v1/chat/completions \"HTTP/1.1 200 OK\""}
+{"asctime": "2026-09-13 01:48:22,336", "levelname": "INFO", "name": "httpx", "message": "HTTP Request: POST https://openrouter.ai/api/v1/chat/completions \"HTTP/1.1 200 OK\""}
+{"asctime": "2026-09-13 01:48:24,224", "levelname": "INFO", "name": "httpx", "message": "HTTP Request: POST https://api.openai.com/v1/chat/completions \"HTTP/1.1 200 OK\""}
+{"asctime": "2026-09-13 01:48:25,291", "levelname": "INFO", "name": "httpx", "message": "HTTP Request: POST https://api.openai.com/v1/chat/completions \"HTTP/1.1 200 OK\""}
+{"asctime": "2026-09-13 01:48:26,022", "levelname": "INFO", "name": "httpx", "message": "HTTP Request: POST https://api.openai.com/v1/chat/completions \"HTTP/1.1 200 OK\""}
+{"asctime": "2026-09-13 01:48:26,777", "levelname": "INFO", "name": "httpx", "message": "HTTP Request: POST https://openrouter.ai/api/v1/chat/completions \"HTTP/1.1 200 OK\""}
+{"asctime": "2026-09-13 01:48:31,147", "levelname": "INFO", "name": "httpx", "message": "HTTP Request: POST https://openrouter.ai/api/v1/chat/completions \"HTTP/1.1 200 OK\""}
+{"asctime": "2026-09-13 01:48:41,458", "levelname": "INFO", "name": "httpx", "message": "HTTP Request: POST https://api.openai.com/v1/chat/completions \"HTTP/1.1 200 OK\""}
+{"asctime": "2026-09-13 01:48:42,251", "levelname": "INFO", "name": "httpx", "message": "HTTP Request: POST https://api.openai.com/v1/chat/completions \"HTTP/1.1 200 OK\""}
+{"asctime": "2026-09-13 01:48:43,038", "levelname": "INFO", "name": "httpx", "message": "HTTP Request: POST https://api.openai.com/v1/chat/completions \"HTTP/1.1 200 OK\""}
+{"asctime": "2026-09-13 01:48:43,729", "levelname": "INFO", "name": "httpx", "message": "HTTP Request: POST https://openrouter.ai/api/v1/chat/completions \"HTTP/1.1 200 OK\""}
+{"asctime": "2026-09-13 01:48:49,631", "levelname": "INFO", "name": "httpx", "message": "HTTP Request: POST https://openrouter.ai/api/v1/chat/completions \"HTTP/1.1 200 OK\""}
+{"asctime": "2026-09-13 01:49:01,502", "levelname": "INFO", "name": "httpx", "message": "HTTP Request: POST https://api.openai.com/v1/chat/completions \"HTTP/1.1 200 OK\""}
+{"asctime": "2026-09-13 01:49:02,607", "levelname": "INFO", "name": "httpx", "message": "HTTP Request: POST https://api.openai.com/v1/chat/completions \"HTTP/1.1 200 OK\""}
+{"asctime": "2026-09-13 01:49:03,633", "levelname": "INFO", "name": "httpx", "message": "HTTP Request: POST https://api.openai.com/v1/chat/completions \"HTTP/1.1 200 OK\""}
+{"asctime": "2026-09-13 01:49:04,596", "levelname": "INFO", "name": "httpx", "message": "HTTP Request: POST https://openrouter.ai/api/v1/chat/completions \"HTTP/1.1 200 OK\""}
+{"asctime": "2026-09-13 01:49:04,927", "levelname": "INFO", "name": "src.classify", "message": "classify.no_alternatives_below_09", "confidence": 0.0, "intent": "unclear_request"}
+{"asctime": "2026-09-13 01:49:05,753", "levelname": "INFO", "name": "httpx", "message": "HTTP Request: POST https://openrouter.ai/api/v1/chat/completions \"HTTP/1.1 200 OK\""}
+{"asctime": "2026-09-13 01:49:08,079", "levelname": "INFO", "name": "httpx", "message": "HTTP Request: POST https://openrouter.ai/api/v1/chat/completions \"HTTP/1.1 200 OK\""}
+{"asctime": "2026-09-13 01:49:09,164", "levelname": "INFO", "name": "httpx", "message": "HTTP Request: POST https://openrouter.ai/api/v1/chat/completions \"HTTP/1.1 200 OK\""}
+{"asctime": "2026-09-13 01:58:36,268", "levelname": "INFO", "name": "openai._base_client", "message": "Retrying request to /chat/completions in 0.970767 seconds"}
+{"asctime": "2026-09-13 01:58:37,268", "levelname": "INFO", "name": "openai._base_client", "message": "Retrying request to /chat/completions in 1.552024 seconds"}
+{"asctime": "2026-09-13 01:58:38,837", "levelname": "WARNING", "name": "src.generate", "message": "generate.grounded_branch.failure", "ticket_id": "VAL-0016", "attempt": 0, "error": "Connection error.", "error_type": "APIConnectionError"}
+{"asctime": "2026-09-13 01:58:38,935", "levelname": "INFO", "name": "openai._base_client", "message": "Retrying request to /chat/completions in 0.782205 seconds"}
+{"asctime": "2026-09-13 01:58:39,737", "levelname": "INFO", "name": "openai._base_client", "message": "Retrying request to /chat/completions in 1.571947 seconds"}
+{"asctime": "2026-09-13 01:58:41,326", "levelname": "WARNING", "name": "src.classify", "message": "classify.failure", "ticket_id": "VAL-0017", "error": "Connection error.", "error_type": "APIConnectionError", "raw_response_head": null}
+{"asctime": "2026-09-13 01:58:41,725", "levelname": "INFO", "name": "openai._base_client", "message": "Retrying request to /chat/completions in 0.888153 seconds"}
+{"asctime": "2026-09-13 01:58:42,631", "levelname": "INFO", "name": "openai._base_client", "message": "Retrying request to /chat/completions in 1.826246 seconds"}
+{"asctime": "2026-09-13 01:58:44,473", "levelname": "WARNING", "name": "src.generate", "message": "generate.empty_branch.failure", "ticket_id": "VAL-0017", "error": "Connection error.", "error_type": "APIConnectionError"}
+{"asctime": "2026-09-13 01:58:44,541", "levelname": "INFO", "name": "openai._base_client", "message": "Retrying request to /chat/completions in 0.810172 seconds"}
+{"asctime": "2026-09-13 01:58:45,369", "levelname": "INFO", "name": "openai._base_client", "message": "Retrying request to /chat/completions in 1.852219 seconds"}
+{"asctime": "2026-09-13 01:58:47,237", "levelname": "WARNING", "name": "src.classify", "message": "classify.failure", "ticket_id": "VAL-0018", "error": "Connection error.", "error_type": "APIConnectionError", "raw_response_head": null}
+{"asctime": "2026-09-13 01:58:47,385", "levelname": "INFO", "name": "openai._base_client", "message": "Retrying request to /chat/completions in 0.790958 seconds"}
+{"asctime": "2026-09-13 01:58:48,184", "levelname": "INFO", "name": "openai._base_client", "message": "Retrying request to /chat/completions in 1.636204 seconds"}
+{"asctime": "2026-09-13 01:58:49,838", "levelname": "WARNING", "name": "src.generate", "message": "generate.grounded_branch.failure", "ticket_id": "VAL-0018", "attempt": 0, "error": "Connection error.", "error_type": "APIConnectionError"}
+{"asctime": "2026-09-13 01:58:49,933", "levelname": "INFO", "name": "openai._base_client", "message": "Retrying request to /chat/completions in 0.908137 seconds"}
+{"asctime": "2026-09-13 01:58:50,852", "levelname": "INFO", "name": "openai._base_client", "message": "Retrying request to /chat/completions in 1.766066 seconds"}
+{"asctime": "2026-09-13 01:58:52,640", "levelname": "WARNING", "name": "src.classify", "message": "classify.failure", "ticket_id": "VAL-0019", "error": "Connection error.", "error_type": "APIConnectionError", "raw_response_head": null}
+{"asctime": "2026-09-13 01:58:53,011", "levelname": "INFO", "name": "openai._base_client", "message": "Retrying request to /chat/completions in 0.816922 seconds"}
+{"asctime": "2026-09-13 01:58:53,842", "levelname": "INFO", "name": "openai._base_client", "message": "Retrying request to /chat/completions in 1.972713 seconds"}
+{"asctime": "2026-09-13 01:58:55,835", "levelname": "WARNING", "name": "src.generate", "message": "generate.grounded_branch.failure", "ticket_id": "VAL-0019", "attempt": 0, "error": "Connection error.", "error_type": "APIConnectionError"}
+{"asctime": "2026-09-13 01:58:55,937", "levelname": "INFO", "name": "openai._base_client", "message": "Retrying request to /chat/completions in 0.802412 seconds"}
+{"asctime": "2026-09-13 01:58:56,761", "levelname": "INFO", "name": "openai._base_client", "message": "Retrying request to /chat/completions in 1.753291 seconds"}
+{"asctime": "2026-09-13 01:58:58,534", "levelname": "WARNING", "name": "src.classify", "message": "classify.failure", "ticket_id": "VAL-0020", "error": "Connection error.", "error_type": "APIConnectionError", "raw_response_head": null}
+{"asctime": "2026-09-13 01:58:58,764", "levelname": "INFO", "name": "openai._base_client", "message": "Retrying request to /chat/completions in 0.911729 seconds"}
+{"asctime": "2026-09-13 01:58:59,688", "levelname": "INFO", "name": "openai._base_client", "message": "Retrying request to /chat/completions in 1.617277 seconds"}
+{"asctime": "2026-09-13 01:59:01,321", "levelname": "WARNING", "name": "src.generate", "message": "generate.empty_branch.failure", "ticket_id": "VAL-0020", "error": "Connection error.", "error_type": "APIConnectionError"}
+[harness]   20/80 (810s)
+{"asctime": "2026-09-13 01:59:01,446", "levelname": "INFO", "name": "openai._base_client", "message": "Retrying request to /chat/completions in 0.956313 seconds"}
+{"asctime": "2026-09-13 01:59:02,421", "levelname": "INFO", "name": "openai._base_client", "message": "Retrying request to /chat/completions in 1.511459 seconds"}
+{"asctime": "2026-09-13 01:59:03,952", "levelname": "WARNING", "name": "src.classify", "message": "classify.failure", "ticket_id": "VAL-0021", "error": "Connection error.", "error_type": "APIConnectionError", "raw_response_head": null}
+{"asctime": "2026-09-13 01:59:04,146", "levelname": "INFO", "name": "openai._base_client", "message": "Retrying request to /chat/completions in 0.841590 seconds"}
+{"asctime": "2026-09-13 01:59:04,997", "levelname": "INFO", "name": "openai._base_client", "message": "Retrying request to /chat/completions in 1.995867 seconds"}
+{"asctime": "2026-09-13 01:59:07,012", "levelname": "WARNING", "name": "src.generate", "message": "generate.grounded_branch.failure", "ticket_id": "VAL-0021", "attempt": 0, "error": "Connection error.", "error_type": "APIConnectionError"}
+{"asctime": "2026-09-13 01:59:07,082", "levelname": "INFO", "name": "openai._base_client", "message": "Retrying request to /chat/completions in 0.791997 seconds"}
+{"asctime": "2026-09-13 01:59:07,893", "levelname": "INFO", "name": "openai._base_client", "message": "Retrying request to /chat/completions in 1.819577 seconds"}
+{"asctime": "2026-09-13 01:59:09,727", "levelname": "WARNING", "name": "src.classify", "message": "classify.failure", "ticket_id": "VAL-0022", "error": "Connection error.", "error_type": "APIConnectionError", "raw_response_head": null}
+{"asctime": "2026-09-13 01:59:09,858", "levelname": "INFO", "name": "openai._base_client", "message": "Retrying request to /chat/completions in 0.995169 seconds"}
+{"asctime": "2026-09-13 01:59:10,877", "levelname": "INFO", "name": "openai._base_client", "message": "Retrying request to /chat/completions in 1.978791 seconds"}
+{"asctime": "2026-09-13 01:59:12,869", "levelname": "WARNING", "name": "src.generate", "message": "generate.grounded_branch.failure", "ticket_id": "VAL-0022", "attempt": 0, "error": "Connection error.", "error_type": "APIConnectionError"}
+{"asctime": "2026-09-13 01:59:12,951", "levelname": "INFO", "name": "openai._base_client", "message": "Retrying request to /chat/completions in 0.757935 seconds"}
+{"asctime": "2026-09-13 01:59:13,731", "levelname": "INFO", "name": "openai._base_client", "message": "Retrying request to /chat/completions in 1.970892 seconds"}
+{"asctime": "2026-09-13 01:59:15,721", "levelname": "WARNING", "name": "src.classify", "message": "classify.failure", "ticket_id": "VAL-0023", "error": "Connection error.", "error_type": "APIConnectionError", "raw_response_head": null}
+{"asctime": "2026-09-13 01:59:15,937", "levelname": "INFO", "name": "openai._base_client", "message": "Retrying request to /chat/completions in 0.892675 seconds"}
+{"asctime": "2026-09-13 01:59:16,850", "levelname": "INFO", "name": "openai._base_client", "message": "Retrying request to /chat/completions in 1.896456 seconds"}
+{"asctime": "2026-09-13 01:59:18,762", "levelname": "WARNING", "name": "src.generate", "message": "generate.grounded_branch.failure", "ticket_id": "VAL-0023", "attempt": 0, "error": "Connection error.", "error_type": "APIConnectionError"}
+{"asctime": "2026-09-13 01:59:18,876", "levelname": "INFO", "name": "openai._base_client", "message": "Retrying request to /chat/completions in 0.822558 seconds"}
+{"asctime": "2026-09-13 01:59:19,713", "levelname": "INFO", "name": "openai._base_client", "message": "Retrying request to /chat/completions in 1.842407 seconds"}
+{"asctime": "2026-09-13 01:59:21,580", "levelname": "WARNING", "name": "src.classify", "message": "classify.failure", "ticket_id": "VAL-0024", "error": "Connection error.", "error_type": "APIConnectionError", "raw_response_head": null}
+{"asctime": "2026-09-13 01:59:21,779", "levelname": "INFO", "name": "openai._base_client", "message": "Retrying request to /chat/completions in 0.772598 seconds"}
+{"asctime": "2026-09-13 01:59:22,563", "levelname": "INFO", "name": "openai._base_client", "message": "Retrying request to /chat/completions in 1.741031 seconds"}
+{"asctime": "2026-09-13 01:59:24,322", "levelname": "WARNING", "name": "src.generate", "message": "generate.grounded_branch.failure", "ticket_id": "VAL-0024", "attempt": 0, "error": "Connection error.", "error_type": "APIConnectionError"}
+{"asctime": "2026-09-13 01:59:24,423", "levelname": "INFO", "name": "openai._base_client", "message": "Retrying request to /chat/completions in 0.945446 seconds"}
+{"asctime": "2026-09-13 01:59:25,390", "levelname": "INFO", "name": "openai._base_client", "message": "Retrying request to /chat/completions in 1.987039 seconds"}
+{"asctime": "2026-09-13 01:59:27,397", "levelname": "WARNING", "name": "src.classify", "message": "classify.failure", "ticket_id": "VAL-0025", "error": "Connection error.", "error_type": "APIConnectionError", "raw_response_head": null}
+{"asctime": "2026-09-13 01:59:27,566", "levelname": "INFO", "name": "openai._base_client", "message": "Retrying request to /chat/completions in 0.996096 seconds"}
+{"asctime": "2026-09-13 01:59:28,595", "levelname": "INFO", "name": "openai._base_client", "message": "Retrying request to /chat/completions in 1.588826 seconds"}
+{"asctime": "2026-09-13 01:59:30,191", "levelname": "WARNING", "name": "src.generate", "message": "generate.grounded_branch.failure", "ticket_id": "VAL-0025", "attempt": 0, "error": "Connection error.", "error_type": "APIConnectionError"}
+{"asctime": "2026-09-13 01:59:30,258", "levelname": "INFO", "name": "openai._base_client", "message": "Retrying request to /chat/completions in 0.788655 seconds"}
+{"asctime": "2026-09-13 01:59:31,072", "levelname": "INFO", "name": "openai._base_client", "message": "Retrying request to /chat/completions in 1.918250 seconds"}
+{"asctime": "2026-09-13 01:59:33,000", "levelname": "WARNING", "name": "src.classify", "message": "classify.failure", "ticket_id": "VAL-0026", "error": "Connection error.", "error_type": "APIConnectionError", "raw_response_head": null}
+{"asctime": "2026-09-13 01:59:33,184", "levelname": "INFO", "name": "openai._base_client", "message": "Retrying request to /chat/completions in 0.807961 seconds"}
+{"asctime": "2026-09-13 01:59:34,015", "levelname": "INFO", "name": "openai._base_client", "message": "Retrying request to /chat/completions in 1.742807 seconds"}
+{"asctime": "2026-09-13 01:59:35,776", "levelname": "WARNING", "name": "src.generate", "message": "generate.grounded_branch.failure", "ticket_id": "VAL-0026", "attempt": 0, "error": "Connection error.", "error_type": "APIConnectionError"}
+{"asctime": "2026-09-13 01:59:35,937", "levelname": "INFO", "name": "openai._base_client", "message": "Retrying request to /chat/completions in 0.935959 seconds"}
+{"asctime": "2026-09-13 01:59:36,893", "levelname": "INFO", "name": "openai._base_client", "message": "Retrying request to /chat/completions in 1.683370 seconds"}
+{"asctime": "2026-09-13 01:59:38,590", "levelname": "WARNING", "name": "src.classify", "message": "classify.failure", "ticket_id": "VAL-0027", "error": "Connection error.", "error_type": "APIConnectionError", "raw_response_head": null}
+{"asctime": "2026-09-13 01:59:38,793", "levelname": "INFO", "name": "openai._base_client", "message": "Retrying request to /chat/completions in 0.912444 seconds"}
+{"asctime": "2026-09-13 01:59:39,722", "levelname": "INFO", "name": "openai._base_client", "message": "Retrying request to /chat/completions in 1.727992 seconds"}
+{"asctime": "2026-09-13 01:59:41,460", "levelname": "WARNING", "name": "src.generate", "message": "generate.grounded_branch.failure", "ticket_id": "VAL-0027", "attempt": 0, "error": "Connection error.", "error_type": "APIConnectionError"}
+{"asctime": "2026-09-13 01:59:41,578", "levelname": "INFO", "name": "openai._base_client", "message": "Retrying request to /chat/completions in 0.972831 seconds"}
+{"asctime": "2026-09-13 01:59:42,559", "levelname": "INFO", "name": "openai._base_client", "message": "Retrying request to /chat/completions in 1.584121 seconds"}
+{"asctime": "2026-09-13 01:59:44,155", "levelname": "WARNING", "name": "src.classify", "message": "classify.failure", "ticket_id": "VAL-0028", "error": "Connection error.", "error_type": "APIConnectionError", "raw_response_head": null}
+{"asctime": "2026-09-13 01:59:44,289", "levelname": "INFO", "name": "openai._base_client", "message": "Retrying request to /chat/completions in 0.889829 seconds"}
+{"asctime": "2026-09-13 01:59:45,194", "levelname": "INFO", "name": "openai._base_client", "message": "Retrying request to /chat/completions in 1.595418 seconds"}
+{"asctime": "2026-09-13 01:59:46,809", "levelname": "WARNING", "name": "src.generate", "message": "generate.grounded_branch.failure", "ticket_id": "VAL-0028", "attempt": 0, "error": "Connection error.", "error_type": "APIConnectionError"}
+{"asctime": "2026-09-13 01:59:46,951", "levelname": "INFO", "name": "openai._base_client", "message": "Retrying request to /chat/completions in 0.946714 seconds"}
+{"asctime": "2026-09-13 01:59:47,913", "levelname": "INFO", "name": "openai._base_client", "message": "Retrying request to /chat/completions in 1.916538 seconds"}
+{"asctime": "2026-09-13 01:59:49,849", "levelname": "WARNING", "name": "src.classify", "message": "classify.failure", "ticket_id": "VAL-0029", "error": "Connection error.", "error_type": "APIConnectionError", "raw_response_head": null}
+{"asctime": "2026-09-13 01:59:50,144", "levelname": "INFO", "name": "openai._base_client", "message": "Retrying request to /chat/completions in 0.919253 seconds"}
+{"asctime": "2026-09-13 01:59:51,081", "levelname": "INFO", "name": "openai._base_client", "message": "Retrying request to /chat/completions in 1.919100 seconds"}
+{"asctime": "2026-09-13 01:59:53,018", "levelname": "WARNING", "name": "src.generate", "message": "generate.grounded_branch.failure", "ticket_id": "VAL-0029", "attempt": 0, "error": "Connection error.", "error_type": "APIConnectionError"}
+{"asctime": "2026-09-13 01:59:53,143", "levelname": "INFO", "name": "openai._base_client", "message": "Retrying request to /chat/completions in 0.883844 seconds"}
+{"asctime": "2026-09-13 01:59:54,043", "levelname": "INFO", "name": "openai._base_client", "message": "Retrying request to /chat/completions in 1.504008 seconds"}
+{"asctime": "2026-09-13 01:59:55,561", "levelname": "WARNING", "name": "src.classify", "message": "classify.failure", "ticket_id": "VAL-0030", "error": "Connection error.", "error_type": "APIConnectionError", "raw_response_head": null}
+{"asctime": "2026-09-13 01:59:55,657", "levelname": "INFO", "name": "openai._base_client", "message": "Retrying request to /chat/completions in 0.950961 seconds"}
+{"asctime": "2026-09-13 01:59:56,634", "levelname": "INFO", "name": "openai._base_client", "message": "Retrying request to /chat/completions in 1.841340 seconds"}
+{"asctime": "2026-09-13 01:59:58,496", "levelname": "WARNING", "name": "src.generate", "message": "generate.empty_branch.failure", "ticket_id": "VAL-0030", "error": "Connection error.", "error_type": "APIConnectionError"}
+[harness]   30/80 (867s)
+{"asctime": "2026-09-13 01:59:58,640", "levelname": "INFO", "name": "openai._base_client", "message": "Retrying request to /chat/completions in 0.969809 seconds"}
+{"asctime": "2026-09-13 01:59:59,633", "levelname": "INFO", "name": "openai._base_client", "message": "Retrying request to /chat/completions in 1.806133 seconds"}
+{"asctime": "2026-09-13 02:00:01,463", "levelname": "WARNING", "name": "src.classify", "message": "classify.failure", "ticket_id": "VAL-0031", "error": "Connection error.", "error_type": "APIConnectionError", "raw_response_head": null}
+{"asctime": "2026-09-13 02:00:01,708", "levelname": "INFO", "name": "openai._base_client", "message": "Retrying request to /chat/completions in 0.901435 seconds"}
+{"asctime": "2026-09-13 02:00:02,625", "levelname": "INFO", "name": "openai._base_client", "message": "Retrying request to /chat/completions in 1.643381 seconds"}
+{"asctime": "2026-09-13 02:00:04,284", "levelname": "WARNING", "name": "src.generate", "message": "generate.grounded_branch.failure", "ticket_id": "VAL-0031", "attempt": 0, "error": "Connection error.", "error_type": "APIConnectionError"}
+{"asctime": "2026-09-13 02:00:04,355", "levelname": "INFO", "name": "openai._base_client", "message": "Retrying request to /chat/completions in 0.997188 seconds"}
+{"asctime": "2026-09-13 02:00:05,374", "levelname": "INFO", "name": "openai._base_client", "message": "Retrying request to /chat/completions in 1.639962 seconds"}
+{"asctime": "2026-09-13 02:00:07,034", "levelname": "WARNING", "name": "src.classify", "message": "classify.failure", "ticket_id": "VAL-0032", "error": "Connection error.", "error_type": "APIConnectionError", "raw_response_head": null}
+{"asctime": "2026-09-13 02:00:07,235", "levelname": "INFO", "name": "openai._base_client", "message": "Retrying request to /chat/completions in 0.855231 seconds"}
+{"asctime": "2026-09-13 02:00:08,122", "levelname": "INFO", "name": "openai._base_client", "message": "Retrying request to /chat/completions in 1.712787 seconds"}
+{"asctime": "2026-09-13 02:00:09,853", "levelname": "WARNING", "name": "src.generate", "message": "generate.grounded_branch.failure", "ticket_id": "VAL-0032", "attempt": 0, "error": "Connection error.", "error_type": "APIConnectionError"}
+{"asctime": "2026-09-13 02:00:10,049", "levelname": "INFO", "name": "openai._base_client", "message": "Retrying request to /chat/completions in 0.928548 seconds"}
+{"asctime": "2026-09-13 02:00:11,051", "levelname": "INFO", "name": "openai._base_client", "message": "Retrying request to /chat/completions in 1.662455 seconds"}
+{"asctime": "2026-09-13 02:00:12,737", "levelname": "WARNING", "name": "src.classify", "message": "classify.failure", "ticket_id": "VAL-0033", "error": "Connection error.", "error_type": "APIConnectionError", "raw_response_head": null}
+{"asctime": "2026-09-13 02:00:12,965", "levelname": "INFO", "name": "openai._base_client", "message": "Retrying request to /chat/completions in 0.758737 seconds"}
+{"asctime": "2026-09-13 02:00:13,745", "levelname": "INFO", "name": "openai._base_client", "message": "Retrying request to /chat/completions in 1.682803 seconds"}
+{"asctime": "2026-09-13 02:00:15,454", "levelname": "WARNING", "name": "src.generate", "message": "generate.grounded_branch.failure", "ticket_id": "VAL-0033", "attempt": 0, "error": "Connection error.", "error_type": "APIConnectionError"}
+{"asctime": "2026-09-13 02:00:15,599", "levelname": "INFO", "name": "openai._base_client", "message": "Retrying request to /chat/completions in 0.814889 seconds"}
+{"asctime": "2026-09-13 02:00:16,434", "levelname": "INFO", "name": "openai._base_client", "message": "Retrying request to /chat/completions in 1.578347 seconds"}
+{"asctime": "2026-09-13 02:00:18,048", "levelname": "WARNING", "name": "src.classify", "message": "classify.failure", "ticket_id": "VAL-0034", "error": "Connection error.", "error_type": "APIConnectionError", "raw_response_head": null}
+{"asctime": "2026-09-13 02:00:18,237", "levelname": "INFO", "name": "openai._base_client", "message": "Retrying request to /chat/completions in 0.978055 seconds"}
+{"asctime": "2026-09-13 02:00:19,244", "levelname": "INFO", "name": "openai._base_client", "message": "Retrying request to /chat/completions in 1.701750 seconds"}
+{"asctime": "2026-09-13 02:00:20,968", "levelname": "WARNING", "name": "src.generate", "message": "generate.grounded_branch.failure", "ticket_id": "VAL-0034", "attempt": 0, "error": "Connection error.", "error_type": "APIConnectionError"}
+{"asctime": "2026-09-13 02:00:21,098", "levelname": "INFO", "name": "openai._base_client", "message": "Retrying request to /chat/completions in 0.758825 seconds"}
+{"asctime": "2026-09-13 02:00:21,877", "levelname": "INFO", "name": "openai._base_client", "message": "Retrying request to /chat/completions in 1.845737 seconds"}
+{"asctime": "2026-09-13 02:00:23,743", "levelname": "WARNING", "name": "src.classify", "message": "classify.failure", "ticket_id": "VAL-0035", "error": "Connection error.", "error_type": "APIConnectionError", "raw_response_head": null}
+{"asctime": "2026-09-13 02:00:23,856", "levelname": "INFO", "name": "openai._base_client", "message": "Retrying request to /chat/completions in 0.984779 seconds"}
+{"asctime": "2026-09-13 02:00:24,862", "levelname": "INFO", "name": "openai._base_client", "message": "Retrying request to /chat/completions in 1.913789 seconds"}
+{"asctime": "2026-09-13 02:00:26,791", "levelname": "WARNING", "name": "src.generate", "message": "generate.empty_branch.failure", "ticket_id": "VAL-0035", "error": "Connection error.", "error_type": "APIConnectionError"}
+{"asctime": "2026-09-13 02:00:26,960", "levelname": "INFO", "name": "openai._base_client", "message": "Retrying request to /chat/completions in 0.863450 seconds"}
+{"asctime": "2026-09-13 02:00:27,845", "levelname": "INFO", "name": "openai._base_client", "message": "Retrying request to /chat/completions in 1.866086 seconds"}
+{"asctime": "2026-09-13 02:00:29,737", "levelname": "WARNING", "name": "src.classify", "message": "classify.failure", "ticket_id": "VAL-0036", "error": "Connection error.", "error_type": "APIConnectionError", "raw_response_head": null}
+{"asctime": "2026-09-13 02:00:29,943", "levelname": "INFO", "name": "openai._base_client", "message": "Retrying request to /chat/completions in 0.782342 seconds"}
+{"asctime": "2026-09-13 02:00:30,748", "levelname": "INFO", "name": "openai._base_client", "message": "Retrying request to /chat/completions in 1.681890 seconds"}
+{"asctime": "2026-09-13 02:00:32,447", "levelname": "WARNING", "name": "src.generate", "message": "generate.grounded_branch.failure", "ticket_id": "VAL-0036", "attempt": 0, "error": "Connection error.", "error_type": "APIConnectionError"}
+{"asctime": "2026-09-13 02:00:32,575", "levelname": "INFO", "name": "openai._base_client", "message": "Retrying request to /chat/completions in 0.813599 seconds"}
+{"asctime": "2026-09-13 02:00:33,418", "levelname": "INFO", "name": "openai._base_client", "message": "Retrying request to /chat/completions in 1.666312 seconds"}
+{"asctime": "2026-09-13 02:00:35,112", "levelname": "WARNING", "name": "src.classify", "message": "classify.failure", "ticket_id": "VAL-0037", "error": "Connection error.", "error_type": "APIConnectionError", "raw_response_head": null}
+{"asctime": "2026-09-13 02:00:35,323", "levelname": "INFO", "name": "openai._base_client", "message": "Retrying request to /chat/completions in 0.956148 seconds"}
+{"asctime": "2026-09-13 02:00:36,301", "levelname": "INFO", "name": "openai._base_client", "message": "Retrying request to /chat/completions in 1.999467 seconds"}
+{"asctime": "2026-09-13 02:00:38,324", "levelname": "WARNING", "name": "src.generate", "message": "generate.grounded_branch.failure", "ticket_id": "VAL-0037", "attempt": 0, "error": "Connection error.", "error_type": "APIConnectionError"}
+{"asctime": "2026-09-13 02:00:38,443", "levelname": "INFO", "name": "openai._base_client", "message": "Retrying request to /chat/completions in 0.937971 seconds"}
+{"asctime": "2026-09-13 02:00:39,403", "levelname": "INFO", "name": "openai._base_client", "message": "Retrying request to /chat/completions in 1.807352 seconds"}
+{"asctime": "2026-09-13 02:00:41,229", "levelname": "WARNING", "name": "src.classify", "message": "classify.failure", "ticket_id": "VAL-0038", "error": "Connection error.", "error_type": "APIConnectionError", "raw_response_head": null}
+{"asctime": "2026-09-13 02:00:41,361", "levelname": "INFO", "name": "openai._base_client", "message": "Retrying request to /chat/completions in 0.799662 seconds"}
+{"asctime": "2026-09-13 02:00:42,179", "levelname": "INFO", "name": "openai._base_client", "message": "Retrying request to /chat/completions in 1.525921 seconds"}
+{"asctime": "2026-09-13 02:00:43,718", "levelname": "WARNING", "name": "src.generate", "message": "generate.grounded_branch.failure", "ticket_id": "VAL-0038", "attempt": 0, "error": "Connection error.", "error_type": "APIConnectionError"}
+{"asctime": "2026-09-13 02:00:43,842", "levelname": "INFO", "name": "openai._base_client", "message": "Retrying request to /chat/completions in 0.755695 seconds"}
+{"asctime": "2026-09-13 02:00:44,628", "levelname": "INFO", "name": "openai._base_client", "message": "Retrying request to /chat/completions in 1.774682 seconds"}
+{"asctime": "2026-09-13 02:00:46,422", "levelname": "WARNING", "name": "src.classify", "message": "classify.failure", "ticket_id": "VAL-0039", "error": "Connection error.", "error_type": "APIConnectionError", "raw_response_head": null}
+{"asctime": "2026-09-13 02:00:46,618", "levelname": "INFO", "name": "openai._base_client", "message": "Retrying request to /chat/completions in 0.904766 seconds"}
+{"asctime": "2026-09-13 02:00:47,541", "levelname": "INFO", "name": "openai._base_client", "message": "Retrying request to /chat/completions in 1.511645 seconds"}
+{"asctime": "2026-09-13 02:00:49,077", "levelname": "WARNING", "name": "src.generate", "message": "generate.grounded_branch.failure", "ticket_id": "VAL-0039", "attempt": 0, "error": "Connection error.", "error_type": "APIConnectionError"}
+{"asctime": "2026-09-13 02:00:49,247", "levelname": "INFO", "name": "openai._base_client", "message": "Retrying request to /chat/completions in 0.832615 seconds"}
+{"asctime": "2026-09-13 02:00:50,104", "levelname": "INFO", "name": "openai._base_client", "message": "Retrying request to /chat/completions in 1.786405 seconds"}
+{"asctime": "2026-09-13 02:00:51,920", "levelname": "WARNING", "name": "src.classify", "message": "classify.failure", "ticket_id": "VAL-0040", "error": "Connection error.", "error_type": "APIConnectionError", "raw_response_head": null}
+{"asctime": "2026-09-13 02:00:52,216", "levelname": "INFO", "name": "openai._base_client", "message": "Retrying request to /chat/completions in 0.855059 seconds"}
+{"asctime": "2026-09-13 02:00:53,101", "levelname": "INFO", "name": "openai._base_client", "message": "Retrying request to /chat/completions in 1.865597 seconds"}
+{"asctime": "2026-09-13 02:00:54,992", "levelname": "WARNING", "name": "src.generate", "message": "generate.grounded_branch.failure", "ticket_id": "VAL-0040", "attempt": 0, "error": "Connection error.", "error_type": "APIConnectionError"}
+[harness]   40/80 (924s)
+{"asctime": "2026-09-13 02:00:55,107", "levelname": "INFO", "name": "openai._base_client", "message": "Retrying request to /chat/completions in 0.790612 seconds"}
+{"asctime": "2026-09-13 02:00:55,918", "levelname": "INFO", "name": "openai._base_client", "message": "Retrying request to /chat/completions in 1.836314 seconds"}
+{"asctime": "2026-09-13 02:00:57,774", "levelname": "WARNING", "name": "src.classify", "message": "classify.failure", "ticket_id": "VAL-0041", "error": "Connection error.", "error_type": "APIConnectionError", "raw_response_head": null}
+{"asctime": "2026-09-13 02:00:57,963", "levelname": "INFO", "name": "openai._base_client", "message": "Retrying request to /chat/completions in 0.822934 seconds"}
+{"asctime": "2026-09-13 02:00:58,810", "levelname": "INFO", "name": "openai._base_client", "message": "Retrying request to /chat/completions in 1.682437 seconds"}
+{"asctime": "2026-09-13 02:01:00,519", "levelname": "WARNING", "name": "src.generate", "message": "generate.grounded_branch.failure", "ticket_id": "VAL-0041", "attempt": 0, "error": "Connection error.", "error_type": "APIConnectionError"}
+{"asctime": "2026-09-13 02:01:00,645", "levelname": "INFO", "name": "openai._base_client", "message": "Retrying request to /chat/completions in 0.763147 seconds"}
+{"asctime": "2026-09-13 02:01:01,429", "levelname": "INFO", "name": "openai._base_client", "message": "Retrying request to /chat/completions in 1.569395 seconds"}
+{"asctime": "2026-09-13 02:01:03,028", "levelname": "WARNING", "name": "src.classify", "message": "classify.failure", "ticket_id": "VAL-0042", "error": "Connection error.", "error_type": "APIConnectionError", "raw_response_head": null}
+{"asctime": "2026-09-13 02:01:03,366", "levelname": "INFO", "name": "openai._base_client", "message": "Retrying request to /chat/completions in 0.846579 seconds"}
+{"asctime": "2026-09-13 02:01:04,237", "levelname": "INFO", "name": "openai._base_client", "message": "Retrying request to /chat/completions in 1.563845 seconds"}
+{"asctime": "2026-09-13 02:01:05,818", "levelname": "WARNING", "name": "src.generate", "message": "generate.grounded_branch.failure", "ticket_id": "VAL-0042", "attempt": 0, "error": "Connection error.", "error_type": "APIConnectionError"}
+{"asctime": "2026-09-13 02:01:05,930", "levelname": "INFO", "name": "openai._base_client", "message": "Retrying request to /chat/completions in 0.950161 seconds"}
+{"asctime": "2026-09-13 02:01:06,905", "levelname": "INFO", "name": "openai._base_client", "message": "Retrying request to /chat/completions in 1.958489 seconds"}
+{"asctime": "2026-09-13 02:01:08,877", "levelname": "WARNING", "name": "src.classify", "message": "classify.failure", "ticket_id": "VAL-0043", "error": "Connection error.", "error_type": "APIConnectionError", "raw_response_head": null}
+{"asctime": "2026-09-13 02:01:09,045", "levelname": "INFO", "name": "openai._base_client", "message": "Retrying request to /chat/completions in 0.879376 seconds"}
+{"asctime": "2026-09-13 02:01:09,935", "levelname": "INFO", "name": "openai._base_client", "message": "Retrying request to /chat/completions in 1.808521 seconds"}
+{"asctime": "2026-09-13 02:01:11,768", "levelname": "WARNING", "name": "src.generate", "message": "generate.grounded_branch.failure", "ticket_id": "VAL-0043", "attempt": 0, "error": "Connection error.", "error_type": "APIConnectionError"}
+{"asctime": "2026-09-13 02:01:11,894", "levelname": "INFO", "name": "openai._base_client", "message": "Retrying request to /chat/completions in 0.884773 seconds"}
+{"asctime": "2026-09-13 02:01:12,802", "levelname": "INFO", "name": "openai._base_client", "message": "Retrying request to /chat/completions in 1.758824 seconds"}
+{"asctime": "2026-09-13 02:01:14,579", "levelname": "WARNING", "name": "src.classify", "message": "classify.failure", "ticket_id": "VAL-0044", "error": "Connection error.", "error_type": "APIConnectionError", "raw_response_head": null}
+{"asctime": "2026-09-13 02:01:14,778", "levelname": "INFO", "name": "openai._base_client", "message": "Retrying request to /chat/completions in 0.972514 seconds"}
+{"asctime": "2026-09-13 02:01:15,770", "levelname": "INFO", "name": "openai._base_client", "message": "Retrying request to /chat/completions in 1.595226 seconds"}
+{"asctime": "2026-09-13 02:01:17,387", "levelname": "WARNING", "name": "src.generate", "message": "generate.grounded_branch.failure", "ticket_id": "VAL-0044", "attempt": 0, "error": "Connection error.", "error_type": "APIConnectionError"}
+{"asctime": "2026-09-13 02:01:17,572", "levelname": "INFO", "name": "openai._base_client", "message": "Retrying request to /chat/completions in 0.923939 seconds"}
+{"asctime": "2026-09-13 02:01:18,532", "levelname": "INFO", "name": "openai._base_client", "message": "Retrying request to /chat/completions in 1.861541 seconds"}
+{"asctime": "2026-09-13 02:01:20,413", "levelname": "WARNING", "name": "src.classify", "message": "classify.failure", "ticket_id": "VAL-0045", "error": "Connection error.", "error_type": "APIConnectionError", "raw_response_head": null}
+{"asctime": "2026-09-13 02:01:20,745", "levelname": "INFO", "name": "openai._base_client", "message": "Retrying request to /chat/completions in 0.901448 seconds"}
+{"asctime": "2026-09-13 02:01:21,668", "levelname": "INFO", "name": "openai._base_client", "message": "Retrying request to /chat/completions in 1.512855 seconds"}
+{"asctime": "2026-09-13 02:01:23,203", "levelname": "WARNING", "name": "src.generate", "message": "generate.grounded_branch.failure", "ticket_id": "VAL-0045", "attempt": 0, "error": "Connection error.", "error_type": "APIConnectionError"}
+{"asctime": "2026-09-13 02:01:23,330", "levelname": "INFO", "name": "openai._base_client", "message": "Retrying request to /chat/completions in 0.928513 seconds"}
+{"asctime": "2026-09-13 02:01:24,278", "levelname": "INFO", "name": "openai._base_client", "message": "Retrying request to /chat/completions in 1.562389 seconds"}
+{"asctime": "2026-09-13 02:01:25,871", "levelname": "WARNING", "name": "src.classify", "message": "classify.failure", "ticket_id": "VAL-0046", "error": "Connection error.", "error_type": "APIConnectionError", "raw_response_head": null}
+{"asctime": "2026-09-13 02:01:26,084", "levelname": "INFO", "name": "openai._base_client", "message": "Retrying request to /chat/completions in 0.891277 seconds"}
+{"asctime": "2026-09-13 02:01:26,998", "levelname": "INFO", "name": "openai._base_client", "message": "Retrying request to /chat/completions in 1.974313 seconds"}
+{"asctime": "2026-09-13 02:01:28,993", "levelname": "WARNING", "name": "src.generate", "message": "generate.grounded_branch.failure", "ticket_id": "VAL-0046", "attempt": 0, "error": "Connection error.", "error_type": "APIConnectionError"}
+{"asctime": "2026-09-13 02:01:29,142", "levelname": "INFO", "name": "openai._base_client", "message": "Retrying request to /chat/completions in 0.853172 seconds"}
+{"asctime": "2026-09-13 02:01:30,017", "levelname": "INFO", "name": "openai._base_client", "message": "Retrying request to /chat/completions in 1.714045 seconds"}
+{"asctime": "2026-09-13 02:01:31,752", "levelname": "WARNING", "name": "src.classify", "message": "classify.failure", "ticket_id": "VAL-0047", "error": "Connection error.", "error_type": "APIConnectionError", "raw_response_head": null}
+{"asctime": "2026-09-13 02:01:32,002", "levelname": "INFO", "name": "openai._base_client", "message": "Retrying request to /chat/completions in 0.940238 seconds"}
+{"asctime": "2026-09-13 02:01:32,962", "levelname": "INFO", "name": "openai._base_client", "message": "Retrying request to /chat/completions in 1.520031 seconds"}
+{"asctime": "2026-09-13 02:01:34,501", "levelname": "WARNING", "name": "src.generate", "message": "generate.grounded_branch.failure", "ticket_id": "VAL-0047", "attempt": 0, "error": "Connection error.", "error_type": "APIConnectionError"}
+{"asctime": "2026-09-13 02:01:34,616", "levelname": "INFO", "name": "openai._base_client", "message": "Retrying request to /chat/completions in 0.838923 seconds"}
+{"asctime": "2026-09-13 02:01:35,470", "levelname": "INFO", "name": "openai._base_client", "message": "Retrying request to /chat/completions in 1.668392 seconds"}
+{"asctime": "2026-09-13 02:01:37,155", "levelname": "WARNING", "name": "src.classify", "message": "classify.failure", "ticket_id": "VAL-0048", "error": "Connection error.", "error_type": "APIConnectionError", "raw_response_head": null}
+{"asctime": "2026-09-13 02:01:37,311", "levelname": "INFO", "name": "openai._base_client", "message": "Retrying request to /chat/completions in 0.866401 seconds"}
+{"asctime": "2026-09-13 02:01:38,199", "levelname": "INFO", "name": "openai._base_client", "message": "Retrying request to /chat/completions in 1.633992 seconds"}
+{"asctime": "2026-09-13 02:01:39,854", "levelname": "WARNING", "name": "src.generate", "message": "generate.grounded_branch.failure", "ticket_id": "VAL-0048", "attempt": 0, "error": "Connection error.", "error_type": "APIConnectionError"}
+{"asctime": "2026-09-13 02:01:39,998", "levelname": "INFO", "name": "openai._base_client", "message": "Retrying request to /chat/completions in 0.957595 seconds"}
+{"asctime": "2026-09-13 02:01:40,976", "levelname": "INFO", "name": "openai._base_client", "message": "Retrying request to /chat/completions in 1.535785 seconds"}
+{"asctime": "2026-09-13 02:01:42,538", "levelname": "WARNING", "name": "src.classify", "message": "classify.failure", "ticket_id": "VAL-0049", "error": "Connection error.", "error_type": "APIConnectionError", "raw_response_head": null}
+{"asctime": "2026-09-13 02:01:42,737", "levelname": "INFO", "name": "openai._base_client", "message": "Retrying request to /chat/completions in 0.902378 seconds"}
+{"asctime": "2026-09-13 02:01:43,659", "levelname": "INFO", "name": "openai._base_client", "message": "Retrying request to /chat/completions in 1.606664 seconds"}
+{"asctime": "2026-09-13 02:01:45,290", "levelname": "WARNING", "name": "src.generate", "message": "generate.grounded_branch.failure", "ticket_id": "VAL-0049", "attempt": 0, "error": "Connection error.", "error_type": "APIConnectionError"}
+{"asctime": "2026-09-13 02:01:45,406", "levelname": "INFO", "name": "openai._base_client", "message": "Retrying request to /chat/completions in 0.818053 seconds"}
+{"asctime": "2026-09-13 02:01:46,239", "levelname": "INFO", "name": "openai._base_client", "message": "Retrying request to /chat/completions in 1.915945 seconds"}
+{"asctime": "2026-09-13 02:01:48,167", "levelname": "WARNING", "name": "src.classify", "message": "classify.failure", "ticket_id": "VAL-0050", "error": "Connection error.", "error_type": "APIConnectionError", "raw_response_head": null}
+{"asctime": "2026-09-13 02:01:48,293", "levelname": "INFO", "name": "openai._base_client", "message": "Retrying request to /chat/completions in 0.973987 seconds"}
+{"asctime": "2026-09-13 02:01:49,297", "levelname": "INFO", "name": "openai._base_client", "message": "Retrying request to /chat/completions in 1.510396 seconds"}
+{"asctime": "2026-09-13 02:01:50,835", "levelname": "WARNING", "name": "src.generate", "message": "generate.grounded_branch.failure", "ticket_id": "VAL-0050", "attempt": 0, "error": "Connection error.", "error_type": "APIConnectionError"}
+[harness]   50/80 (980s)
+{"asctime": "2026-09-13 02:01:50,970", "levelname": "INFO", "name": "openai._base_client", "message": "Retrying request to /chat/completions in 0.831646 seconds"}
+{"asctime": "2026-09-13 02:01:51,821", "levelname": "INFO", "name": "openai._base_client", "message": "Retrying request to /chat/completions in 1.849128 seconds"}
+{"asctime": "2026-09-13 02:01:53,689", "levelname": "WARNING", "name": "src.classify", "message": "classify.failure", "ticket_id": "VAL-0051", "error": "Connection error.", "error_type": "APIConnectionError", "raw_response_head": null}
+{"asctime": "2026-09-13 02:01:53,892", "levelname": "INFO", "name": "openai._base_client", "message": "Retrying request to /chat/completions in 0.808184 seconds"}
+{"asctime": "2026-09-13 02:01:54,729", "levelname": "INFO", "name": "openai._base_client", "message": "Retrying request to /chat/completions in 1.746134 seconds"}
+{"asctime": "2026-09-13 02:01:56,496", "levelname": "WARNING", "name": "src.generate", "message": "generate.grounded_branch.failure", "ticket_id": "VAL-0051", "attempt": 0, "error": "Connection error.", "error_type": "APIConnectionError"}
+{"asctime": "2026-09-13 02:01:56,613", "levelname": "INFO", "name": "openai._base_client", "message": "Retrying request to /chat/completions in 0.764637 seconds"}
+{"asctime": "2026-09-13 02:01:57,397", "levelname": "INFO", "name": "openai._base_client", "message": "Retrying request to /chat/completions in 1.815568 seconds"}
+{"asctime": "2026-09-13 02:01:59,236", "levelname": "WARNING", "name": "src.classify", "message": "classify.failure", "ticket_id": "VAL-0052", "error": "Connection error.", "error_type": "APIConnectionError", "raw_response_head": null}
+{"asctime": "2026-09-13 02:01:59,436", "levelname": "INFO", "name": "openai._base_client", "message": "Retrying request to /chat/completions in 0.792142 seconds"}
+{"asctime": "2026-09-13 02:02:00,245", "levelname": "INFO", "name": "openai._base_client", "message": "Retrying request to /chat/completions in 1.754988 seconds"}
+{"asctime": "2026-09-13 02:02:02,013", "levelname": "WARNING", "name": "src.generate", "message": "generate.grounded_branch.failure", "ticket_id": "VAL-0052", "attempt": 0, "error": "Connection error.", "error_type": "APIConnectionError"}
+{"asctime": "2026-09-13 02:02:02,146", "levelname": "INFO", "name": "openai._base_client", "message": "Retrying request to /chat/completions in 0.816439 seconds"}
+{"asctime": "2026-09-13 02:02:03,008", "levelname": "INFO", "name": "openai._base_client", "message": "Retrying request to /chat/completions in 1.521554 seconds"}
+{"asctime": "2026-09-13 02:02:04,553", "levelname": "WARNING", "name": "src.classify", "message": "classify.failure", "ticket_id": "VAL-0053", "error": "Connection error.", "error_type": "APIConnectionError", "raw_response_head": null}
+{"asctime": "2026-09-13 02:02:04,722", "levelname": "INFO", "name": "openai._base_client", "message": "Retrying request to /chat/completions in 0.761469 seconds"}
+{"asctime": "2026-09-13 02:02:05,500", "levelname": "INFO", "name": "openai._base_client", "message": "Retrying request to /chat/completions in 1.814265 seconds"}
+{"asctime": "2026-09-13 02:02:07,332", "levelname": "WARNING", "name": "src.generate", "message": "generate.grounded_branch.failure", "ticket_id": "VAL-0053", "attempt": 0, "error": "Connection error.", "error_type": "APIConnectionError"}
+{"asctime": "2026-09-13 02:02:07,517", "levelname": "INFO", "name": "openai._base_client", "message": "Retrying request to /chat/completions in 0.960929 seconds"}
+{"asctime": "2026-09-13 02:02:08,496", "levelname": "INFO", "name": "openai._base_client", "message": "Retrying request to /chat/completions in 1.782578 seconds"}
+{"asctime": "2026-09-13 02:02:10,308", "levelname": "WARNING", "name": "src.classify", "message": "classify.failure", "ticket_id": "VAL-0054", "error": "Connection error.", "error_type": "APIConnectionError", "raw_response_head": null}
+{"asctime": "2026-09-13 02:02:10,510", "levelname": "INFO", "name": "openai._base_client", "message": "Retrying request to /chat/completions in 0.889931 seconds"}
+{"asctime": "2026-09-13 02:02:11,422", "levelname": "INFO", "name": "openai._base_client", "message": "Retrying request to /chat/completions in 1.974970 seconds"}
+{"asctime": "2026-09-13 02:02:13,420", "levelname": "WARNING", "name": "src.generate", "message": "generate.grounded_branch.failure", "ticket_id": "VAL-0054", "attempt": 0, "error": "Connection error.", "error_type": "APIConnectionError"}
+{"asctime": "2026-09-13 02:02:13,584", "levelname": "INFO", "name": "openai._base_client", "message": "Retrying request to /chat/completions in 0.861179 seconds"}
+{"asctime": "2026-09-13 02:02:14,467", "levelname": "INFO", "name": "openai._base_client", "message": "Retrying request to /chat/completions in 1.603256 seconds"}
+{"asctime": "2026-09-13 02:02:16,083", "levelname": "WARNING", "name": "src.classify", "message": "classify.failure", "ticket_id": "VAL-0055", "error": "Connection error.", "error_type": "APIConnectionError", "raw_response_head": null}
+{"asctime": "2026-09-13 02:02:16,271", "levelname": "INFO", "name": "openai._base_client", "message": "Retrying request to /chat/completions in 0.838697 seconds"}
+{"asctime": "2026-09-13 02:02:17,132", "levelname": "INFO", "name": "openai._base_client", "message": "Retrying request to /chat/completions in 1.775323 seconds"}
+{"asctime": "2026-09-13 02:02:18,927", "levelname": "WARNING", "name": "src.generate", "message": "generate.grounded_branch.failure", "ticket_id": "VAL-0055", "attempt": 0, "error": "Connection error.", "error_type": "APIConnectionError"}
+{"asctime": "2026-09-13 02:02:19,027", "levelname": "INFO", "name": "openai._base_client", "message": "Retrying request to /chat/completions in 0.891986 seconds"}
+{"asctime": "2026-09-13 02:02:19,941", "levelname": "INFO", "name": "openai._base_client", "message": "Retrying request to /chat/completions in 1.560543 seconds"}
+{"asctime": "2026-09-13 02:02:21,522", "levelname": "WARNING", "name": "src.classify", "message": "classify.failure", "ticket_id": "VAL-0056", "error": "Connection error.", "error_type": "APIConnectionError", "raw_response_head": null}
+{"asctime": "2026-09-13 02:02:21,733", "levelname": "INFO", "name": "openai._base_client", "message": "Retrying request to /chat/completions in 0.904007 seconds"}
+{"asctime": "2026-09-13 02:02:22,668", "levelname": "INFO", "name": "openai._base_client", "message": "Retrying request to /chat/completions in 1.944754 seconds"}
+{"asctime": "2026-09-13 02:02:24,635", "levelname": "WARNING", "name": "src.generate", "message": "generate.grounded_branch.failure", "ticket_id": "VAL-0056", "attempt": 0, "error": "Connection error.", "error_type": "APIConnectionError"}
+{"asctime": "2026-09-13 02:02:24,765", "levelname": "INFO", "name": "openai._base_client", "message": "Retrying request to /chat/completions in 0.924872 seconds"}
+{"asctime": "2026-09-13 02:02:25,711", "levelname": "INFO", "name": "openai._base_client", "message": "Retrying request to /chat/completions in 1.534643 seconds"}
+{"asctime": "2026-09-13 02:02:27,269", "levelname": "WARNING", "name": "src.classify", "message": "classify.failure", "ticket_id": "VAL-0057", "error": "Connection error.", "error_type": "APIConnectionError", "raw_response_head": null}
+{"asctime": "2026-09-13 02:02:27,425", "levelname": "INFO", "name": "openai._base_client", "message": "Retrying request to /chat/completions in 0.891840 seconds"}
+{"asctime": "2026-09-13 02:02:28,338", "levelname": "INFO", "name": "openai._base_client", "message": "Retrying request to /chat/completions in 1.661647 seconds"}
+{"asctime": "2026-09-13 02:02:30,031", "levelname": "WARNING", "name": "src.generate", "message": "generate.grounded_branch.failure", "ticket_id": "VAL-0057", "attempt": 0, "error": "Connection error.", "error_type": "APIConnectionError"}
+{"asctime": "2026-09-13 02:02:30,094", "levelname": "INFO", "name": "openai._base_client", "message": "Retrying request to /chat/completions in 0.994527 seconds"}
+{"asctime": "2026-09-13 02:02:31,110", "levelname": "INFO", "name": "openai._base_client", "message": "Retrying request to /chat/completions in 1.728555 seconds"}
+{"asctime": "2026-09-13 02:02:32,866", "levelname": "WARNING", "name": "src.classify", "message": "classify.failure", "ticket_id": "VAL-0058", "error": "Connection error.", "error_type": "APIConnectionError", "raw_response_head": null}
+{"asctime": "2026-09-13 02:02:33,015", "levelname": "INFO", "name": "openai._base_client", "message": "Retrying request to /chat/completions in 0.917686 seconds"}
+{"asctime": "2026-09-13 02:02:33,954", "levelname": "INFO", "name": "openai._base_client", "message": "Retrying request to /chat/completions in 1.933824 seconds"}
+{"asctime": "2026-09-13 02:02:35,910", "levelname": "WARNING", "name": "src.generate", "message": "generate.grounded_branch.failure", "ticket_id": "VAL-0058", "attempt": 0, "error": "Connection error.", "error_type": "APIConnectionError"}
+{"asctime": "2026-09-13 02:02:36,102", "levelname": "INFO", "name": "openai._base_client", "message": "Retrying request to /chat/completions in 0.867920 seconds"}
+{"asctime": "2026-09-13 02:02:36,990", "levelname": "INFO", "name": "openai._base_client", "message": "Retrying request to /chat/completions in 1.531780 seconds"}
+{"asctime": "2026-09-13 02:02:38,541", "levelname": "WARNING", "name": "src.classify", "message": "classify.failure", "ticket_id": "VAL-0059", "error": "Connection error.", "error_type": "APIConnectionError", "raw_response_head": null}
+{"asctime": "2026-09-13 02:02:38,696", "levelname": "INFO", "name": "openai._base_client", "message": "Retrying request to /chat/completions in 0.755751 seconds"}
+{"asctime": "2026-09-13 02:02:39,470", "levelname": "INFO", "name": "openai._base_client", "message": "Retrying request to /chat/completions in 1.549092 seconds"}
+{"asctime": "2026-09-13 02:02:41,034", "levelname": "WARNING", "name": "src.generate", "message": "generate.grounded_branch.failure", "ticket_id": "VAL-0059", "attempt": 0, "error": "Connection error.", "error_type": "APIConnectionError"}
+{"asctime": "2026-09-13 02:02:41,180", "levelname": "INFO", "name": "openai._base_client", "message": "Retrying request to /chat/completions in 0.963108 seconds"}
+{"asctime": "2026-09-13 02:02:42,161", "levelname": "INFO", "name": "openai._base_client", "message": "Retrying request to /chat/completions in 1.623078 seconds"}
+{"asctime": "2026-09-13 02:02:43,815", "levelname": "WARNING", "name": "src.classify", "message": "classify.failure", "ticket_id": "VAL-0060", "error": "Connection error.", "error_type": "APIConnectionError", "raw_response_head": null}
+{"asctime": "2026-09-13 02:02:43,979", "levelname": "INFO", "name": "openai._base_client", "message": "Retrying request to /chat/completions in 0.857573 seconds"}
+{"asctime": "2026-09-13 02:02:44,850", "levelname": "INFO", "name": "openai._base_client", "message": "Retrying request to /chat/completions in 1.944404 seconds"}
+{"asctime": "2026-09-13 02:02:46,824", "levelname": "WARNING", "name": "src.generate", "message": "generate.grounded_branch.failure", "ticket_id": "VAL-0060", "attempt": 0, "error": "Connection error.", "error_type": "APIConnectionError"}
+[harness]   60/80 (1036s)
+{"asctime": "2026-09-13 02:02:46,954", "levelname": "INFO", "name": "openai._base_client", "message": "Retrying request to /chat/completions in 0.958030 seconds"}
+{"asctime": "2026-09-13 02:02:47,930", "levelname": "INFO", "name": "openai._base_client", "message": "Retrying request to /chat/completions in 1.901301 seconds"}
+{"asctime": "2026-09-13 02:02:49,856", "levelname": "WARNING", "name": "src.classify", "message": "classify.failure", "ticket_id": "VAL-0061", "error": "Connection error.", "error_type": "APIConnectionError", "raw_response_head": null}
+{"asctime": "2026-09-13 02:02:50,179", "levelname": "INFO", "name": "openai._base_client", "message": "Retrying request to /chat/completions in 0.950376 seconds"}
+{"asctime": "2026-09-13 02:02:51,154", "levelname": "INFO", "name": "openai._base_client", "message": "Retrying request to /chat/completions in 1.926972 seconds"}
+{"asctime": "2026-09-13 02:02:53,102", "levelname": "WARNING", "name": "src.generate", "message": "generate.grounded_branch.failure", "ticket_id": "VAL-0061", "attempt": 0, "error": "Connection error.", "error_type": "APIConnectionError"}
+{"asctime": "2026-09-13 02:02:53,212", "levelname": "INFO", "name": "openai._base_client", "message": "Retrying request to /chat/completions in 0.849229 seconds"}
+{"asctime": "2026-09-13 02:02:54,084", "levelname": "INFO", "name": "openai._base_client", "message": "Retrying request to /chat/completions in 1.523818 seconds"}
+{"asctime": "2026-09-13 02:02:55,624", "levelname": "WARNING", "name": "src.classify", "message": "classify.failure", "ticket_id": "VAL-0062", "error": "Connection error.", "error_type": "APIConnectionError", "raw_response_head": null}
+{"asctime": "2026-09-13 02:02:55,805", "levelname": "INFO", "name": "openai._base_client", "message": "Retrying request to /chat/completions in 0.763994 seconds"}
+{"asctime": "2026-09-13 02:02:56,591", "levelname": "INFO", "name": "openai._base_client", "message": "Retrying request to /chat/completions in 1.553103 seconds"}
+{"asctime": "2026-09-13 02:02:58,160", "levelname": "WARNING", "name": "src.generate", "message": "generate.grounded_branch.failure", "ticket_id": "VAL-0062", "attempt": 0, "error": "Connection error.", "error_type": "APIConnectionError"}
+{"asctime": "2026-09-13 02:02:58,991", "levelname": "INFO", "name": "httpx", "message": "HTTP Request: POST https://openrouter.ai/api/v1/chat/completions \"HTTP/1.1 200 OK\""}
+{"asctime": "2026-09-13 02:03:03,374", "levelname": "INFO", "name": "httpx", "message": "HTTP Request: POST https://openrouter.ai/api/v1/chat/completions \"HTTP/1.1 200 OK\""}
+{"asctime": "2026-09-13 02:03:08,991", "levelname": "INFO", "name": "httpx", "message": "HTTP Request: POST https://api.openai.com/v1/chat/completions \"HTTP/1.1 200 OK\""}
+{"asctime": "2026-09-13 02:03:10,263", "levelname": "INFO", "name": "httpx", "message": "HTTP Request: POST https://api.openai.com/v1/chat/completions \"HTTP/1.1 200 OK\""}
+{"asctime": "2026-09-13 02:03:11,168", "levelname": "INFO", "name": "httpx", "message": "HTTP Request: POST https://api.openai.com/v1/chat/completions \"HTTP/1.1 200 OK\""}
+{"asctime": "2026-09-13 02:03:11,413", "levelname": "INFO", "name": "httpx", "message": "HTTP Request: POST https://openrouter.ai/api/v1/chat/completions \"HTTP/1.1 200 OK\""}
+{"asctime": "2026-09-13 02:03:12,452", "levelname": "INFO", "name": "httpx", "message": "HTTP Request: POST https://openrouter.ai/api/v1/chat/completions \"HTTP/1.1 200 OK\""}
+{"asctime": "2026-09-13 02:03:17,105", "levelname": "INFO", "name": "httpx", "message": "HTTP Request: POST https://api.openai.com/v1/chat/completions \"HTTP/1.1 200 OK\""}
+{"asctime": "2026-09-13 02:03:18,603", "levelname": "INFO", "name": "httpx", "message": "HTTP Request: POST https://api.openai.com/v1/chat/completions \"HTTP/1.1 200 OK\""}
+{"asctime": "2026-09-13 02:03:19,516", "levelname": "INFO", "name": "httpx", "message": "HTTP Request: POST https://api.openai.com/v1/chat/completions \"HTTP/1.1 200 OK\""}
+{"asctime": "2026-09-13 02:03:20,301", "levelname": "INFO", "name": "httpx", "message": "HTTP Request: POST https://openrouter.ai/api/v1/chat/completions \"HTTP/1.1 200 OK\""}
+{"asctime": "2026-09-13 02:03:22,794", "levelname": "INFO", "name": "httpx", "message": "HTTP Request: POST https://openrouter.ai/api/v1/chat/completions \"HTTP/1.1 200 OK\""}
+{"asctime": "2026-09-13 02:03:24,549", "levelname": "INFO", "name": "httpx", "message": "HTTP Request: POST https://api.openai.com/v1/chat/completions \"HTTP/1.1 200 OK\""}
+{"asctime": "2026-09-13 02:03:25,271", "levelname": "INFO", "name": "httpx", "message": "HTTP Request: POST https://api.openai.com/v1/chat/completions \"HTTP/1.1 200 OK\""}
+{"asctime": "2026-09-13 02:03:26,111", "levelname": "INFO", "name": "httpx", "message": "HTTP Request: POST https://api.openai.com/v1/chat/completions \"HTTP/1.1 200 OK\""}
+{"asctime": "2026-09-13 02:03:26,619", "levelname": "INFO", "name": "httpx", "message": "HTTP Request: POST https://openrouter.ai/api/v1/chat/completions \"HTTP/1.1 200 OK\""}
+{"asctime": "2026-09-13 02:03:30,270", "levelname": "INFO", "name": "httpx", "message": "HTTP Request: POST https://openrouter.ai/api/v1/chat/completions \"HTTP/1.1 200 OK\""}
+{"asctime": "2026-09-13 02:03:35,599", "levelname": "INFO", "name": "httpx", "message": "HTTP Request: POST https://api.openai.com/v1/chat/completions \"HTTP/1.1 200 OK\""}
+{"asctime": "2026-09-13 02:03:36,416", "levelname": "INFO", "name": "httpx", "message": "HTTP Request: POST https://api.openai.com/v1/chat/completions \"HTTP/1.1 200 OK\""}
+{"asctime": "2026-09-13 02:03:37,487", "levelname": "INFO", "name": "httpx", "message": "HTTP Request: POST https://api.openai.com/v1/chat/completions \"HTTP/1.1 200 OK\""}
+{"asctime": "2026-09-13 02:03:38,633", "levelname": "INFO", "name": "httpx", "message": "HTTP Request: POST https://openrouter.ai/api/v1/chat/completions \"HTTP/1.1 200 OK\""}
+{"asctime": "2026-09-13 02:03:42,817", "levelname": "INFO", "name": "httpx", "message": "HTTP Request: POST https://openrouter.ai/api/v1/chat/completions \"HTTP/1.1 200 OK\""}
+{"asctime": "2026-09-13 02:03:50,761", "levelname": "INFO", "name": "httpx", "message": "HTTP Request: POST https://api.openai.com/v1/chat/completions \"HTTP/1.1 200 OK\""}
+{"asctime": "2026-09-13 02:03:52,529", "levelname": "INFO", "name": "httpx", "message": "HTTP Request: POST https://api.openai.com/v1/chat/completions \"HTTP/1.1 200 OK\""}
+{"asctime": "2026-09-13 02:03:53,708", "levelname": "INFO", "name": "httpx", "message": "HTTP Request: POST https://api.openai.com/v1/chat/completions \"HTTP/1.1 200 OK\""}
+{"asctime": "2026-09-13 02:03:54,209", "levelname": "INFO", "name": "httpx", "message": "HTTP Request: POST https://openrouter.ai/api/v1/chat/completions \"HTTP/1.1 200 OK\""}
+{"asctime": "2026-09-13 02:03:57,729", "levelname": "INFO", "name": "httpx", "message": "HTTP Request: POST https://openrouter.ai/api/v1/chat/completions \"HTTP/1.1 200 OK\""}
+{"asctime": "2026-09-13 02:03:59,729", "levelname": "INFO", "name": "httpx", "message": "HTTP Request: POST https://api.openai.com/v1/chat/completions \"HTTP/1.1 200 OK\""}
+{"asctime": "2026-09-13 02:04:01,949", "levelname": "INFO", "name": "httpx", "message": "HTTP Request: POST https://api.openai.com/v1/chat/completions \"HTTP/1.1 200 OK\""}
+{"asctime": "2026-09-13 02:04:02,586", "levelname": "INFO", "name": "httpx", "message": "HTTP Request: POST https://api.openai.com/v1/chat/completions \"HTTP/1.1 200 OK\""}
+{"asctime": "2026-09-13 02:04:03,260", "levelname": "INFO", "name": "httpx", "message": "HTTP Request: POST https://openrouter.ai/api/v1/chat/completions \"HTTP/1.1 200 OK\""}
+{"asctime": "2026-09-13 02:04:04,612", "levelname": "INFO", "name": "httpx", "message": "HTTP Request: POST https://openrouter.ai/api/v1/chat/completions \"HTTP/1.1 200 OK\""}
+{"asctime": "2026-09-13 02:04:05,909", "levelname": "INFO", "name": "httpx", "message": "HTTP Request: POST https://api.openai.com/v1/chat/completions \"HTTP/1.1 200 OK\""}
+{"asctime": "2026-09-13 02:04:06,719", "levelname": "INFO", "name": "httpx", "message": "HTTP Request: POST https://api.openai.com/v1/chat/completions \"HTTP/1.1 200 OK\""}
+{"asctime": "2026-09-13 02:04:07,474", "levelname": "INFO", "name": "httpx", "message": "HTTP Request: POST https://api.openai.com/v1/chat/completions \"HTTP/1.1 200 OK\""}
+{"asctime": "2026-09-13 02:04:07,935", "levelname": "INFO", "name": "httpx", "message": "HTTP Request: POST https://openrouter.ai/api/v1/chat/completions \"HTTP/1.1 200 OK\""}
+{"asctime": "2026-09-13 02:04:11,910", "levelname": "INFO", "name": "httpx", "message": "HTTP Request: POST https://openrouter.ai/api/v1/chat/completions \"HTTP/1.1 200 OK\""}
+{"asctime": "2026-09-13 02:04:18,738", "levelname": "INFO", "name": "httpx", "message": "HTTP Request: POST https://api.openai.com/v1/chat/completions \"HTTP/1.1 200 OK\""}
+{"asctime": "2026-09-13 02:04:19,459", "levelname": "INFO", "name": "httpx", "message": "HTTP Request: POST https://api.openai.com/v1/chat/completions \"HTTP/1.1 200 OK\""}
+{"asctime": "2026-09-13 02:04:20,326", "levelname": "INFO", "name": "httpx", "message": "HTTP Request: POST https://api.openai.com/v1/chat/completions \"HTTP/1.1 200 OK\""}
+[harness]   70/80 (1129s)
+{"asctime": "2026-09-13 02:04:20,750", "levelname": "INFO", "name": "httpx", "message": "HTTP Request: POST https://openrouter.ai/api/v1/chat/completions \"HTTP/1.1 200 OK\""}
+{"asctime": "2026-09-13 02:04:24,095", "levelname": "INFO", "name": "httpx", "message": "HTTP Request: POST https://openrouter.ai/api/v1/chat/completions \"HTTP/1.1 200 OK\""}
+{"asctime": "2026-09-13 02:04:26,147", "levelname": "INFO", "name": "httpx", "message": "HTTP Request: POST https://api.openai.com/v1/chat/completions \"HTTP/1.1 200 OK\""}
+{"asctime": "2026-09-13 02:04:26,960", "levelname": "INFO", "name": "httpx", "message": "HTTP Request: POST https://api.openai.com/v1/chat/completions \"HTTP/1.1 200 OK\""}
+{"asctime": "2026-09-13 02:04:27,719", "levelname": "INFO", "name": "httpx", "message": "HTTP Request: POST https://api.openai.com/v1/chat/completions \"HTTP/1.1 200 OK\""}
+{"asctime": "2026-09-13 02:04:28,197", "levelname": "INFO", "name": "httpx", "message": "HTTP Request: POST https://openrouter.ai/api/v1/chat/completions \"HTTP/1.1 200 OK\""}
+{"asctime": "2026-09-13 02:04:31,080", "levelname": "INFO", "name": "httpx", "message": "HTTP Request: POST https://openrouter.ai/api/v1/chat/completions \"HTTP/1.1 200 OK\""}
+{"asctime": "2026-09-13 02:04:38,659", "levelname": "INFO", "name": "httpx", "message": "HTTP Request: POST https://api.openai.com/v1/chat/completions \"HTTP/1.1 200 OK\""}
+{"asctime": "2026-09-13 02:04:39,558", "levelname": "INFO", "name": "httpx", "message": "HTTP Request: POST https://api.openai.com/v1/chat/completions \"HTTP/1.1 200 OK\""}
+{"asctime": "2026-09-13 02:04:40,408", "levelname": "INFO", "name": "httpx", "message": "HTTP Request: POST https://api.openai.com/v1/chat/completions \"HTTP/1.1 200 OK\""}
+{"asctime": "2026-09-13 02:04:40,868", "levelname": "INFO", "name": "httpx", "message": "HTTP Request: POST https://openrouter.ai/api/v1/chat/completions \"HTTP/1.1 200 OK\""}
+{"asctime": "2026-09-13 02:04:44,057", "levelname": "INFO", "name": "src.classify", "message": "classify.no_alternatives_below_09", "confidence": 0.85, "intent": "billing_query"}
+{"asctime": "2026-09-13 02:04:45,423", "levelname": "INFO", "name": "httpx", "message": "HTTP Request: POST https://openrouter.ai/api/v1/chat/completions \"HTTP/1.1 200 OK\""}
+{"asctime": "2026-09-13 02:04:51,276", "levelname": "INFO", "name": "httpx", "message": "HTTP Request: POST https://api.openai.com/v1/chat/completions \"HTTP/1.1 200 OK\""}
+{"asctime": "2026-09-13 02:04:52,061", "levelname": "INFO", "name": "httpx", "message": "HTTP Request: POST https://api.openai.com/v1/chat/completions \"HTTP/1.1 200 OK\""}
+{"asctime": "2026-09-13 02:04:52,775", "levelname": "INFO", "name": "httpx", "message": "HTTP Request: POST https://api.openai.com/v1/chat/completions \"HTTP/1.1 200 OK\""}
+{"asctime": "2026-09-13 02:04:53,250", "levelname": "INFO", "name": "httpx", "message": "HTTP Request: POST https://openrouter.ai/api/v1/chat/completions \"HTTP/1.1 200 OK\""}
+{"asctime": "2026-09-13 02:04:57,304", "levelname": "INFO", "name": "httpx", "message": "HTTP Request: POST https://openrouter.ai/api/v1/chat/completions \"HTTP/1.1 200 OK\""}
+{"asctime": "2026-09-13 02:04:58,745", "levelname": "INFO", "name": "httpx", "message": "HTTP Request: POST https://api.openai.com/v1/chat/completions \"HTTP/1.1 200 OK\""}
+{"asctime": "2026-09-13 02:04:59,470", "levelname": "INFO", "name": "httpx", "message": "HTTP Request: POST https://api.openai.com/v1/chat/completions \"HTTP/1.1 200 OK\""}
+{"asctime": "2026-09-13 02:05:00,292", "levelname": "INFO", "name": "httpx", "message": "HTTP Request: POST https://api.openai.com/v1/chat/completions \"HTTP/1.1 200 OK\""}
+{"asctime": "2026-09-13 02:05:01,072", "levelname": "INFO", "name": "httpx", "message": "HTTP Request: POST https://openrouter.ai/api/v1/chat/completions \"HTTP/1.1 200 OK\""}
+{"asctime": "2026-09-13 02:05:05,816", "levelname": "INFO", "name": "httpx", "message": "HTTP Request: POST https://openrouter.ai/api/v1/chat/completions \"HTTP/1.1 200 OK\""}
+{"asctime": "2026-09-13 02:05:07,547", "levelname": "INFO", "name": "httpx", "message": "HTTP Request: POST https://api.openai.com/v1/chat/completions \"HTTP/1.1 200 OK\""}
+{"asctime": "2026-09-13 02:05:08,393", "levelname": "INFO", "name": "httpx", "message": "HTTP Request: POST https://api.openai.com/v1/chat/completions \"HTTP/1.1 200 OK\""}
+{"asctime": "2026-09-13 02:05:09,090", "levelname": "INFO", "name": "httpx", "message": "HTTP Request: POST https://api.openai.com/v1/chat/completions \"HTTP/1.1 200 OK\""}
+{"asctime": "2026-09-13 02:05:09,755", "levelname": "INFO", "name": "httpx", "message": "HTTP Request: POST https://openrouter.ai/api/v1/chat/completions \"HTTP/1.1 200 OK\""}
+{"asctime": "2026-09-13 02:05:10,887", "levelname": "INFO", "name": "httpx", "message": "HTTP Request: POST https://openrouter.ai/api/v1/chat/completions \"HTTP/1.1 200 OK\""}
+{"asctime": "2026-09-13 02:05:16,838", "levelname": "INFO", "name": "httpx", "message": "HTTP Request: POST https://api.openai.com/v1/chat/completions \"HTTP/1.1 200 OK\""}
+{"asctime": "2026-09-13 02:05:17,572", "levelname": "INFO", "name": "httpx", "message": "HTTP Request: POST https://api.openai.com/v1/chat/completions \"HTTP/1.1 200 OK\""}
+{"asctime": "2026-09-13 02:05:18,293", "levelname": "INFO", "name": "httpx", "message": "HTTP Request: POST https://api.openai.com/v1/chat/completions \"HTTP/1.1 200 OK\""}
+{"asctime": "2026-09-13 02:05:19,129", "levelname": "INFO", "name": "httpx", "message": "HTTP Request: POST https://openrouter.ai/api/v1/chat/completions \"HTTP/1.1 200 OK\""}
+{"asctime": "2026-09-13 02:05:20,431", "levelname": "INFO", "name": "httpx", "message": "HTTP Request: POST https://openrouter.ai/api/v1/chat/completions \"HTTP/1.1 200 OK\""}
+{"asctime": "2026-09-13 02:05:22,049", "levelname": "INFO", "name": "httpx", "message": "HTTP Request: POST https://api.openai.com/v1/chat/completions \"HTTP/1.1 200 OK\""}
+{"asctime": "2026-09-13 02:05:22,884", "levelname": "INFO", "name": "httpx", "message": "HTTP Request: POST https://api.openai.com/v1/chat/completions \"HTTP/1.1 200 OK\""}
+{"asctime": "2026-09-13 02:05:23,553", "levelname": "INFO", "name": "httpx", "message": "HTTP Request: POST https://api.openai.com/v1/chat/completions \"HTTP/1.1 200 OK\""}
+{"asctime": "2026-09-13 02:05:24,006", "levelname": "INFO", "name": "httpx", "message": "HTTP Request: POST https://openrouter.ai/api/v1/chat/completions \"HTTP/1.1 200 OK\""}
+{"asctime": "2026-09-13 02:05:25,096", "levelname": "INFO", "name": "httpx", "message": "HTTP Request: POST https://openrouter.ai/api/v1/chat/completions \"HTTP/1.1 200 OK\""}
+{"asctime": "2026-09-13 02:05:27,528", "levelname": "INFO", "name": "httpx", "message": "HTTP Request: POST https://api.openai.com/v1/chat/completions \"HTTP/1.1 200 OK\""}
+{"asctime": "2026-09-13 02:05:28,675", "levelname": "INFO", "name": "httpx", "message": "HTTP Request: POST https://api.openai.com/v1/chat/completions \"HTTP/1.1 200 OK\""}
+{"asctime": "2026-09-13 02:05:29,410", "levelname": "INFO", "name": "httpx", "message": "HTTP Request: POST https://api.openai.com/v1/chat/completions \"HTTP/1.1 200 OK\""}
+{"asctime": "2026-09-13 02:05:30,126", "levelname": "INFO", "name": "httpx", "message": "HTTP Request: POST https://openrouter.ai/api/v1/chat/completions \"HTTP/1.1 200 OK\""}
+{"asctime": "2026-09-13 02:05:34,763", "levelname": "INFO", "name": "httpx", "message": "HTTP Request: POST https://openrouter.ai/api/v1/chat/completions \"HTTP/1.1 200 OK\""}
+{"asctime": "2026-09-13 02:05:42,196", "levelname": "INFO", "name": "httpx", "message": "HTTP Request: POST https://api.openai.com/v1/chat/completions \"HTTP/1.1 200 OK\""}
+{"asctime": "2026-09-13 02:05:42,993", "levelname": "INFO", "name": "httpx", "message": "HTTP Request: POST https://api.openai.com/v1/chat/completions \"HTTP/1.1 200 OK\""}
+{"asctime": "2026-09-13 02:05:43,725", "levelname": "INFO", "name": "httpx", "message": "HTTP Request: POST https://api.openai.com/v1/chat/completions \"HTTP/1.1 200 OK\""}
+{"asctime": "2026-09-13 02:05:44,748", "levelname": "INFO", "name": "httpx", "message": "HTTP Request: POST https://openrouter.ai/api/v1/chat/completions \"HTTP/1.1 200 OK\""}
+{"asctime": "2026-09-13 02:05:49,181", "levelname": "INFO", "name": "httpx", "message": "HTTP Request: POST https://openrouter.ai/api/v1/chat/completions \"HTTP/1.1 200 OK\""}
+{"asctime": "2026-09-13 02:05:51,023", "levelname": "INFO", "name": "httpx", "message": "HTTP Request: POST https://api.openai.com/v1/chat/completions \"HTTP/1.1 200 OK\""}
+{"asctime": "2026-09-13 02:05:52,135", "levelname": "INFO", "name": "httpx", "message": "HTTP Request: POST https://api.openai.com/v1/chat/completions \"HTTP/1.1 200 OK\""}
+{"asctime": "2026-09-13 02:05:52,820", "levelname": "INFO", "name": "httpx", "message": "HTTP Request: POST https://api.openai.com/v1/chat/completions \"HTTP/1.1 200 OK\""}
+[harness]   80/80 (1221s)
+[harness] auto_respond=20 escalate=2 block=58 degraded=0
+[harness] A8 reconciles=True
+[harness] wrote evaluation/results/b21_gate_20260913/results.jsonl
+[harness] wrote evaluation/results/b21_gate_20260913/metrics_report.json

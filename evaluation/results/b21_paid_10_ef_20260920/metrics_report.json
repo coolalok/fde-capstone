@@ -1,0 +1,258 @@
+{
+  "run_id": "harness-20260920T133455Z-5a0eff3d",
+  "model_name": "gpt-4o-mini",
+  "guardrail_model": "gpt-4o",
+  "confidence_threshold": 0.85,
+  "guardrails_enabled": true,
+  "labels_available": true,
+  "counts": {
+    "tickets_processed": 10,
+    "auto_respond": 5,
+    "escalate": 5,
+    "block": 0,
+    "degraded": 0,
+    "generator_unknown": 3,
+    "empty_retrieval": 2
+  },
+  "business_metrics": {
+    "fcr_proxy": 0.5,
+    "fcr_correct_proxy": 0.4,
+    "escalation_rate": 0.5,
+    "repeat_contact_proxy": 0.3,
+    "ttr_seconds_median": 4.503,
+    "routing_outcomes": {
+      "n": 10,
+      "should_send": 5,
+      "sent": 5,
+      "correct_sends": 4,
+      "wrong_sends": 1,
+      "wrong_holds": 1,
+      "send_precision": 0.8,
+      "send_coverage": 0.8,
+      "wrong_send_rate": 0.1,
+      "wrong_hold_rate": 0.1
+    },
+    "failure_breakdown": {
+      "wrong_decisions": 2,
+      "by_stage": {
+        "answerability": 1,
+        "classification": 1
+      },
+      "by_reason": {
+        "answerability:sent_unanswerable": 1,
+        "classification:low_confidence": 1
+      }
+    }
+  },
+  "technical_metrics": {
+    "latency_p50_seconds": 4.503,
+    "latency_p95_seconds": 23.372,
+    "latency_max_seconds": 23.372,
+    "classifier_failures": 0,
+    "generator_failures": 0,
+    "stage_latency": {
+      "n_live_tickets": 10,
+      "stages": {
+        "classification": {
+          "n": 10,
+          "p50": 1.505,
+          "p95": 3.1,
+          "mean": 1.684
+        },
+        "retrieval": {
+          "n": 10,
+          "p50": 0.128,
+          "p95": 16.546,
+          "mean": 1.782
+        },
+        "generation": {
+          "n": 10,
+          "p50": 1.614,
+          "p95": 2.43,
+          "mean": 1.681
+        },
+        "guardrails": {
+          "n": 10,
+          "p50": 1.085,
+          "p95": 1.412,
+          "mean": 0.832
+        }
+      },
+      "model_calls_per_ticket": {
+        "mean": 4.8,
+        "max": 6
+      }
+    },
+    "retrieval_hit_at_3": 1.0,
+    "retrieval_answerable_n": 6,
+    "retrieval_recall_at_k": {
+      "recall@1": 0.8333,
+      "recall@3": 1.0,
+      "recall@5": 1.0
+    },
+    "unknown_correctness": {
+      "unanswerable_n": 4,
+      "declined_unanswerable": 3,
+      "answered_unanswerable": 1,
+      "declined_answerable": 0,
+      "precision": 1.0,
+      "recall": 0.75,
+      "generator_failures_excluded": 0
+    },
+    "citation_accuracy": {
+      "n": 6,
+      "precision": 1.0,
+      "recall": 0.8333,
+      "citing_with_no_expected_doc": 1
+    },
+    "citation_accuracy_sent": {
+      "n": 4,
+      "precision": 1.0,
+      "recall": 0.75,
+      "citing_with_no_expected_doc": 1
+    },
+    "intent_per_class": {
+      "account_access": {
+        "support": 1,
+        "precision": 0.0,
+        "recall": 0.0
+      },
+      "api_key_issue": {
+        "support": 1,
+        "precision": 1.0,
+        "recall": 1.0
+      },
+      "api_usage_question": {
+        "support": 1,
+        "precision": 0.0,
+        "recall": 0.0
+      },
+      "authentication_failure": {
+        "support": 2,
+        "precision": 1.0,
+        "recall": 1.0
+      },
+      "billing_query": {
+        "support": 1,
+        "precision": 1.0,
+        "recall": 1.0
+      },
+      "compliance_request": {
+        "support": 1,
+        "precision": 1.0,
+        "recall": 1.0
+      },
+      "performance_degradation": {
+        "support": 0,
+        "precision": 0.0,
+        "recall": 0.0
+      },
+      "sso_configuration": {
+        "support": 0,
+        "precision": 0.0,
+        "recall": 0.0
+      },
+      "unclear_request": {
+        "support": 3,
+        "precision": 1.0,
+        "recall": 1.0
+      }
+    },
+    "intent_accuracy": 0.8
+  },
+  "governance_metrics": {
+    "decisions_logged": 10,
+    "reconciles": true,
+    "missing_from_log": [],
+    "extra_in_log": [],
+    "guardrail_activations": {
+      "confidence_floor": 5
+    },
+    "guardrail_fail_safe_blocks": {},
+    "pii_detections": 0,
+    "kill_switch_active": false,
+    "confidence_calibration": [
+      {
+        "bucket": "0.3-0.4",
+        "n": 2,
+        "stated_avg": 0.325,
+        "observed": 1.0,
+        "gap_pp": 67.5,
+        "sufficient_n": false
+      },
+      {
+        "bucket": "0.5-0.6",
+        "n": 1,
+        "stated_avg": 0.5,
+        "observed": 1.0,
+        "gap_pp": 50.0,
+        "sufficient_n": false
+      },
+      {
+        "bucket": "0.7-0.8",
+        "n": 2,
+        "stated_avg": 0.75,
+        "observed": 0.5,
+        "gap_pp": -25.0,
+        "sufficient_n": false
+      },
+      {
+        "bucket": "0.8-0.9",
+        "n": 3,
+        "stated_avg": 0.85,
+        "observed": 0.667,
+        "gap_pp": -18.3,
+        "sufficient_n": false
+      },
+      {
+        "bucket": "0.9-1.0",
+        "n": 2,
+        "stated_avg": 0.95,
+        "observed": 1.0,
+        "gap_pp": 5.0,
+        "sufficient_n": false
+      }
+    ],
+    "calibration_fallbacks_excluded": 0,
+    "max_calibration_gap_pp": null,
+    "calibration_min_bucket_n": 5,
+    "brier_score": 0.256,
+    "brier_n": 10
+  },
+  "cost_metrics": {
+    "model_cache_enabled": false,
+    "calls": 48,
+    "live_calls": 48,
+    "cached_calls": 0,
+    "calls_without_usage": 0,
+    "prompt_tokens": 72565,
+    "completion_tokens": 2538,
+    "cost_usd": 0.123694,
+    "unpriced_calls": 0,
+    "cached_prompt_tokens": 0,
+    "cached_completion_tokens": 0,
+    "cached_calls_without_counts": 0,
+    "cost_saved_usd": 0,
+    "by_stage": {
+      "classification": {
+        "calls": 10,
+        "cached_calls": 0,
+        "prompt_tokens": 13222,
+        "completion_tokens": 665
+      },
+      "generation": {
+        "calls": 10,
+        "cached_calls": 0,
+        "prompt_tokens": 14755,
+        "completion_tokens": 1181
+      },
+      "guardrail": {
+        "calls": 28,
+        "cached_calls": 0,
+        "prompt_tokens": 44588,
+        "completion_tokens": 692
+      }
+    }
+  },
+  "wall_clock_seconds": 60.0
+}

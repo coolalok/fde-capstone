@@ -1,0 +1,41 @@
+{
+  "n": 143,
+  "n_attempted": 143,
+  "infra_failure_tickets": 0,
+  "baseline": {
+    "generator_errors": 0,
+    "unknown": 22,
+    "auto_respond": 64,
+    "prompt_sensitive_block_tickets": 5,
+    "fail_safe_block_tickets": 0,
+    "diagnostics": {
+      "first_person_promise": 0,
+      "followup_timeline": 0,
+      "internal_action": 0,
+      "unsourced_hedge": 0,
+      "marker_as_reference": 0
+    }
+  },
+  "candidate": {
+    "generator_errors": 3,
+    "unknown": 16,
+    "auto_respond": 64,
+    "prompt_sensitive_block_tickets": 3,
+    "fail_safe_block_tickets": 0,
+    "diagnostics": {
+      "first_person_promise": 0,
+      "followup_timeline": 0,
+      "internal_action": 0,
+      "unsourced_hedge": 0,
+      "marker_as_reference": 0
+    }
+  },
+  "paired_n": 140,
+  "pool": "unanswerable",
+  "run_id": "prompt-ab-unanswerable-20260914T085544Z-e9f2731d",
+  "limit": 0,
+  "baseline_version": "2.0",
+  "candidate_version": "3.1",
+  "model_name": "gpt-4o-mini",
+  "guardrail_model": "gpt-4.1-mini"
+}

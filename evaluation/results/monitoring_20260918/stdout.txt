@@ -1,0 +1,32 @@
+[harness] metrics on http://localhost:8001/metrics
+[harness] run_id=harness-20260917T190720Z-030ab205
+[harness] input=data/validation_tickets.json tickets=4 labels=yes guardrails=True judge=False
+{"asctime": "2026-09-18 00:37:21,950", "levelname": "INFO", "name": "httpx", "message": "HTTP Request: POST https://openrouter.ai/api/v1/chat/completions \"HTTP/1.1 200 OK\""}
+{"asctime": "2026-09-18 00:37:38,990", "levelname": "INFO", "name": "sentence_transformers.SentenceTransformer", "message": "Use pytorch device_name: mps"}
+{"asctime": "2026-09-18 00:37:38,991", "levelname": "INFO", "name": "sentence_transformers.SentenceTransformer", "message": "Load pretrained SentenceTransformer: all-MiniLM-L6-v2"}
+{"asctime": "2026-09-18 00:37:45,561", "levelname": "INFO", "name": "httpx", "message": "HTTP Request: POST https://openrouter.ai/api/v1/chat/completions \"HTTP/1.1 200 OK\""}
+{"asctime": "2026-09-18 00:37:46,497", "levelname": "INFO", "name": "httpx", "message": "HTTP Request: POST https://openrouter.ai/api/v1/chat/completions \"HTTP/1.1 200 OK\""}
+{"asctime": "2026-09-18 00:37:53,198", "levelname": "INFO", "name": "httpx", "message": "HTTP Request: POST https://openrouter.ai/api/v1/chat/completions \"HTTP/1.1 200 OK\""}
+{"asctime": "2026-09-18 00:37:57,246", "levelname": "INFO", "name": "httpx", "message": "HTTP Request: POST https://openrouter.ai/api/v1/chat/completions \"HTTP/1.1 200 OK\""}
+{"asctime": "2026-09-18 00:37:57,261", "levelname": "WARNING", "name": "src.guardrails", "message": "guardrails.tonescope.llm_failure", "ticket_id": "VAL-0001", "error": "provider returned no choices (model=nvidia/nemotron-3-super-120b-a12b:free)", "error_type": "ValueError"}
+{"asctime": "2026-09-18 00:37:58,064", "levelname": "INFO", "name": "httpx", "message": "HTTP Request: POST https://openrouter.ai/api/v1/chat/completions \"HTTP/1.1 200 OK\""}
+{"asctime": "2026-09-18 00:37:58,108", "levelname": "WARNING", "name": "src.guardrails", "message": "guardrails.relevance.llm_failure", "ticket_id": "VAL-0001", "error": "provider returned no choices (model=nvidia/nemotron-3-super-120b-a12b:free)", "error_type": "ValueError"}
+{"asctime": "2026-09-18 00:37:59,165", "levelname": "INFO", "name": "httpx", "message": "HTTP Request: POST https://openrouter.ai/api/v1/chat/completions \"HTTP/1.1 200 OK\""}
+{"asctime": "2026-09-18 00:38:02,092", "levelname": "INFO", "name": "httpx", "message": "HTTP Request: POST https://openrouter.ai/api/v1/chat/completions \"HTTP/1.1 200 OK\""}
+{"asctime": "2026-09-18 00:38:03,249", "levelname": "INFO", "name": "httpx", "message": "HTTP Request: POST https://openrouter.ai/api/v1/chat/completions \"HTTP/1.1 200 OK\""}
+{"asctime": "2026-09-18 00:38:03,699", "levelname": "INFO", "name": "src.generate", "message": "generate.retry_exhausted", "ticket_id": "VAL-0002", "unsupported_claims": ["answer must be empty when unknown=true (FR-14 contract)"], "attempts": 2}
+{"asctime": "2026-09-18 00:38:04,147", "levelname": "INFO", "name": "httpx", "message": "HTTP Request: POST https://openrouter.ai/api/v1/chat/completions \"HTTP/1.1 200 OK\""}
+{"asctime": "2026-09-18 00:38:06,661", "levelname": "INFO", "name": "httpx", "message": "HTTP Request: POST https://openrouter.ai/api/v1/chat/completions \"HTTP/1.1 200 OK\""}
+{"asctime": "2026-09-18 00:38:07,395", "levelname": "INFO", "name": "httpx", "message": "HTTP Request: POST https://openrouter.ai/api/v1/chat/completions \"HTTP/1.1 200 OK\""}
+{"asctime": "2026-09-18 00:38:10,139", "levelname": "INFO", "name": "httpx", "message": "HTTP Request: POST https://openrouter.ai/api/v1/chat/completions \"HTTP/1.1 200 OK\""}
+{"asctime": "2026-09-18 00:38:11,491", "levelname": "INFO", "name": "httpx", "message": "HTTP Request: POST https://openrouter.ai/api/v1/chat/completions \"HTTP/1.1 200 OK\""}
+{"asctime": "2026-09-18 00:38:14,348", "levelname": "INFO", "name": "httpx", "message": "HTTP Request: POST https://openrouter.ai/api/v1/chat/completions \"HTTP/1.1 200 OK\""}
+{"asctime": "2026-09-18 00:38:14,410", "levelname": "WARNING", "name": "src.guardrails", "message": "guardrails.grounding.llm_failure", "ticket_id": "VAL-0004", "error": "provider returned no choices (model=nvidia/nemotron-3-super-120b-a12b:free)", "error_type": "ValueError"}
+{"asctime": "2026-09-18 00:38:14,666", "levelname": "INFO", "name": "httpx", "message": "HTTP Request: POST https://openrouter.ai/api/v1/chat/completions \"HTTP/1.1 200 OK\""}
+{"asctime": "2026-09-18 00:38:17,844", "levelname": "INFO", "name": "httpx", "message": "HTTP Request: POST https://openrouter.ai/api/v1/chat/completions \"HTTP/1.1 200 OK\""}
+[harness]   4/4 (62s)
+[harness] auto_respond=0 escalate=2 block=2 degraded=0
+[harness] A8 reconciles=True
+[harness] model calls=17 tokens in=20000 out=2054 cost_usd=0.0 (unpriced calls=9)
+[harness] wrote evaluation/results/monitoring_20260918/results.jsonl
+[harness] wrote evaluation/results/monitoring_20260918/metrics_report.json

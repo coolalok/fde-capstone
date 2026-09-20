@@ -1,0 +1,115 @@
+{
+  "adopt_candidate": false,
+  "inconclusive": false,
+  "checks": [
+    {
+      "rule": "V1 held-out infrastructure failures at most 5% of tickets",
+      "passed": true,
+      "baseline": null,
+      "candidate": {
+        "failed": 0,
+        "attempted": 100,
+        "share": 0.0
+      }
+    },
+    {
+      "rule": "V1 unanswerable infrastructure failures at most 5% of tickets",
+      "passed": true,
+      "baseline": null,
+      "candidate": {
+        "failed": 0,
+        "attempted": 143,
+        "share": 0.0
+      }
+    },
+    {
+      "rule": "S1 held-out prohibited-claim replies do not increase",
+      "passed": true,
+      "baseline": 0,
+      "candidate": 0
+    },
+    {
+      "rule": "S2 first_person_promise replies rise by at most 1",
+      "passed": true,
+      "baseline": 0,
+      "candidate": 0
+    },
+    {
+      "rule": "S2 followup_timeline replies rise by at most 1",
+      "passed": true,
+      "baseline": 0,
+      "candidate": 0
+    },
+    {
+      "rule": "S2 internal_action replies rise by at most 1",
+      "passed": true,
+      "baseline": 0,
+      "candidate": 0
+    },
+    {
+      "rule": "S2 unsourced_hedge replies rise by at most 1",
+      "passed": true,
+      "baseline": 0,
+      "candidate": 0
+    },
+    {
+      "rule": "S2 marker_as_reference replies rise by at most 1",
+      "passed": true,
+      "baseline": 0,
+      "candidate": 0
+    },
+    {
+      "rule": "A1 unanswerable tickets auto-sent do not increase",
+      "passed": true,
+      "baseline": 64,
+      "candidate": 64
+    },
+    {
+      "rule": "A2 unanswerable abstention rate falls by at most 0.05",
+      "passed": true,
+      "baseline": 0.1538,
+      "candidate": 0.1119
+    },
+    {
+      "rule": "Q3 held-out abstention rate rises by at most 0.05",
+      "passed": true,
+      "baseline": 0.0,
+      "candidate": 0.0
+    },
+    {
+      "rule": "Q1 held-out correctness 95% CI lower bound >= -0.02",
+      "passed": true,
+      "baseline": 0.7065,
+      "candidate": {
+        "diff": 0.0496,
+        "ci": [
+          0.0145,
+          0.0886
+        ]
+      }
+    },
+    {
+      "rule": "I1 held-out correctness or must_mention coverage improves",
+      "passed": true,
+      "baseline": {
+        "coverage": 0.6774
+      },
+      "candidate": {
+        "correctness_diff": 0.0496,
+        "coverage_diff": 0.0968
+      }
+    },
+    {
+      "rule": "G1 held-out prompt-sensitive guardrail blocks rise by at most 3",
+      "passed": true,
+      "baseline": 4,
+      "candidate": 2
+    },
+    {
+      "rule": "O1 generator errors rise by at most 2",
+      "passed": false,
+      "baseline": 0,
+      "candidate": 3
+    }
+  ]
+}

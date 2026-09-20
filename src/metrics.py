@@ -6,7 +6,7 @@ Setup Guide §06 shape; extended for our needs.
 """
 from __future__ import annotations
 
-from prometheus_client import Counter, Histogram, start_http_server
+from prometheus_client import Counter, Gauge, Histogram, start_http_server
 
 TICKETS = Counter(
     "tickets_processed_total",
@@ -32,6 +32,12 @@ CONFIDENCE = Histogram(
     buckets=(0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0),
 )
 
+MODEL_CACHE_HITS = Counter(
+    "model_cache_hits_total",
+    "Model replies served from the on-disk cache instead of the provider",
+    ["stage"],  # classification | generation | guardrail
+)
+
 MODEL_CALL_FAILURES = Counter(
     "model_call_failures_total",
     "Model calls that failed, by pipeline stage and exception class",
@@ -41,7 +47,25 @@ MODEL_CALL_FAILURES = Counter(
 DECISION_LOG_FAILURES = Counter(
     "decision_log_write_failures_total",
     "Decision-log writes that failed — FR-20 not satisfied for those decisions",
-    ["stage"],  # classification | routing | generation | validation
+    ["stage"],  # classification | retrieval | generation | guardrails | routing
+)
+
+
+# 1 while the kill switch halts automatic answering (Governance Framework §5,
+# D-15). Set on every routing call, so a dashboard shows the halt within one
+# ticket and the run that follows cannot be mistaken for normal behaviour.
+KILL_SWITCH = Gauge(
+    "kill_switch_active",
+    "1 when KILL_SWITCH halts automatic answering; every ticket escalates",
+)
+
+
+# Injection shapes found in ticket text (R-03, D-16). Labelled by the first
+# pattern that matched, so a dashboard shows which shape is being tried.
+INJECTION_FLAGS = Counter(
+    "injection_flags_total",
+    "Tickets whose text matched an input-side prompt-injection pattern",
+    ["pattern"],
 )
 
 

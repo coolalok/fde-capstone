@@ -16,7 +16,13 @@ import sqlite3
 
 import pytest
 
-from src.generate import _structural_critic, generate
+from src.generate import (
+    _collapse_repeated_markers,
+    _parse_response,
+    _structural_critic,
+    generate,
+    strip_citation_markers,
+)
 from src.schema import GeneratedResponse, Passage, Ticket
 
 
@@ -466,3 +472,151 @@ def test_structural_critic_flags_non_unknown_with_empty_answer():
     result = _structural_critic(resp, _passages("DOC-A"))
     assert result.passed is False
     assert any("answer must be non-empty" in c for c in result.unsupported_claims)
+
+
+# --- B-11 follow-up: duplicate inline citation markers (DEV-0485) -------------
+# Both llama-3.1-8b and gpt-4o-mini emit the same marker twice in a row. The
+# parser collapses the run; citations stays the distinct set of doc_ids used.
+
+
+@pytest.mark.parametrize(
+    "answer, expected",
+    [
+        # The DEV-0485 case, verbatim shape.
+        ("Invitations expire after seven days.[DOC-ACCT-001][DOC-ACCT-001]",
+         "Invitations expire after seven days.[DOC-ACCT-001]"),
+        # Space-separated repeat.
+        ("See the guide. [DOC-AUTH-001] [DOC-AUTH-001]",
+         "See the guide. [DOC-AUTH-001]"),
+        # Two genuine sources in one run are BOTH kept — this is the case the
+        # fix must not break.
+        ("Both apply.[DOC-AUTH-001][DOC-ACCT-001]",
+         "Both apply.[DOC-AUTH-001][DOC-ACCT-001]"),
+        # Three-in-a-row reduces to the two distinct ones, in first-seen order.
+        ("x [DOC-B-002][DOC-A-001][DOC-B-002]", "x [DOC-B-002][DOC-A-001]"),
+        # The same marker cited again after intervening prose is not a run.
+        ("First.[DOC-AUTH-001] Then second.[DOC-AUTH-001]",
+         "First.[DOC-AUTH-001] Then second.[DOC-AUTH-001]"),
+        # A single marker is untouched.
+        ("Only one.[DOC-AUTH-001]", "Only one.[DOC-AUTH-001]"),
+        # Nothing that looks like a marker is invented.
+        ("No citations here at all.", "No citations here at all."),
+    ],
+)
+def test_collapse_repeated_markers(answer, expected):
+    assert _collapse_repeated_markers(answer) == expected
+
+
+def test_parse_response_collapses_markers_and_dedupes_citations():
+    """End of the parser path: answer text and citations list both deduped."""
+    raw = json.dumps(
+        {
+            "answer": "Invitations expire after seven days."
+                      "[DOC-ACCT-001][DOC-ACCT-001]",
+            "citations": ["DOC-ACCT-001", "DOC-ACCT-001", "DOC-AUTH-001"],
+            "confidence": 0.9,
+            "unknown": False,
+        }
+    )
+    result = _parse_response(raw)
+    assert result.answer.endswith("seven days.[DOC-ACCT-001]")
+    assert result.citations == ["DOC-ACCT-001", "DOC-AUTH-001"]
+
+
+# --- markers are internal, not customer-facing (2026-09-13) ------------------
+
+
+@pytest.mark.parametrize(
+    "draft, expected",
+    [
+        # The exact VAL-0001 shape that reached a customer on the gate run.
+        ("…then revoke the old key.[DOC-AUTH-004]", "…then revoke the old key."),
+        # Space before the marker must not survive as a double space.
+        ("See the guide. [DOC-A-001] Then restart.",
+         "See the guide. Then restart."),
+        # Mid-sentence marker.
+        ("The key [DOC-A-001] rotates nightly.", "The key rotates nightly."),
+        ("[DOC-A-001] Leading marker.", "Leading marker."),
+        ("Two in a row.[DOC-A-001][DOC-B-002]", "Two in a row."),
+        ("No markers at all.", "No markers at all."),
+        ("", ""),
+    ],
+)
+def test_strip_citation_markers(draft, expected):
+    assert strip_citation_markers(draft) == expected
+
+
+def test_strip_leaves_bracketed_text_that_is_not_a_doc_id():
+    """Only [DOC-*] markers go. Ordinary brackets are the customer's words or
+    the model's prose and must survive.
+    """
+    text = "Check the console [the admin area] and note the 404 [sic]."
+    assert strip_citation_markers(text) == text
+
+
+def test_stripping_does_not_touch_the_citations_list():
+    """The sources are still recorded — they move to the structured field,
+    they are not discarded.
+    """
+    raw = json.dumps({
+        "answer": "Rotate first.[DOC-AUTH-004]",
+        "citations": ["DOC-AUTH-004"],
+        "confidence": 0.9,
+        "unknown": False,
+    })
+    parsed = _parse_response(raw)
+    assert parsed.citations == ["DOC-AUTH-004"]
+    assert strip_citation_markers(parsed.answer) == "Rotate first."
+
+
+# --- why a draft failed must be recorded (2026-09-14) ------------------------
+# v3.0 failed on DEV-0012 with "Unterminated string" and nothing recorded
+# whether the model's output had been cut off or was malformed.
+
+
+def test_output_cut_off_by_the_provider_is_named(monkeypatch):
+    import openai
+
+    import src.generate as gen
+
+    class _Choice:
+        finish_reason = "length"
+
+        class message:
+            content = '{"answer": "First paragraph. Second parag'
+
+    class _Completion:
+        choices = [_Choice()]
+
+    class _FakeOpenAI:
+        def __init__(self, **kwargs):
+            self.chat = self
+
+        @property
+        def completions(self):
+            return self
+
+        def create(self, **kwargs):
+            return _Completion()
+
+    monkeypatch.setattr(openai, "OpenAI", _FakeOpenAI)
+    monkeypatch.setattr(gen, "require_key", lambda: "k")
+    with pytest.raises(ValueError, match="cut off"):
+        gen._openrouter_call("s", "u", 0)
+
+
+def test_failure_log_keeps_the_raw_model_text(monkeypatch, caplog):
+    import logging
+
+    import src.generate as gen
+    from src.schema import Passage, Ticket
+
+    monkeypatch.setattr(gen, "log_decision", lambda **kw: "id")
+    ticket = Ticket(ticket_id="T-RAW", channel="email", subject="s", body="b")
+    passages = [Passage(doc_id="DOC-AUTH-001", score=0.5, text="t", title="x")]
+    with caplog.at_level(logging.WARNING, logger="src.generate"):
+        out = gen.generate(ticket, passages, ticket_id="T-RAW",
+                           call_model=lambda s, u, seed: '{"answer": "unterminated')
+    assert out.unknown is True
+    heads = [getattr(r, "raw_response_head", None) for r in caplog.records]
+    assert '{"answer": "unterminated' in heads

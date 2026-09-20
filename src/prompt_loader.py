@@ -24,6 +24,25 @@ _BUILD_DIR = _REPO_ROOT / "prompts" / "build"
 _EVAL_DIR = _REPO_ROOT / "prompts" / "evaluation"
 
 
+# Every prompt wraps customer text in markers like <<TICKET_END>> and tells the
+# model that what sits between them is data. A ticket body containing those
+# markers can therefore claim to close the data block and open a system one —
+# the INJ-02 probe on 2026-09-20 sent exactly that. The model resisted, but a
+# defence that depends on the model resisting is not a defence, so the markers
+# are neutralised in substituted VALUES before they reach the prompt (D-16).
+#
+# Escaped, not stripped: the reviewer reading the escalation must see what the
+# customer actually sent, and a guardrail must still be able to judge it. The
+# template's own markers are untouched — only values passed to render_user are
+# rewritten.
+_DELIMITER_RE = re.compile(r"<<\s*([A-Za-z_]{3,})\s*>>")
+
+
+def escape_delimiters(value: str) -> str:
+    """Neutralise prompt-boundary markers inside customer-supplied text."""
+    return _DELIMITER_RE.sub(lambda m: f"[[{m.group(1)}]]", value)
+
+
 @dataclass
 class LoadedPrompt:
     prompt_id: str
@@ -53,7 +72,9 @@ class LoadedPrompt:
         pattern = re.compile(
             r"\{\{(" + "|".join(re.escape(k) for k in kwargs) + r")\}\}"
         )
-        return pattern.sub(lambda m: str(kwargs[m.group(1)]), self.user_template)
+        return pattern.sub(
+            lambda m: escape_delimiters(str(kwargs[m.group(1)])), self.user_template
+        )
 
 
 def load_prompt(prompt_id: str) -> LoadedPrompt:

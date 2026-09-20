@@ -1,0 +1,119 @@
+{
+  "n_chunks": 59,
+  "retrieval_threshold": 0.25,
+  "keep_answerable": 0.95,
+  "query_modes": {
+    "body": {
+      "dev_n": 500,
+      "dev_answerable": 357,
+      "single_feature_auc_dev": {
+        "dense_top": 0.586,
+        "dense_margin": 0.6517,
+        "dense_n_above": 0.5578,
+        "bm25_top": 0.5561,
+        "bm25_margin": 0.5669,
+        "agree": 0.5628
+      },
+      "logistic_auc_dev_cv": 0.6415,
+      "logistic_auc_val": 0.6611,
+      "gate": {
+        "threshold": 0.518,
+        "dev_cv_unanswerable_held": 0.1678,
+        "val_answerable_held": 1,
+        "val_unanswerable_held": 9,
+        "val_answerable": 53,
+        "val_unanswerable": 27
+      },
+      "retrieval_hit_answerable_dev": {
+        "n": 357,
+        "dense": {
+          "hit@1": 0.8768,
+          "hit@3": 0.9524,
+          "hit@5": 0.9804
+        },
+        "bm25": {
+          "hit@1": 0.8151,
+          "hit@3": 0.9048,
+          "hit@5": 0.93
+        },
+        "rrf": {
+          "hit@1": 0.8796,
+          "hit@3": 0.9384,
+          "hit@5": 0.958
+        }
+      },
+      "coefficients": {
+        "dense_top": -0.3214,
+        "dense_margin": 0.5488,
+        "dense_n_above": 0.6551,
+        "bm25_top": -0.485,
+        "bm25_margin": 0.4797,
+        "agree": 0.0266
+      },
+      "replay_over_run": {
+        "run": "evaluation/results/b21_local_80_20260919",
+        "sent": 48,
+        "wrong_sends_held": 0,
+        "wrong_sends": 14,
+        "correct_sends_lost": 1,
+        "correct_sends": 34
+      }
+    },
+    "subject_body": {
+      "dev_n": 500,
+      "dev_answerable": 357,
+      "single_feature_auc_dev": {
+        "dense_top": 0.5797,
+        "dense_margin": 0.6307,
+        "dense_n_above": 0.5305,
+        "bm25_top": 0.5687,
+        "bm25_margin": 0.6009,
+        "agree": 0.551
+      },
+      "logistic_auc_dev_cv": 0.5963,
+      "logistic_auc_val": 0.6143,
+      "gate": {
+        "threshold": 0.5841,
+        "dev_cv_unanswerable_held": 0.1888,
+        "val_answerable_held": 3,
+        "val_unanswerable_held": 9,
+        "val_answerable": 53,
+        "val_unanswerable": 27
+      },
+      "retrieval_hit_answerable_dev": {
+        "n": 357,
+        "dense": {
+          "hit@1": 0.8992,
+          "hit@3": 0.9664,
+          "hit@5": 0.986
+        },
+        "bm25": {
+          "hit@1": 0.8627,
+          "hit@3": 0.9412,
+          "hit@5": 0.9608
+        },
+        "rrf": {
+          "hit@1": 0.902,
+          "hit@3": 0.9636,
+          "hit@5": 0.986
+        }
+      },
+      "coefficients": {
+        "dense_top": -0.0191,
+        "dense_margin": 0.4015,
+        "dense_n_above": 0.3689,
+        "bm25_top": -0.4277,
+        "bm25_margin": 0.5114,
+        "agree": -0.0057
+      },
+      "replay_over_run": {
+        "run": "evaluation/results/b21_local_80_20260919",
+        "sent": 48,
+        "wrong_sends_held": 0,
+        "wrong_sends": 14,
+        "correct_sends_lost": 2,
+        "correct_sends": 34
+      }
+    }
+  }
+}

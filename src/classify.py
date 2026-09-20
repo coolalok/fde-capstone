@@ -16,15 +16,21 @@ import logging
 import re
 from typing import Callable, Optional
 
+from src import usage
 from src.config import (
+    accepts_seed,
     MODEL_MAX_RETRIES,
     MODEL_NAME,
     MODEL_TIMEOUT_SECONDS,
-    OPENROUTER_API_KEY,
+    MODEL_API_KEY,
+    MODEL_BASE_URL,
     require_key,
 )
 from src.logging_store import log_decision
-from src.metrics import MODEL_CALL_FAILURES
+from src import model_cache
+from src import rate_limit
+from src.model_call import bounded
+from src.metrics import CONFIDENCE, MODEL_CALL_FAILURES
 from src.prompt_loader import load_prompt
 from src.schema import Alternative, ClassificationResult, Ticket
 
@@ -81,27 +87,49 @@ def _openrouter_call(system: str, user: str, seed: int = 0) -> str:
     """
     from openai import OpenAI  # imported lazily so unit tests don't need the pkg
 
+    # Cache first, before the key check and the client: a cached reply costs
+    # no quota, and a replay of a previous run works with no provider at all.
+    cache_key = model_cache.key(model=MODEL_NAME, system=system, user=user,
+                                seed=seed, temperature=0.0)
+    cached = model_cache.get(cache_key, stage="classification")
+    if cached is not None:
+        return cached
+
     require_key()
     # Bounded on purpose: the SDK default is a 600s read timeout with 2
     # retries, so one unresponsive call can occupy ~30 minutes and stall an
     # unattended run (A9). See MODEL_TIMEOUT_SECONDS in src/config.py.
     client = OpenAI(
-        api_key=OPENROUTER_API_KEY,
-        base_url="https://openrouter.ai/api/v1",
+        api_key=MODEL_API_KEY,
+        base_url=MODEL_BASE_URL,
         timeout=MODEL_TIMEOUT_SECONDS,
         max_retries=MODEL_MAX_RETRIES,
     )
-    completion = client.chat.completions.create(
-        model=MODEL_NAME,
-        messages=[
-            {"role": "system", "content": system},
-            {"role": "user", "content": user},
-        ],
-        temperature=0.0,
-        seed=seed,
-        response_format={"type": "json_object"},
-    )
-    return completion.choices[0].message.content or ""
+    completion = rate_limit.guarded(lambda: bounded(
+        lambda: client.chat.completions.create(
+            model=MODEL_NAME,
+            messages=[
+                {"role": "system", "content": system},
+                {"role": "user", "content": user},
+            ],
+            temperature=0.0,
+            # Only where the provider accepts it; see config.accepts_seed.
+            **({"seed": seed} if accepts_seed(MODEL_BASE_URL) else {}),
+            response_format={"type": "json_object"},
+        ), stage="classification"))
+    usage.record("classification", MODEL_NAME, getattr(completion, "usage", None))
+    # OpenRouter can answer 200 with choices=None when the upstream provider
+    # errors. Subscripting that raised "TypeError: 'NoneType' object is not
+    # subscriptable" from inside the caller's broad except, which recorded the
+    # symptom rather than the cause. Raise the cause instead — the fail-safe
+    # cascade is unchanged, but the reason string and MODEL_CALL_FAILURES say
+    # what actually happened.
+    if not getattr(completion, "choices", None):
+        raise ValueError(f"provider returned no choices (model={MODEL_NAME})")
+    content = completion.choices[0].message.content or ""
+    model_cache.put(cache_key, content, stage="classification", model=MODEL_NAME,
+                    usage=getattr(completion, "usage", None))
+    return content
 
 
 def classify(
@@ -157,6 +185,13 @@ def classify(
         result = ClassificationResult.unknown_fallback(
             error=f"{type(exc).__name__}: {exc}"
         )
+
+    # Confidence distribution (Setup Guide §06 dashboard: "where drift shows up
+    # first"). A fallback states 0.0 because the model never answered, so
+    # recording it would put a spike at zero that reads as an overcautious
+    # classifier rather than an outage — MODEL_CALL_FAILURES already counts those.
+    if result.error is None:
+        CONFIDENCE.observe(result.confidence)
 
     decision_id = log_decision(
         ticket_id=ticket.ticket_id,

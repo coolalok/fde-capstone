@@ -49,16 +49,22 @@ import re
 from dataclasses import dataclass
 from typing import Callable, Optional
 
+from src import usage
 from src.config import (
+    accepts_seed,
     GENERATE_MAX_RETRIES,
     GENERATE_TEMPERATURE,
     MODEL_MAX_RETRIES,
     MODEL_NAME,
     MODEL_TIMEOUT_SECONDS,
-    OPENROUTER_API_KEY,
+    MODEL_API_KEY,
+    MODEL_BASE_URL,
     require_key,
 )
 from src.logging_store import log_decision
+from src import model_cache
+from src import rate_limit
+from src.model_call import bounded
 from src.metrics import MODEL_CALL_FAILURES
 from src.prompt_loader import load_prompt
 from src.schema import GeneratedResponse, Passage, Ticket
@@ -105,27 +111,60 @@ def _openrouter_call(system: str, user: str, seed: int = 0) -> str:
     """
     from openai import OpenAI  # imported lazily so unit tests don't need the pkg
 
+    # Cache first, before the key check and the client: a cached reply costs
+    # no quota, and a replay of a previous run works with no provider at all.
+    cache_key = model_cache.key(model=MODEL_NAME, system=system, user=user,
+                                seed=seed, temperature=GENERATE_TEMPERATURE)
+    cached = model_cache.get(cache_key, stage="generation")
+    if cached is not None:
+        return cached
+
     require_key()
     # Bounded on purpose: the SDK default is a 600s read timeout with 2
     # retries, so one unresponsive call can occupy ~30 minutes and stall an
     # unattended run (A9). See MODEL_TIMEOUT_SECONDS in src/config.py.
     client = OpenAI(
-        api_key=OPENROUTER_API_KEY,
-        base_url="https://openrouter.ai/api/v1",
+        api_key=MODEL_API_KEY,
+        base_url=MODEL_BASE_URL,
         timeout=MODEL_TIMEOUT_SECONDS,
         max_retries=MODEL_MAX_RETRIES,
     )
-    completion = client.chat.completions.create(
-        model=MODEL_NAME,
-        messages=[
-            {"role": "system", "content": system},
-            {"role": "user", "content": user},
-        ],
-        temperature=GENERATE_TEMPERATURE,
-        seed=seed,
-        response_format={"type": "json_object"},
-    )
-    return completion.choices[0].message.content or ""
+    completion = rate_limit.guarded(lambda: bounded(
+        lambda: client.chat.completions.create(
+            model=MODEL_NAME,
+            messages=[
+                {"role": "system", "content": system},
+                {"role": "user", "content": user},
+            ],
+            temperature=GENERATE_TEMPERATURE,
+            # Only where the provider accepts it; see config.accepts_seed.
+            **({"seed": seed} if accepts_seed(MODEL_BASE_URL) else {}),
+            response_format={"type": "json_object"},
+        ), stage="generation"))
+    usage.record("generation", MODEL_NAME, getattr(completion, "usage", None))
+    # OpenRouter can answer 200 with choices=None when the upstream provider
+    # errors. Subscripting that raised "TypeError: 'NoneType' object is not
+    # subscriptable" from inside the caller's broad except, which recorded the
+    # symptom rather than the cause. Raise the cause instead — the fail-safe
+    # cascade is unchanged, but the reason string and MODEL_CALL_FAILURES say
+    # what actually happened.
+    if not getattr(completion, "choices", None):
+        raise ValueError(f"provider returned no choices (model={MODEL_NAME})")
+    choice = completion.choices[0]
+    # A reply cut off by the provider's output limit is not valid JSON, and
+    # the parser then reports "Unterminated string", which looks like a
+    # formatting fault in the prompt. PR-GENERATE-01 v3.0 failed that way on
+    # DEV-0012 in the 14 Sep A/B smoke run, and nothing recorded why the model
+    # stopped. Name the cause instead.
+    if getattr(choice, "finish_reason", None) == "length":
+        raise ValueError(
+            f"model output cut off at the provider's length limit "
+            f"(finish_reason=length, model={MODEL_NAME})"
+        )
+    content = choice.message.content or ""
+    model_cache.put(cache_key, content, stage="generation", model=MODEL_NAME,
+                    usage=getattr(completion, "usage", None))
+    return content
 
 
 def _structural_critic(
@@ -251,6 +290,7 @@ def _run_empty_branch(
     empty answer and empty citations. If the model deviates, we force the
     unknown_fallback rather than let a fabricated citation through.
     """
+    raw: Optional[str] = None
     try:
         user_prompt = _PROMPT_02.render_user(
             channel=ticket.channel,
@@ -269,6 +309,9 @@ def _run_empty_branch(
                 "ticket_id": ticket.ticket_id,
                 "error": str(exc),
                 "error_type": type(exc).__name__,
+                # The model's text, when there was any: without it a parse
+                # failure cannot be told apart from a provider fault.
+                "raw_response_head": raw[:500] if raw is not None else None,
             },
         )
         return GeneratedResponse.unknown_fallback(
@@ -312,6 +355,7 @@ def _run_grounded_branch(
     retry_feedback = ""
 
     for attempt in range(GENERATE_MAX_RETRIES + 1):
+        raw = None
         try:
             user_prompt = _PROMPT_01.render_user(
                 passages=passages_block,
@@ -333,6 +377,7 @@ def _run_grounded_branch(
                     "attempt": attempt,
                     "error": str(exc),
                     "error_type": type(exc).__name__,
+                    "raw_response_head": raw[:500] if raw is not None else None,
                 },
             )
             return GeneratedResponse.unknown_fallback(
@@ -409,6 +454,71 @@ def _format_passages(passages: list[Passage]) -> str:
     return "\n\n---\n\n".join(parts)
 
 
+# One citation marker as the generator writes it inline, e.g. "[DOC-ACCT-001]".
+# All 29 corpus doc_ids match this shape (checked against data/documentation.json).
+_RE_MARKER = re.compile(r"\[DOC-[A-Z]+-\d+\]")
+# A contiguous run of markers, optionally separated by spaces: "[A][A]", "[A] [B]".
+_RE_MARKER_RUN = re.compile(r"(?:\[DOC-[A-Z]+-\d+\][ \t]*){2,}")
+
+
+def _collapse_repeated_markers(answer: str) -> str:
+    """Collapse a run of adjacent inline citation markers to its distinct members.
+
+    Observed on DEV-0485: gpt-4o-mini emitted "...seven days.[DOC-ACCT-001]
+    [DOC-ACCT-001]" — the same marker twice in a row. llama-3.1-8b does it too,
+    so it is not a single-model artefact and is not fixable by swapping models.
+    PR-GENERATE-01 says a marker sits after the sentence relying on it; two
+    copies of one marker still means one source, so the duplicate carries no
+    information and just reads as a defect to the customer.
+
+    Only exact repeats inside one run are dropped. "[DOC-A][DOC-B]" is two
+    genuine sources and is left alone, as is the same marker cited again later
+    in the answer after intervening prose.
+    """
+    def _dedupe(match: "re.Match[str]") -> str:
+        seen = dict.fromkeys(_RE_MARKER.findall(match.group(0)))
+        trailing = " " if match.group(0).endswith((" ", "\t")) else ""
+        return "".join(seen) + trailing
+
+    return _RE_MARKER_RUN.sub(_dedupe, answer)
+
+
+def strip_citation_markers(answer: str) -> str:
+    """Remove inline [DOC-ID] markers from text that is about to reach a customer.
+
+    PR-GENERATE-01 asks the model to put a marker after each sentence that
+    relies on a passage, and the grounding guardrail uses them to tie a claim
+    to the passage it came from. That is an INTERNAL mechanism. None of the
+    200 senior-agent reference replies in data/ground_truth_responses.json
+    contains one; they record sources in expected_doc_ids, exactly as our
+    GeneratedResponse.citations does. Measured on the 13 Sep gate run, 15 of
+    20 auto-sent replies carried at least one marker.
+
+    So this is applied at the point of delivery, NOT at generation:
+
+      - the generator still emits markers (the prompt is unchanged, and every
+        measurement taken against that prompt stays valid);
+      - the guardrails still see them, so grounding keeps its per-claim anchor;
+      - the ESCALATION path keeps them too — a human reviewing a withheld
+        draft benefits from seeing which article each claim came from;
+      - only the customer-facing string has them removed.
+
+    Whitespace is closed up so removal leaves no trace: a marker glued to a
+    full stop ("...key.[DOC-A]") and one sitting mid-sentence ("...key [DOC-A]
+    rotates...") both read correctly afterwards. citations is untouched and
+    remains the machine-readable record of what was used.
+    """
+    if not answer:
+        return answer
+    # Consume any whitespace BEFORE the marker, so "key.[DOC-A] Next" and
+    # "key. [DOC-A] Next" both become "key. Next" rather than leaving a
+    # double space or a space before punctuation.
+    stripped = re.sub(r"[ \t]*" + _RE_MARKER.pattern, "", answer)
+    # A marker alone on a line can leave a blank line behind.
+    stripped = re.sub(r"\n[ \t]*\n[ \t]*\n+", "\n\n", stripped)
+    return stripped.strip()
+
+
 def _parse_response(raw: str) -> GeneratedResponse:
     """Parse and validate the model's JSON output. Raises on any invalidity.
 
@@ -448,8 +558,13 @@ def _parse_response(raw: str) -> GeneratedResponse:
         raise ValueError(f"unknown must be bool: {type(unknown).__name__}")
 
     return GeneratedResponse(
-        answer=answer,
-        citations=list(citations),
+        answer=_collapse_repeated_markers(answer),
+        # Dedupe, preserving order. Models emit the same doc_id repeatedly
+        # and staple the markers together ('...[DOC-A][DOC-A]'), against
+        # PR-GENERATE-01's rule that a marker sits after the sentence that
+        # relies on it. Observed on llama-3.1-8b AND gpt-4o-mini, so it is
+        # not a single-model artefact. citations is the SET of documents used.
+        citations=list(dict.fromkeys(citations)),
         confidence=confidence,
         unknown=unknown,
         retries=0,

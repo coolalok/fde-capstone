@@ -29,6 +29,10 @@ class Ticket(BaseModel):
     # Ingest bookkeeping
     original_body: str = ""
     warnings: list[str] = Field(default_factory=list)
+    # Injection shapes found in the ticket text by src/injection.py (R-03).
+    # Derived from the customer's own words, not from labels: production code
+    # may read it. Empty for an ordinary ticket.
+    injection_flags: list[str] = Field(default_factory=list)
 
     # Customer segment fields — carried but never passed to the classifier
     customer_id: str = ""
@@ -159,6 +163,15 @@ class GuardrailResult(BaseModel):
       - details: structured verdict payload — e.g. PII detections list,
         unsupported-claim list. Deliberately loose (Dict[str, Any]) so each
         guardrail can carry its own shape without inflating the schema.
+      - fail_safe: True when passed=False because the CHECK failed, not
+        because the answer did — the judge model errored, returned an
+        unparseable verdict, or broke its own passed/detections contract.
+        Both still block (A7/A11, fail safe); the flag exists because they
+        mean opposite things to a reader. A run where the judge provider
+        rate-limits reports "grounding blocked 71/71", which looks like
+        rampant fabrication and is actually an outage. That misreading cost
+        real time on Bug 5, and nothing in the result row distinguished the
+        two cases. Routing behaviour is deliberately unchanged.
     """
 
     model_config = ConfigDict(extra="ignore")
@@ -166,6 +179,7 @@ class GuardrailResult(BaseModel):
     name: str
     passed: bool
     blocking: bool = True
+    fail_safe: bool = False
     reason: str = ""
     details: dict = Field(default_factory=dict)
 
@@ -185,6 +199,11 @@ class GuardrailContext(BaseModel):
     ticket: Ticket
     passages: list[Passage] = Field(default_factory=list)
     classification: "ClassificationResult"
+    # One call answering the three draft-only checks (PR-GUARDRAIL-DRAFT-01).
+    # run_all fills this before dispatching; each guardrail reads its own
+    # section and falls back to its single-purpose prompt when it is absent.
+    # Not part of what a guardrail is "allowed to see" — it IS what they saw.
+    draft_review: Optional[dict] = None
 
 
 GuardrailContext.model_rebuild()

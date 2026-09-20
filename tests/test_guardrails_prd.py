@@ -27,6 +27,7 @@ import sqlite3
 import pytest
 
 from src.guardrails import (
+    AnswerRelevanceGuardrail,
     ConfidenceFloorGuardrail,
     GroundingGuardrail,
     InstructionIntegrityGuardrail,
@@ -39,6 +40,7 @@ from src.schema import (
     ClassificationResult,
     GeneratedResponse,
     GuardrailContext,
+    GuardrailResult,
     Passage,
     Ticket,
 )
@@ -531,10 +533,10 @@ def test_run_all_writes_a_decision_log_row(grounded_response, context, db):
     assert stage == "guardrails"
     assert action == "pass"
     parsed = json.loads(guardrail_results)
-    assert len(parsed) == 5
+    assert len(parsed) == 6
     assert {r["name"] for r in parsed} == {
         "pii", "grounding", "instruction_integrity", "tone_scope",
-        "confidence_floor",
+        "answer_relevance", "confidence_floor",
     }
 
 
@@ -761,7 +763,7 @@ def test_pii_pr_guardrail_pii_01_t02_fixture_blocks(context):
     assert "billing@cloudserve.example.com" in texts
 
 
-# ─── Tone/scope guardrail (5th, implicit per architecture.md §6) ────
+# ─── Tone/scope guardrail (5th, implicit per architecture.md §5) ────
 
 
 def test_tonescope_happy_path(grounded_response, context):
@@ -921,21 +923,435 @@ def test_tonescope_contract_violation_passed_false_empty_list_blocks(
     assert "tonescope_guardrail_contract_violation" in result.reason
 
 
-def test_run_all_now_returns_five_guardrails(grounded_response, context, db):
-    """run_all() returns all five guardrails in a fixed order — tone/scope
-    sits between instruction_integrity and confidence_floor.
+def test_run_all_now_returns_six_guardrails(grounded_response, context, db):
+    """run_all() returns all six guardrails in a fixed order.
+
+    answer_relevance sits after tone_scope and before confidence_floor: it is
+    the last content check, and confidence_floor stays last because it reads a
+    number rather than the reply.
     """
     stub = _stub_returning(
         {"passed": True, "detections": [], "unsupported_claims": [],
          "commitments": []}
     )
     results = run_all(grounded_response, context, call_model=stub)
-    assert len(results) == 5
+    assert len(results) == 6
     names = [r.name for r in results]
     assert names == [
         "pii",
         "grounding",
         "instruction_integrity",
         "tone_scope",
+        "answer_relevance",
         "confidence_floor",
     ]
+
+
+# ─── account-number regex precision (2026-09-12) ─────────────────────
+
+
+@pytest.mark.parametrize("text,expected,why", [
+    ("your reference is CUST-1234", True, "CloudServe customer id"),
+    ("card 4111 1111 1111 1111", True, "card-shaped, grouped digits"),
+    ("account number 1234567890123456", True, "explicitly labelled"),
+    ("see ACCT-99 on the billing page", True, "acct prefix"),
+    # The regression. A bare \b\d{13,19}\b matched ANY long digit run and cost
+    # 2 of 20 blocks in the OpenAI run (VAL-0008, VAL-0019) on drafts that had
+    # no account number in them at all.
+    ("the org identifier is 1234567890123", False, "bare digit run"),
+    ("build 20260912174805123 completed", False, "long build id"),
+    ("the effective permissions view shows roles", False, "ordinary prose"),
+])
+def test_account_number_regex_needs_grouping_or_a_label(text, expected, why):
+    from src.guardrails import _RE_ACCOUNT
+
+    assert bool(_RE_ACCOUNT.search(text)) is expected, why
+
+
+# ─── citation markers are not PII (DEV-0485, 2026-09-13) ─────────────
+# "[DOC-ACCT-001]" contains "ACCT-001", the CloudServe account-ID shape.
+# Unmasked, every answer citing a DOC-ACCT-* article blocks as a PII leak.
+
+
+def test_pii_does_not_flag_its_own_citation_marker(context):
+    """FR-16: a citation marker is a reference to a public help article,
+    not customer data. DEV-0485 blocked on exactly this.
+    """
+    response = GeneratedResponse(
+        answer=(
+            "Pending invitations expire after seven days.[DOC-ACCT-001]"
+        ),
+        citations=["DOC-ACCT-001"],
+        confidence=0.9,
+        unknown=False,
+    )
+    stub = _stub_returning({"passed": True, "detections": []})
+    g = PIIGuardrail(call_model=stub)
+    result = g.check(response, context)
+    assert result.passed is True, result.reason
+
+
+def test_pii_still_blocks_a_real_account_id_next_to_a_marker(context):
+    """Masking markers must not blind the check to PII beside one — the
+    guard that stops the DEV-0485 fix from becoming a hole.
+    """
+    response = GeneratedResponse(
+        answer="Your reference is CUST-4471.[DOC-ACCT-001]",
+        citations=["DOC-ACCT-001"],
+        confidence=0.9,
+        unknown=False,
+    )
+    stub = _stub_returning({"passed": True, "detections": []})
+    g = PIIGuardrail(call_model=stub)
+    result = g.check(response, context)
+    assert result.passed is False
+    assert "account_number" in result.reason
+
+
+def test_mask_citation_markers_preserves_indices():
+    """start_index in a detection must still point into the ORIGINAL answer."""
+    from src.guardrails import _mask_citation_markers
+
+    text = "See this.[DOC-ACCT-001] Your id is CUST-4471."
+    masked = _mask_citation_markers(text)
+    assert len(masked) == len(text)
+    assert "ACCT-001" not in masked
+    assert masked.index("CUST-4471") == text.index("CUST-4471")
+
+
+# ─── fail-safe blocks are labelled as such (2026-09-13) ──────────────
+# A block because the JUDGE failed and a block because the ANSWER failed are
+# both blocks (A7/A11) and mean opposite things. Nothing in the result row
+# used to distinguish them, so a judge outage read as rampant fabrication.
+
+
+def test_guardrail_error_sets_fail_safe(context, grounded_response):
+    """A judge that raises must block AND be labelled fail_safe."""
+    def exploding(system, user, seed):
+        raise TimeoutError("provider unreachable")
+
+    g = GroundingGuardrail(call_model=exploding)
+    result = g.check(grounded_response, context)
+    assert result.passed is False
+    assert result.blocking is True
+    assert result.fail_safe is True
+
+
+def test_genuine_finding_is_not_fail_safe(context, grounded_response):
+    """A real unsupported claim blocks with fail_safe=False — the flag must
+    not become 'every block', which would make it useless.
+    """
+    stub = _stub_returning(
+        {"passed": False,
+         "unsupported_claims": [
+             {"claim": "released yesterday", "why_not_supported": "not in passage"}
+         ]}
+    )
+    g = GroundingGuardrail(call_model=stub)
+    result = g.check(grounded_response, context)
+    assert result.passed is False
+    assert result.fail_safe is False
+
+
+def test_every_fail_safe_return_site_sets_the_flag():
+    """AST scan, not a substring match: every GuardrailResult built with a
+    reason naming a guardrail error or contract violation must set
+    fail_safe=True. Catches a new fail-safe branch added without the flag,
+    which would silently re-merge the two categories.
+    """
+    import ast
+    import pathlib
+
+    src = pathlib.Path("src/guardrails.py").read_text()
+    tree = ast.parse(src)
+    offenders = []
+    in_scope = 0
+
+    def reason_text(call: ast.Call) -> str:
+        for kw in call.keywords:
+            if kw.arg != "reason":
+                continue
+            # Literal, implicitly-concatenated, or f-string reason.
+            return "".join(
+                n.value for n in ast.walk(kw.value)
+                if isinstance(n, ast.Constant) and isinstance(n.value, str)
+            )
+        return ""
+
+    for node in ast.walk(tree):
+        if not (isinstance(node, ast.Call)
+                and isinstance(node.func, ast.Name)
+                and node.func.id == "GuardrailResult"):
+            continue
+        text = reason_text(node)
+        # Bare "guardrail_error:" (run_all's catch-all) as well as the
+        # per-guardrail "<name>_guardrail_error:" forms.
+        if "guardrail_error" not in text and "contract_violation" not in text:
+            continue
+        flagged = any(
+            kw.arg == "fail_safe"
+            and isinstance(kw.value, ast.Constant)
+            and kw.value.value is True
+            for kw in node.keywords
+        )
+        in_scope += 1
+        if not flagged:
+            offenders.append((node.lineno, text[:70]))
+
+    assert in_scope == 10, (
+        f"expected 10 fail-safe return sites, found {in_scope} — a site was "
+        "added or removed; update this count deliberately, do not let the "
+        "scan silently cover less than it did."
+    )
+    assert not offenders, (
+        "fail-safe GuardrailResult(s) missing fail_safe=True: " + repr(offenders)
+    )
+
+
+# ─── answer relevance: the third check of the RAG triad (2026-09-13) ──
+# Groundedness compares the answer to the PASSAGES. This compares it to the
+# QUESTION, and is not given the passages at all.
+
+
+def test_relevance_blocks_a_grounded_reply_to_a_question_never_asked(context):
+    """VAL-0002, the case this guardrail was built for. The reply was fully
+    grounded — every claim really was in DOC-INT-002 — and answered a problem
+    the customer never described.
+    """
+    response = GeneratedResponse(
+        answer=("We're still investigating the issue with your logs not "
+                "arriving at the external destination."),
+        citations=["DOC-INT-002"],
+        confidence=0.7,
+        unknown=False,
+    )
+    stub = _stub_returning({
+        "passed": False,
+        "question_asked": "The customer is chasing an update on a prior message.",
+        "reason": "The ticket mentions no logs or destination; the reply "
+                  "invented the problem.",
+    })
+    g = AnswerRelevanceGuardrail(call_model=stub)
+    result = g.check(response, context)
+    assert result.passed is False
+    assert result.blocking is True
+    assert result.fail_safe is False
+    assert "does not address the question" in result.reason
+
+
+def test_relevance_passes_a_reply_that_addresses_the_ticket(
+    grounded_response, context
+):
+    stub = _stub_returning({
+        "passed": True,
+        "question_asked": "Why are sign-ins failing?",
+        "reason": "The reply explains account lockout and how to check it.",
+    })
+    g = AnswerRelevanceGuardrail(call_model=stub)
+    result = g.check(grounded_response, context)
+    assert result.passed is True
+    assert result.details["question_asked"] == "Why are sign-ins failing?"
+
+
+def test_relevance_does_not_punish_abstention(context):
+    """An unknown response is the CORRECT behaviour on an unanswerable
+    ticket. Blocking it would invert the metric this guardrail improves.
+    """
+    def must_not_be_called(system, user, seed):  # pragma: no cover
+        raise AssertionError("no model call should be made for an abstention")
+
+    response = GeneratedResponse(answer="", citations=[], confidence=0.0,
+                                 unknown=True)
+    g = AnswerRelevanceGuardrail(call_model=must_not_be_called)
+    result = g.check(response, context)
+    assert result.passed is True
+    assert "abstention" in result.reason
+
+
+def test_relevance_never_receives_the_passages(grounded_response, context):
+    """Structural: if this check could see the passages it would drift into
+    re-checking groundedness and stop catching a well-grounded reply to the
+    wrong question. It must see only the ticket and the reply.
+    """
+    seen = {}
+
+    def capture(system, user, seed):
+        seen["user"] = user
+        return json.dumps({"passed": True, "question_asked": "q", "reason": "r"})
+
+    g = AnswerRelevanceGuardrail(call_model=capture)
+    g.check(grounded_response, context)
+    for p in context.passages:
+        assert p.text not in seen["user"], "passage text leaked into the prompt"
+        assert p.doc_id not in seen["user"], "doc_id leaked into the prompt"
+
+
+def test_relevance_never_receives_the_segment_fields(grounded_response, context):
+    """FR-04 fairness: the same reply to the same ticket must get the same
+    verdict whichever customer sent it.
+    """
+    seen = {}
+
+    def capture(system, user, seed):
+        seen["user"] = user
+        return json.dumps({"passed": True, "question_asked": "q", "reason": "r"})
+
+    g = AnswerRelevanceGuardrail(call_model=capture)
+    g.check(grounded_response, context)
+    for field in (context.ticket.customer_tier, context.ticket.customer_region,
+                  context.ticket.language_fluency, context.ticket.customer_name):
+        if field:
+            assert field not in seen["user"], f"{field!r} leaked into the prompt"
+
+
+def test_relevance_fails_safe_when_the_judge_raises(grounded_response, context):
+    def exploding(system, user, seed):
+        raise TimeoutError("provider unreachable")
+
+    g = AnswerRelevanceGuardrail(call_model=exploding)
+    result = g.check(grounded_response, context)
+    assert result.passed is False
+    assert result.fail_safe is True
+
+
+def test_relevance_non_boolean_verdict_is_not_a_pass(grounded_response, context):
+    """The judge did not answer the question it was asked. That is not a
+    clean pass — it is a contract violation, and it blocks.
+    """
+    stub = _stub_returning({"passed": "yes", "question_asked": "q", "reason": "r"})
+    g = AnswerRelevanceGuardrail(call_model=stub)
+    result = g.check(grounded_response, context)
+    assert result.passed is False
+    assert result.fail_safe is True
+    assert "contract_violation" in result.reason
+
+
+# ─── D-11: LLM PII detections must be shaped like the value ─────────
+# Source: synthetic drafts, shaped after the two local-judge false positives
+# in b21_local_80_20260919 (VAL-0019 flagged the words "API keys", VAL-0049
+# flagged the citation "DOC-AUTH-004"); not the verbatim drafts.
+
+
+def _llm_pii(category: str, text: str):
+    return _stub_returning({"passed": False, "detections": [
+        {"category": category, "text": text, "start_index": 0, "reason": "llm"}]})
+
+
+def _draft(answer: str) -> GeneratedResponse:
+    return GeneratedResponse(answer=answer, citations=["DOC-AUTH-004"],
+                             confidence=0.9, unknown=False)
+
+
+@pytest.mark.parametrize("category,text", [
+    ("api_key", "API keys"),          # words, not a key
+    ("api_key", "DOC-AUTH-004"),      # a help-article id
+    ("account_number", "[DOC-ACCT-001]"),
+    ("account_number", "account number"),
+    ("phone", "call support"),
+])
+def test_llm_detection_that_cannot_be_the_value_does_not_block(context, category, text):
+    draft = _draft("Revoke any API keys the user created, as DOC-AUTH-004 describes.")
+    r = PIIGuardrail(call_model=_llm_pii(category, text)).check(draft, context)
+    assert r.passed, r.reason
+
+
+@pytest.mark.parametrize("category,text", [
+    ("api_key", "cs_prod_8f3Kq29xLm7Ta"),  # an unbroken token the regex does not know
+    ("phone", "020 7946 0018"),
+    ("account_number", "ACCT-88"),
+    ("email", "rosa at example dot com"),
+    ("person_name", "Tomas Reyes"),  # not the ticket's customer (Alice Anders)
+])
+def test_value_shaped_llm_detection_still_blocks(context, category, text):
+    draft = _draft(f"Your details: {text}.")
+    r = PIIGuardrail(call_model=_llm_pii(category, text)).check(draft, context)
+    assert not r.passed and r.blocking and not r.fail_safe
+
+
+def test_regex_detection_is_not_subject_to_the_shape_filter(context):
+    # The filter applies to the LLM pass only; a regex hit blocks as before.
+    draft = _draft("Reach the admin at ops@cloudserve.co.uk for access.")
+    r = PIIGuardrail(call_model=_stub_returning({"passed": True, "detections": []})
+                     ).check(draft, context)
+    assert not r.passed
+
+
+# ─── D-12: guardrails run concurrently, results in guardrail order ───
+
+
+class _BarrierGuardrail:
+    """Passes only if every guardrail sharing the barrier is running at once."""
+    blocking = True
+
+    def __init__(self, name, barrier, delay=0.0):
+        self.name, self.barrier, self.delay = name, barrier, delay
+
+    def check(self, response, context):
+        import time
+        self.barrier.wait()
+        time.sleep(self.delay)
+        return GuardrailResult(name=self.name, passed=True, blocking=True, reason="ok")
+
+
+def test_guardrails_run_at_the_same_time(grounded_response, context, db):
+    import threading
+    barrier = threading.Barrier(3, timeout=5)
+    results = run_all(grounded_response, context, guardrails=[
+        _BarrierGuardrail(n, barrier) for n in ("a", "b", "c")])
+    assert all(r.passed for r in results), [r.reason for r in results]
+
+
+def test_results_keep_guardrail_order_when_they_finish_out_of_order(
+        grounded_response, context, db):
+    import threading
+    barrier = threading.Barrier(3, timeout=5)
+    # The first guardrail finishes last.
+    results = run_all(grounded_response, context, guardrails=[
+        _BarrierGuardrail("first", barrier, 0.3), _BarrierGuardrail("second", barrier, 0.1),
+        _BarrierGuardrail("third", barrier, 0.0)])
+    assert [r.name for r in results] == ["first", "second", "third"]
+
+
+def test_one_worker_runs_the_guardrails_in_turn(grounded_response, context, db, monkeypatch):
+    import threading
+    import src.guardrails as guardrails_module
+    monkeypatch.setattr(guardrails_module, "GUARDRAIL_MAX_WORKERS", 1)
+    barrier = threading.Barrier(2, timeout=0.3)
+    results = run_all(grounded_response, context, guardrails=[
+        _BarrierGuardrail("a", barrier), _BarrierGuardrail("b", barrier)])
+    # In turn, the first guardrail waits alone and the barrier breaks: both
+    # are recorded as fail-safe blocks, which is also the A11 path working.
+    assert all(not r.passed and r.fail_safe for r in results)
+
+
+def test_a_raising_guardrail_does_not_affect_the_others_running_beside_it(
+        grounded_response, context, db):
+    class Exploding:
+        name, blocking = "exploder", True
+
+        def check(self, response, context):
+            raise RuntimeError("kaboom")
+
+    class Fine:
+        name, blocking = "fine", True
+
+        def check(self, response, context):
+            return GuardrailResult(name="fine", passed=True, blocking=True, reason="ok")
+
+    results = run_all(grounded_response, context, guardrails=[Exploding(), Fine()])
+    assert [(r.name, r.passed, r.fail_safe) for r in results] == \
+        [("exploder", False, True), ("fine", True, False)]
+
+
+def test_an_abandoned_judge_call_fails_safe(grounded_response, context, db):
+    """D-13: a guardrail whose judge call is abandoned at the deadline blocks
+    the draft rather than passing it (A7/A11)."""
+    from src.model_call import ModelCallTimeout
+
+    def timing_out(system, user, seed=0):
+        raise ModelCallTimeout("provider did not answer within 180s")
+
+    results = run_all(grounded_response, context, call_model=timing_out)
+    llm_backed = [r for r in results if r.name in
+                  {"pii", "grounding", "tone_scope", "answer_relevance"}]
+    assert llm_backed and all(not r.passed and r.fail_safe for r in llm_backed)

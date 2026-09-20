@@ -34,6 +34,12 @@ Design decisions worth reading:
   generator (B-11) can pick either; the guardrail (B-13 grounding
   check) reads Passage.text so its citation-matching sees the header.
 
+- The query is the ticket's subject and body (D-09), built by
+  `retrieval_query`. Body alone was the original query; on the 357
+  answerable dev tickets adding the subject lifts hit@1 from 87.7% to 89.9%
+  (evaluation/answerability_probe.py). Chat tickets carry no subject and
+  query with the body alone, as before.
+
 - Empty query, threshold-filtered-to-empty, index missing, embedder
   fails — all return `[]` and log the outcome. Never raises. A11.
 """
@@ -45,7 +51,7 @@ from typing import Callable, Optional
 from src.config import CHROMA_PATH, EMBEDDING_MODEL, RETRIEVAL_THRESHOLD, RETRIEVAL_TOP_K
 from src.index_docs import DISTANCE_SPACE
 from src.logging_store import log_decision
-from src.schema import Passage
+from src.schema import Passage, Ticket
 
 logger = logging.getLogger(__name__)
 
@@ -107,11 +113,44 @@ def _assert_distance_space(store) -> None:
         )
 
 
+def warm() -> bool:
+    """Load the embedder and open the index before the first ticket.
+
+    The embedder costs ~15 seconds to construct and is cached for the process
+    lifetime, so without this the first ticket of every run pays it: measured
+    at 14.9s of a 85.6s first ticket locally and 16.5s of 23.4s on hosted
+    models, where it was 27% of the whole run. Worse, it landed inside a
+    ticket's recorded latency, so the reported p95 described a cold start
+    rather than the system.
+
+    Returns True when the index is ready. Never raises: a warm-up failure is
+    not a reason to abandon a run — retrieve() will surface it per ticket and
+    degrade as it always has (FR-23).
+    """
+    try:
+        _chroma_search("warm", 1)
+        return True
+    except Exception as exc:  # broad on purpose — diagnostics, not control flow
+        logger.warning("retrieve.warm_failed", extra={"error": str(exc)})
+        return False
+
+
 def _clear_cache() -> None:
     """Test helper — drops the cached store so a new CHROMA_PATH is picked up."""
     global _STORE, _EMBEDDINGS
     _STORE = None
     _EMBEDDINGS = None
+
+
+def retrieval_query(ticket: Ticket) -> str:
+    """The text retrieval searches with: subject, a blank line, then body (D-09).
+
+    Plain text, no "Subject:" / "Body:" labels: the labels would be embedded too
+    and pull every query toward each other. A missing or blank subject leaves
+    the body alone.
+    """
+    subject = (ticket.subject or "").strip()
+    return f"{subject}\n\n{ticket.body}" if subject else ticket.body
 
 
 # Callable signature: (query, top_k) -> list of (text, metadata, score) tuples.

@@ -89,3 +89,6 @@ NOTES.local.md
 
 # Local reference — author use only, not for the repo
 workbooks/section_notation.md
+
+# Word lock files, created while a .docx is open
+~$*.docx
