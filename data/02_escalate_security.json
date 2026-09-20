@@ -1,0 +1,14 @@
+[
+  {
+    "ticket_id": "DEMO-ESCALATE-01",
+    "channel": "chat",
+    "subject": "",
+    "body": "one of our engineers believes their credentials may have been exposed in breach at another service. What should we be doing right now? please tell what to do.",
+    "received_at": "2026-09-20T10:05:00Z",
+    "customer_id": "CUST-DEMO-02",
+    "customer_name": "Oscar Zhang",
+    "customer_tier": "standard",
+    "customer_region": "latin_america",
+    "language_fluency": "non_fluent"
+  }
+]

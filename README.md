@@ -58,6 +58,137 @@ by step 6. The API in step 8 wraps the same pipeline for demonstration and
 Prometheus monitoring; it is not the assessed interface (Build Spec §04
 labels its launch command *illustrative rather than prescriptive*).
 
+## Demo: four tickets, four behaviours
+
+Four single-ticket files in `data/`, plus one file containing all four. Each is
+a JSON array, which is what `--input` expects.
+
+```
+# All four in one run (about 4 minutes on local models, ~40s on a hosted one)
+python -m evaluation.harness \
+    --input data/demo_tickets.json \
+    --output evaluation/results/demo_$(date +%Y%m%d)
+
+# Or one behaviour at a time
+python -m evaluation.harness --input data/01_success_rollback.json          --output /tmp/demo1
+python -m evaluation.harness --input data/02_escalate_security.json         --output /tmp/demo2
+python -m evaluation.harness --input data/03_injection_attempt.json         --output /tmp/demo3
+python -m evaluation.harness --input data/04_escalate_no_documentation.json --output /tmp/demo4
+```
+
+What each one shows, and how reliable it is:
+
+| File | Shows | Always behaves this way? |
+|------|-------|--------------------------|
+| `01_success_rollback.json` | A grounded reply sent automatically (`auto_respond`) | **No — model-dependent.** Verified sent on `gpt-4o-mini`; the local `llama3.1:8b` draft was blocked by the grounding check on 20 Sep. |
+| `02_escalate_security.json` | Policy escalation: `security_incident` never auto-answers (D-07) | **Yes.** The rule is on the intent, not the draft. |
+| `03_injection_attempt.json` | An injection attempt recorded (`injection_flags`) and never answered | **The flag, yes** (deterministic pattern match, D-16). The decision is `escalate` unless a guardrail also faults the draft, which outranks it and gives `block`. |
+| `04_escalate_no_documentation.json` | No help article covers the question → `empty_retrieval` escalation | **Yes.** Retrieval does not depend on the model. |
+
+Reading the result of a demo run:
+
+```
+# the decision, why, and what a human would receive
+python -c "import json;[print(r['ticket_id'], r['decision'], r['trigger'], r.get('injection_flags')) \
+  for r in map(json.loads, open('evaluation/results/demo_$(date +%Y%m%d)/results.jsonl'))]"
+
+# the run's report and the Evaluation Framework results table
+cat evaluation/results/demo_$(date +%Y%m%d)/metrics_report.json
+cat evaluation/results/demo_$(date +%Y%m%d)/results_table.md
+```
+
+Every escalated or blocked row carries `escalation_bundle`: the retrieved
+passages, the classifier's runners-up, the draft (flagged when a check found a
+fault in it) and the rule that stopped the send (FR-11).
+
+### Running on the free tier
+
+`.env` ships pointing at OpenRouter. Two things to know before a free run:
+
+- **Check the model id exists.** The `:free` suffix is part of an id, not a
+  switch you can append — `meta-llama/llama-3.3-70b-instruct:free` and
+  `google/gemini-2.5-flash:free` do not exist. List what is actually free:
+
+  ```
+  curl -s https://openrouter.ai/api/v1/models \
+    | python3 -c "import sys,json;[print(m['id']) for m in json.load(sys.stdin)['data'] if m['id'].endswith(':free')]"
+  ```
+
+- **Cap the retries.** The free allowance is 50 requests a day on an account
+  with under \$10 of credit, and one ticket makes six calls. With the default
+  retry budget a single ticket can consume 30 of the 50:
+
+  ```
+  MODEL_MAX_RETRIES=1 python -m evaluation.harness \
+      --input data/demo_tickets.json --output /tmp/free_demo
+  ```
+
+  Check what is left with:
+
+  ```
+  curl -s https://openrouter.ai/api/v1/key -H "Authorization: Bearer $OPENROUTER_API_KEY" \
+    | python3 -c "import sys,json;print(json.load(sys.stdin)['data']['free_model_daily_requests'])"
+  ```
+
+Verified working on 20 Sep 2026: `nvidia/nemotron-3-super-120b-a12b:free`
+drafting with `nex-agi/nex-n2.5-pro:free` judging — a completed 5-ticket run at
+\$0.00, though 3 of 16 calls returned an empty response and p95 latency was
+195s. Both Google free models were rate-limited *upstream* the same day, which
+is shared capacity rather than your quota. The local Ollama path
+(`MODEL_BASE_URL=http://localhost:11434/v1`) has no quota at all and is the
+more dependable free option.
+
+## Monitoring: testing the Prometheus endpoint
+
+The metrics server is **off by default** (`--metrics-port 0`), so a graded run
+cannot fail because a port is taken. Two ways to see it working:
+
+```
+# A. Real numbers — run the harness with the endpoint on, then scrape it
+python -m evaluation.harness --input data/demo_tickets.json \
+    --output /tmp/demo_metrics --metrics-port 8001
+# ...and from a second terminal, while it runs:
+curl -s http://localhost:8001/metrics | grep -v '^#' | grep -E '^[a-z]'
+
+# B. No provider, no credit, no keys — a fake run that serves the same endpoint
+python -m scripts.demo_metrics          # one ticket every 2s on :8001, 30 tickets
+curl -s http://localhost:8001/metrics | grep tickets_processed_total
+```
+
+What you should see (verified 20 Sep 2026):
+
+```
+tickets_processed_total{channel="chat",outcome="auto_respond"} 5.0
+response_seconds_count 14.0
+classification_confidence_bucket{le="0.9"} 14.0
+kill_switch_active 0.0
+```
+
+| Metric | What it tells you |
+|--------|-------------------|
+| `tickets_processed_total{channel,outcome}` | Volume by channel and by decision |
+| `response_seconds` | Latency histogram, end to end per ticket |
+| `classification_confidence` | Confidence distribution — the calibration check |
+| `guardrail_blocks_total{guardrail}` | Which check is firing |
+| `injection_flags_total{pattern}` | Injection attempts by shape (D-16) |
+| `model_cache_hits_total{stage}` | Replayed calls (D-08) |
+| `model_call_failures_total{stage,error_type}` | Provider trouble, by stage |
+| `kill_switch_active` | 1 while automatic answering is halted (D-15) |
+
+A label appears only after its first event, so a counter you have not triggered
+yet is absent rather than zero.
+
+To scrape it with a real Prometheus, `ops/prometheus.yml` already targets
+`localhost:8001`:
+
+```
+prometheus --config.file=ops/prometheus.yml    # then browse http://localhost:9090
+```
+
+The API serves the same registry at `http://127.0.0.1:8000/metrics`, which is
+the more realistic target: it stays up between harness runs. See
+`docs/monitoring.md` for the five dashboard panels and what each one is for.
+
 ## Repository layout
 
 ```
@@ -107,6 +238,8 @@ fde-capstone/
 | `validation_tickets.json`  | 80 labelled tickets — used for self-check |
 | `ground_truth_responses.json` | 200 senior-agent reference answers |
 | `documentation.json` | 29 KB articles — the retrieval corpus |
+| `demo_tickets.json` | The four demo tickets below, in one file |
+| `01_success_rollback.json` … `04_escalate_no_documentation.json` | One demo ticket each — see [Demo](#demo-four-tickets-four-behaviours) |
 
 The hidden evaluation set (120 tickets) is **not** in this repo. The harness must accept `--input` and `--output` paths so it can be pointed at that unseen file.
 
