@@ -153,6 +153,26 @@ DECISION_LOG_TIMEOUT_SECONDS: float = float(
 # answerability, not confidence, so this number is provisional until the
 # FR-17 grounding guardrail is measured in the loop.
 CONFIDENCE_THRESHOLD: float = float(os.environ.get("CONFIDENCE_THRESHOLD", "0.85"))
+
+# ── Kill switch (Governance Framework §5) ────────────────────────────
+# Read at CALL time, not at import: every other setting in this module is a
+# module-level constant, so a change needs a restart. A kill switch that needs
+# a restart is not a kill switch — the pack asks for a way to stop the system
+# answering "immediately, without a deployment". Setting KILL_SWITCH=1 in the
+# environment of a running process therefore takes effect on the next ticket.
+#
+# It replaces the documented CONFIDENCE_THRESHOLD=1.01 trick, which needed a
+# restart and was indistinguishable in the log from a badly tuned threshold
+# (D-15).
+KILL_SWITCH_ENV = "KILL_SWITCH"
+_TRUTHY = frozenset({"1", "true", "on", "yes"})
+
+
+def kill_switch_active() -> bool:
+    """True when automatic answering is halted. Read on every routing call."""
+    return os.environ.get(KILL_SWITCH_ENV, "0").strip().lower() in _TRUTHY
+
+
 RETRIEVAL_TOP_K: int = int(os.environ.get("RETRIEVAL_TOP_K", "5"))
 # 0.25 set by measurement, not by feel — see D-02a. Calibrated against COSINE
 # relevance scores; the index must be built in cosine space or this number

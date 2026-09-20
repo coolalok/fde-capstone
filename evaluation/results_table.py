@@ -413,6 +413,8 @@ def build(rows: list[dict], metrics: dict, tickets: dict[str, dict], *,
         "tickets_with_replayed_calls": sum(1 for r in rows if not is_live(r)),
         "code_version": git_commit(),
         "hidden_set_runs": hidden_set_runs,
+        "kill_switch_active": metrics.get("governance_metrics", {}).get(
+            "kill_switch_active", False),
     }
     return {"header": header, "rows": table,
             "governance": governance_conditions(rows, metrics, pii, variation),
@@ -485,6 +487,10 @@ def limitations(header: dict, table: list[dict], rows: Optional[list[dict]] = No
     with caution because ...'. The author writes the sentence."""
     items = [f"A single run of {header['tickets']} tickets: one ticket moves a rate by "
              f"{100 / header['tickets']:.1f} points, and 95% intervals are wide."]
+    if header.get("kill_switch_active"):
+        items.append("The kill switch was active: rule 0 escalated every ticket before any "
+                     "other rule could fire, so no routing or resolution figure here "
+                     "describes the system's own behaviour (Governance Framework §5, D-15).")
     if header.get("tickets_with_replayed_calls"):
         items.append(f"{header['tickets_with_replayed_calls']} tickets were partly replayed "
                      "from the model cache (D-08), so they describe the run that filled it.")
@@ -523,7 +529,10 @@ def to_markdown(t: dict) -> str:
            f"threshold {h['confidence_threshold']}, guardrails "
            f"{'on' if h['guardrails_enabled'] else 'off'}. Model cache {cache}; "
            f"{h['tickets_with_replayed_calls']} tickets replayed. Runs against the hidden "
-           f"evaluation set: {h['hidden_set_runs']}.", "",
+           f"evaluation set: {h['hidden_set_runs']}."
+           + (" **Kill switch ACTIVE: automatic answering was halted, so every ticket "
+              "escalated by rule 0 (D-15) and these figures describe a halted system.**"
+              if h.get("kill_switch_active") else ""), "",
            "| Measure | Baseline | Target | Achieved | Confidence in the figure | Notes |",
            "|---|---|---|---|---|---|"]
     for r in t["rows"]:

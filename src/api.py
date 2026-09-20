@@ -65,6 +65,7 @@ from pydantic import BaseModel, ConfigDict, Field
 from src.config import (
     CHROMA_PATH,
     CONFIDENCE_THRESHOLD,
+    kill_switch_active,
     DATABASE_URL,
     GUARDRAIL_MODEL,
     MODEL_API_KEY,
@@ -370,6 +371,10 @@ class HealthResponse(BaseModel):
     confidence_threshold: float
     retrieval_top_k: int
     retrieval_threshold: float
+    # Not a health check: a halted system is working as instructed, so status
+    # stays "ok". It is reported because an operator reading /healthz during
+    # an incident must see that the halt is in force (D-15).
+    kill_switch_active: bool = False
 
 
 @app.get("/healthz")
@@ -403,6 +408,7 @@ def healthz() -> JSONResponse:
         confidence_threshold=CONFIDENCE_THRESHOLD,
         retrieval_top_k=RETRIEVAL_TOP_K,
         retrieval_threshold=RETRIEVAL_THRESHOLD,
+        kill_switch_active=kill_switch_active(),
     ).model_dump()
     return JSONResponse(status_code=200 if ok else 503, content=body)
 

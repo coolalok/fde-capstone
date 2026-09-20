@@ -27,6 +27,12 @@ Design decisions worth reading:
   ticket the classifier was unsure about escalates rather than joining the PII
   and grounding failures in the block queue.
 
+- **An injection attempt escalates and is recorded** (R-03, D-16). Detection is
+  input-side and deterministic (``src/injection.py``); the router never refuses
+  the customer, because a ticket quoting "ignore previous instructions" may be
+  an attack, a pasted error, or a developer describing their own prompt. All
+  three belong with a person.
+
 - **The never-auto-respond policy is on intent, not on the label** (D-07).
   ``labels.must_not_auto_respond`` is evaluation ground truth and is not on
   the Ticket (FR-01 v2). The policy set reproduces that flag exactly on both
@@ -43,8 +49,9 @@ from __future__ import annotations
 import logging
 from typing import Optional
 
-from src.config import CONFIDENCE_THRESHOLD, MODEL_NAME
+from src.config import CONFIDENCE_THRESHOLD, KILL_SWITCH_ENV, MODEL_NAME, kill_switch_active
 from src.logging_store import log_decision
+from src.metrics import INJECTION_FLAGS, KILL_SWITCH
 from src.schema import (
     ClassificationResult,
     EscalationBundle,
@@ -152,7 +159,7 @@ def route(
     """
     guardrail_results = guardrail_results or []
     decision, trigger, reason = _decide(
-        classification, passages, response, guardrail_results, threshold
+        ticket, classification, passages, response, guardrail_results, threshold
     )
 
     bundle = (
@@ -172,6 +179,7 @@ def route(
 
 
 def _decide(
+    ticket: Ticket,
     classification: ClassificationResult,
     passages: list[Passage],
     response: Optional[GeneratedResponse],
@@ -181,13 +189,33 @@ def _decide(
     """The ordered rules. Returns (decision, trigger, reason).
 
     Precedence, highest first:
+      0. kill switch — automatic answering halted by a human (D-15)
       1. governance  — an unlogged upstream decision (D-03b)
       2. safety      — a blocking guardrail did not pass
+      2b. injection  — the ticket text tried to give instructions (R-03, D-16)
       3. policy      — intent never auto-answers (D-07)
       4. coverage    — retrieval found nothing
       5. honesty     — the generator declined to answer
       6. quality     — confidence below the floor
     """
+    # 0. Kill switch (Governance Framework §5, D-15). Outranks everything:
+    #    a human has said stop, so nothing is auto-answered whatever the
+    #    confidence, the intent or the guardrails. The pipeline still
+    #    classifies, retrieves, drafts and checks, so the escalation bundle
+    #    the reviewer receives is as complete as on any other day.
+    halted = kill_switch_active()
+    KILL_SWITCH.set(1 if halted else 0)
+    if halted:
+        logger.warning("route.kill_switch_active", extra={"env": KILL_SWITCH_ENV})
+        return (
+            ESCALATE,
+            "kill_switch_active",
+            f"escalate: the {KILL_SWITCH_ENV} kill switch is set, so automatic "
+            f"answering is halted at the system level (Governance Framework §5); "
+            f"every ticket goes to a person regardless of confidence "
+            f"{classification.confidence:.2f}, intent or guardrail verdicts",
+        )
+
     # 1. Governance. An unlogged decision cannot be reconstructed by the
     #    autumn compliance review (EV-M5), so it must not be auto-sent —
     #    checked BEFORE the confidence threshold, per D-03b.
@@ -217,6 +245,26 @@ def _decide(
             "guardrail_blocked",
             f"block: {len(blocked)} blocking guardrail(s) did not pass ({names}); "
             f"the drafted reply is withheld and a human must review it — {detail}",
+        )
+
+    # 2b. Injection attempt in the ticket text (R-03, D-16). Escalate and
+    #     record: the input is evidence, and a person decides what to do with
+    #     the customer. It sits AFTER the safety block — a draft with a real
+    #     fault is still a block — and BEFORE the policy and quality rules, so
+    #     the reason names the attempt rather than a downstream symptom.
+    if ticket.injection_flags:
+        INJECTION_FLAGS.labels(pattern=ticket.injection_flags[0]).inc()
+        logger.warning(
+            "route.injection_suspected",
+            extra={"ticket_id": ticket.ticket_id, "flags": ticket.injection_flags},
+        )
+        return (
+            ESCALATE,
+            "injection_suspected",
+            f"escalate: the ticket text contains "
+            f"{', '.join(ticket.injection_flags)} — a possible attempt to give the "
+            f"system instructions (R-03). The input is recorded for review and a "
+            f"person decides the reply; no automated answer is sent",
         )
 
     # 3. Policy (D-07). These intents never auto-answer at any confidence.

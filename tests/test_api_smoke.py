@@ -284,3 +284,15 @@ def test_an_escalation_returns_the_bundle_the_human_needs(client, monkeypatch):
     assert bundle["draft"] == "Here is what the retention policy says."
     assert bundle["draft_blocked"] is True, "the reviewer must be told not to send it as-is"
     assert bundle["uncertainty"]
+
+
+def test_healthz_reports_the_kill_switch_without_failing_the_check(client, monkeypatch):
+    """A halted system is working as instructed, so status stays ok — but an
+    operator reading /healthz during an incident must see the halt (D-15)."""
+    r = client.get("/healthz")
+    assert r.json()["kill_switch_active"] is False
+
+    monkeypatch.setenv("KILL_SWITCH", "1")
+    body = client.get("/healthz").json()
+    assert body["kill_switch_active"] is True
+    assert body["status"] == "ok", "halted is not unhealthy"

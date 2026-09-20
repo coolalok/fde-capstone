@@ -231,3 +231,17 @@ def test_the_limitation_line_names_the_count_and_the_in_run_pairs(monkeypatch, t
     md = rt.to_markdown(rt.build(rows, metrics, tickets, evidence={}))
     assert "2 of 2 tickets have text that appears elsewhere" in md
     assert "1 such pair sits inside this run" in md
+
+
+def test_a_halted_run_is_labelled_in_the_header_and_the_limitations():
+    """Figures from a halted run describe the halt, not the system (D-15)."""
+    rows = [_row("A", HOLD), _row("B", HOLD)]
+    tickets = {"A": {"ticket_id": "A"}, "B": {"ticket_id": "B"}}
+    metrics = {"run_id": "harness-20260920T101112Z-abc", "model_name": "m",
+               "guardrail_model": "g",
+               "governance_metrics": {"decisions_logged": 2, "reconciles": True,
+                                      "kill_switch_active": True}}
+    table = rt.build(rows, metrics, tickets, evidence={})
+    assert table["header"]["kill_switch_active"] is True
+    assert "Kill switch ACTIVE" in rt.to_markdown(table)
+    assert any("kill switch was active" in line for line in table["limitations"])

@@ -351,3 +351,29 @@ def test_retrieval_query_is_the_body_alone_when_there_is_no_subject():
     for subject in ("", "   "):
         t = Ticket(ticket_id="T-Q", channel="chat", subject=subject, body="help")
         assert retrieval_query(t) == "help"
+
+
+# ─── warm-up (performance, measured 2026-09-20) ─────────────────────
+
+
+def test_warm_loads_the_index_before_the_first_ticket(monkeypatch):
+    """The embedder costs ~15s to construct; warm() pays it before the run's
+    clock starts so ticket 1's latency and the run's p95 describe the system."""
+    import src.retrieve as r
+
+    calls = []
+    monkeypatch.setattr(r, "_chroma_search", lambda q, k: calls.append((q, k)) or [])
+    assert r.warm() is True
+    assert len(calls) == 1, "one cheap query is enough to construct both handles"
+
+
+def test_warm_never_raises_when_the_index_is_unavailable(monkeypatch):
+    """A warm-up failure is not a reason to abandon a run: retrieve() still
+    degrades per ticket (FR-23)."""
+    import src.retrieve as r
+
+    def boom(query, k):
+        raise RuntimeError("chroma unavailable")
+
+    monkeypatch.setattr(r, "_chroma_search", boom)
+    assert r.warm() is False

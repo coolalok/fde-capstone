@@ -647,3 +647,21 @@ def test_a_sent_row_has_no_bundle(db, _no_retrieval):
     row = process_ticket(SMOKE_TICKETS[0], call_model=FakeModelClient())
     assert row["decision"] == "auto_respond"
     assert row["bundle_present"] is False and row["escalation_bundle"] is None
+
+
+def test_a_run_made_under_the_kill_switch_says_so(db, _no_retrieval, monkeypatch):
+    """A halted run must never read as normal behaviour: every ticket escalates
+    by rule 0, and the report records that the switch was on (D-15)."""
+    monkeypatch.setenv("KILL_SWITCH", "1")
+    rows = [process_ticket(t, call_model=FakeModelClient()) for t in SMOKE_TICKETS]
+    assert {r["decision"] for r in rows} == {"escalate"}
+    assert {r["trigger"] for r in rows} == {"kill_switch_active"}
+
+    m = build_metrics(rows, {}, run_id="smoke", skip_guardrails=False)
+    assert m["governance_metrics"]["kill_switch_active"] is True
+
+
+def test_a_normal_run_records_the_switch_as_off(db, _no_retrieval):
+    rows = [process_ticket(t, call_model=FakeModelClient()) for t in SMOKE_TICKETS]
+    m = build_metrics(rows, {}, run_id="smoke", skip_guardrails=False)
+    assert m["governance_metrics"]["kill_switch_active"] is False

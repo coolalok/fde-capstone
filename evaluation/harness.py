@@ -51,14 +51,14 @@ from evaluation.retrieval_eval import K_VALUES, recall_at_k
 from src import usage
 from src.classify import classify
 from src.config import (CONFIDENCE_THRESHOLD, GUARDRAIL_MODEL, METRICS_PORT,
-                        MODEL_CACHE_DISABLED, MODEL_NAME)
+                        MODEL_CACHE_DISABLED, MODEL_NAME, kill_switch_active)
 from src.generate import generate, strip_citation_markers
 from src.guardrails import run_all
 from src.ingest import normalise_any
 from src.logging_config import configure_logging
 from src.logging_store import new_run_id, reconcile, set_run_id
 from src.metrics import LATENCY, TICKETS, start_metrics_server
-from src.retrieve import retrieval_query, retrieve
+from src.retrieve import retrieval_query, retrieve, warm
 from src.route import AUTO_RESPOND, BLOCK, ESCALATE, route
 from src.schema import GuardrailContext, Route
 
@@ -93,6 +93,10 @@ def process_ticket(raw: dict, *, skip_guardrails: bool = False, judge: bool = Fa
         ticket = normalise_any(raw)
         row["channel"] = ticket.channel
         row["warnings"] = ticket.warnings
+        # R-03/D-16: an attempt is evidence. Recorded per ticket whether or not
+        # it changed the outcome, so the report can count attempts rather than
+        # inferring them from a downstream block.
+        row["injection_flags"] = ticket.injection_flags
         # ── The inbound request, as received and as normalised ────────────
         # Every field the pipeline was given, for all four channels. Until
         # now only LENGTHS were recorded (input_summary="body_len=310"),
@@ -661,6 +665,10 @@ def build_metrics(rows: list[dict], truth: dict[str, dict], *,
             "guardrail_activations": dict(guardrail_activations),
             "guardrail_fail_safe_blocks": dict(guardrail_fail_safe),
             "pii_detections": pii_detections,
+            # A run made with the kill switch on describes a halted system,
+            # not a working one: every ticket escalates by rule 0 (D-15).
+            "kill_switch_active": kill_switch_active(),
+            "injection_suspected": sum(1 for r in rows if r.get("injection_flags")),
         },
     }
 
@@ -812,6 +820,14 @@ def main(argv: Optional[list[str]] = None) -> int:
           f"judge={args.judge}",
           flush=True)
 
+    # Load the embedder and open the index BEFORE the clock starts. It costs
+    # ~15s once per process; inside the loop it lands on ticket 1 and inflates
+    # both that ticket's latency and the run's reported p95.
+    warm_started = time.perf_counter()
+    index_ready = warm()
+    print(f"[harness] index warm: {'ready' if index_ready else 'FAILED — see log'} "
+          f"({time.perf_counter() - warm_started:.1f}s)", flush=True)
+
     started = time.perf_counter()
     rows = []
     results_path = output_dir / "results.jsonl"
@@ -851,6 +867,9 @@ def main(argv: Optional[list[str]] = None) -> int:
     print(f"[harness] auto_respond={c['auto_respond']} escalate={c['escalate']} "
           f"block={c['block']} degraded={c['degraded']}")
     print(f"[harness] A8 reconciles={metrics['governance_metrics']['reconciles']}")
+    if metrics["governance_metrics"]["kill_switch_active"]:
+        print("[harness] KILL SWITCH ACTIVE — every ticket escalated by rule 0; "
+              "this run does not describe normal behaviour")
     cost = metrics["cost_metrics"]
     print(f"[harness] model calls={cost['calls']} (live={cost['live_calls']} "
           f"cached={cost['cached_calls']}, cache "

@@ -29,6 +29,10 @@ class Ticket(BaseModel):
     # Ingest bookkeeping
     original_body: str = ""
     warnings: list[str] = Field(default_factory=list)
+    # Injection shapes found in the ticket text by src/injection.py (R-03).
+    # Derived from the customer's own words, not from labels: production code
+    # may read it. Empty for an ordinary ticket.
+    injection_flags: list[str] = Field(default_factory=list)
 
     # Customer segment fields — carried but never passed to the classifier
     customer_id: str = ""
@@ -195,6 +199,11 @@ class GuardrailContext(BaseModel):
     ticket: Ticket
     passages: list[Passage] = Field(default_factory=list)
     classification: "ClassificationResult"
+    # One call answering the three draft-only checks (PR-GUARDRAIL-DRAFT-01).
+    # run_all fills this before dispatching; each guardrail reads its own
+    # section and falls back to its single-purpose prompt when it is absent.
+    # Not part of what a guardrail is "allowed to see" — it IS what they saw.
+    draft_review: Optional[dict] = None
 
 
 GuardrailContext.model_rebuild()

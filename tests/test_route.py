@@ -380,3 +380,94 @@ def test_a_normal_intent_still_auto_responds(db):
     """The guard that stops this widening into 'escalate everything'."""
     r = _route()
     assert r.decision == AUTO_RESPOND
+
+
+# ─── kill switch (Governance Framework §5, D-15) ────────────────────
+
+
+def test_kill_switch_escalates_a_ticket_that_would_otherwise_be_sent(db, monkeypatch):
+    """The whole point: a ticket clearing every rule still goes to a person."""
+    monkeypatch.setenv("KILL_SWITCH", "1")
+    r = _route(classification=_classification(confidence=0.99))
+    assert r.decision == ESCALATE
+    assert r.trigger == "kill_switch_active"
+    assert "KILL_SWITCH" in r.reason and "halted" in r.reason
+
+
+def test_kill_switch_outranks_every_other_rule(db, monkeypatch):
+    """Rule 0. Even a PII block — which would otherwise return block — is
+    reported as the halt, so the block queue is not filled by a deliberate stop."""
+    monkeypatch.setenv("KILL_SWITCH", "1")
+    gs = _passing_guardrails()
+    gs[0] = GuardrailResult(name="pii", passed=False, blocking=True,
+                            reason="email address in outbound reply")
+    r = _route(guardrail_results=gs, classification=_classification(intent="compliance_request"),
+               passages=[])
+    assert (r.decision, r.trigger) == (ESCALATE, "kill_switch_active")
+
+
+def test_kill_switch_still_hands_the_human_a_bundle(db, monkeypatch):
+    """The pipeline keeps working under the halt: FR-11's bundle is intact, so
+    the people absorbing the queue are not worse off than on a normal day."""
+    monkeypatch.setenv("KILL_SWITCH", "1")
+    r = _route()
+    assert r.bundle is not None
+    assert r.bundle.passages and r.bundle.draft
+
+
+@pytest.mark.parametrize("value, halted", [
+    ("1", True), ("true", True), ("TRUE", True), ("on", True), ("yes", True),
+    ("0", False), ("false", False), ("", False), ("maybe", False),
+])
+def test_kill_switch_reads_the_environment_on_every_call(db, monkeypatch, value, halted):
+    """Read at call time, not at import: a running process must halt without a
+    restart, which is what makes it a kill switch rather than a config change."""
+    monkeypatch.setenv("KILL_SWITCH", value)
+    r = _route(classification=_classification(confidence=0.99))
+    assert (r.trigger == "kill_switch_active") is halted
+
+
+def test_service_resumes_when_the_switch_is_cleared(db, monkeypatch):
+    monkeypatch.setenv("KILL_SWITCH", "1")
+    assert _route().decision == ESCALATE
+    monkeypatch.delenv("KILL_SWITCH")
+    assert _route().decision == AUTO_RESPOND, "no restart needed to resume"
+
+
+# ─── injection attempts (R-03, D-16) ────────────────────────────────
+
+
+def test_an_injection_attempt_escalates_and_names_itself(db):
+    """R-03: block, escalate and record. The reason must name the attempt, not
+    a downstream symptom — on the 20 Sep probe the blocks came from answer
+    relevance, so nothing in the record said an attack had been attempted."""
+    ticket = _ticket(injection_flags=["instruction_override"])
+    r = _route(ticket=ticket)
+    assert r.decision == ESCALATE
+    assert r.trigger == "injection_suspected"
+    assert "instruction_override" in r.reason
+    assert "recorded for review" in r.reason
+
+
+def test_a_real_guardrail_fault_still_blocks_over_an_injection_flag(db):
+    """A draft with PII in it is a block whatever the ticket said: the stronger
+    statement wins, and the draft is withheld rather than merely escalated."""
+    gs = _passing_guardrails()
+    gs[0] = GuardrailResult(name="pii", passed=False, blocking=True,
+                            reason="email address in outbound reply")
+    r = _route(ticket=_ticket(injection_flags=["jailbreak"]), guardrail_results=gs)
+    assert (r.decision, r.trigger) == (BLOCK, "guardrail_blocked")
+
+
+def test_an_injection_flag_outranks_the_policy_and_confidence_rules(db):
+    """So the reason names the attempt rather than 'low confidence'."""
+    r = _route(ticket=_ticket(injection_flags=["jailbreak"]),
+               classification=_classification(intent="compliance_request", confidence=0.10))
+    assert r.trigger == "injection_suspected"
+
+
+def test_the_escalation_still_carries_a_bundle(db):
+    """The person absorbing a suspected attack gets the same evidence as any
+    other escalation (FR-11), including the draft the model produced."""
+    r = _route(ticket=_ticket(injection_flags=["persona_override"]))
+    assert r.bundle is not None and r.bundle.passages

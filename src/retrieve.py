@@ -113,6 +113,28 @@ def _assert_distance_space(store) -> None:
         )
 
 
+def warm() -> bool:
+    """Load the embedder and open the index before the first ticket.
+
+    The embedder costs ~15 seconds to construct and is cached for the process
+    lifetime, so without this the first ticket of every run pays it: measured
+    at 14.9s of a 85.6s first ticket locally and 16.5s of 23.4s on hosted
+    models, where it was 27% of the whole run. Worse, it landed inside a
+    ticket's recorded latency, so the reported p95 described a cold start
+    rather than the system.
+
+    Returns True when the index is ready. Never raises: a warm-up failure is
+    not a reason to abandon a run — retrieve() will surface it per ticket and
+    degrade as it always has (FR-23).
+    """
+    try:
+        _chroma_search("warm", 1)
+        return True
+    except Exception as exc:  # broad on purpose — diagnostics, not control flow
+        logger.warning("retrieve.warm_failed", extra={"error": str(exc)})
+        return False
+
+
 def _clear_cache() -> None:
     """Test helper — drops the cached store so a new CHROMA_PATH is picked up."""
     global _STORE, _EMBEDDINGS
