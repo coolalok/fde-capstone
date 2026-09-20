@@ -129,7 +129,67 @@ def test_low_confidence_escalates(db):
     assert "0.62" in r.reason and "0.80" in r.reason
 
 
+# ─── D-14: the confidence floor is not a safety failure ──────────────
+
+
+def _floor_failed() -> list[GuardrailResult]:
+    gs = _passing_guardrails()
+    gs[3] = GuardrailResult(name="confidence_floor", passed=False, blocking=True,
+                            reason="classifier confidence 0.620 is below the "
+                                   "CONFIDENCE_THRESHOLD floor of 0.850")
+    return gs
+
+
+def test_confidence_floor_failure_escalates_rather_than_blocks(db):
+    """D-14: the FR-19 floor reads classifier confidence, never the draft, so
+    it cannot say the draft is unsafe. FR-10 and FR-19 both say escalate."""
+    r = _route(classification=_classification(confidence=0.62),
+               guardrail_results=_floor_failed())
+    assert r.decision == ESCALATE
+    assert r.trigger == "low_confidence"
+
+
+def test_confidence_floor_failure_does_not_flag_the_draft(db):
+    """Nothing looked at the draft, so the reviewer has nothing to be warned
+    about — `draft_blocked` stays False (D-14)."""
+    r = _route(classification=_classification(confidence=0.62),
+               guardrail_results=_floor_failed())
+    assert r.bundle.draft_blocked is False
+    assert r.bundle.draft != ""
+
+
+def test_floor_guardrail_holds_even_above_the_routers_own_threshold(db):
+    """FR-19 is defence in depth: a sweep that injects a lower router threshold
+    still cannot auto-send a draft the guardrail held (D-14)."""
+    r = _route(classification=_classification(confidence=0.90),
+               guardrail_results=_floor_failed())
+    assert r.decision == ESCALATE
+    assert r.trigger == "low_confidence"
+    assert "confidence-floor guardrail" in r.reason
+
+
 # ─── precedence ──────────────────────────────────────────────────────
+
+
+def test_safety_failure_alongside_the_floor_still_blocks(db):
+    """D-14 holds back the floor, not the checks that read the draft."""
+    gs = _floor_failed()
+    gs[0] = GuardrailResult(name="pii", passed=False, blocking=True, reason="leak")
+    r = _route(classification=_classification(confidence=0.62), guardrail_results=gs)
+    assert r.decision == BLOCK
+    assert r.trigger == "guardrail_blocked"
+    assert "confidence_floor" not in r.reason, "the floor is not why it was blocked"
+
+
+def test_policy_list_outranks_the_confidence_floor(db):
+    """7 of the 17 floor-only blocks on b21_openai_gemini_80_d12_20260920 were
+    D-07 policy tickets the classifier was also unsure about. Rule 3 owns them
+    (D-14)."""
+    r = _route(classification=_classification(intent="security_incident",
+                                              confidence=0.62),
+               guardrail_results=_floor_failed())
+    assert r.decision == ESCALATE
+    assert r.trigger == "never_auto_respond_intent"
 
 
 def test_guardrail_block_outranks_low_confidence(db):

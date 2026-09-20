@@ -21,6 +21,12 @@ Design decisions worth reading:
   implementation detail. Governance failures outrank safety failures, which
   outrank policy, which outranks quality signals.
 
+- **Only a check that read the draft can return ``block``** (D-14). The FR-19
+  confidence floor is rule 6 restated as a guardrail (D-05a), and it reads
+  classifier confidence, not the reply. It is held back from rule 2 so that a
+  ticket the classifier was unsure about escalates rather than joining the PII
+  and grounding failures in the block queue.
+
 - **The never-auto-respond policy is on intent, not on the label** (D-07).
   ``labels.must_not_auto_respond`` is evaluation ground truth and is not on
   the Ticket (FR-01 v2). The policy set reproduces that flag exactly on both
@@ -87,8 +93,34 @@ NEVER_AUTO_RESPOND: frozenset[str] = frozenset(
     }
 )
 
+# Guardrails that do not read the draft, and so cannot say anything is wrong
+# with it (D-14). The FR-19 confidence floor is a restatement of rule 6 as a
+# guardrail (D-05a's defence-in-depth): it reads classifier confidence, which
+# was known before a word was generated. A failure here is a coverage hold, not
+# a safety failure, so it falls through rule 2 and lands on rule 6 as
+# `escalate` — which is what FR-10 and FR-19 both say it should be.
+COVERAGE_GUARDRAILS: frozenset[str] = frozenset({"confidence_floor"})
+
 # How many classifier alternatives travel in the bundle. FR-11 says top-3.
 _BUNDLE_ALTERNATIVES = 3
+
+
+def _safety_failures(results: list[GuardrailResult]) -> list[GuardrailResult]:
+    """Failing blocking guardrails that found a fault in the draft (D-14)."""
+    return [
+        g
+        for g in results
+        if g.blocking and not g.passed and g.name not in COVERAGE_GUARDRAILS
+    ]
+
+
+def _floor_failures(results: list[GuardrailResult]) -> list[GuardrailResult]:
+    """Failing blocking guardrails that held the ticket on coverage (D-14)."""
+    return [
+        g
+        for g in results
+        if g.blocking and not g.passed and g.name in COVERAGE_GUARDRAILS
+    ]
 
 
 def route(
@@ -174,7 +206,9 @@ def _decide(
         )
 
     # 2. Safety. Every guardrail in this project blocks rather than warns (A7).
-    blocked = [g for g in guardrail_results if g.blocking and not g.passed]
+    #    The confidence floor is held back from this rule and read at rule 6
+    #    instead, because it never looks at the draft (D-14).
+    blocked = _safety_failures(guardrail_results)
     if blocked:
         names = ", ".join(g.name for g in blocked)
         detail = "; ".join(f"{g.name}: {g.reason}" for g in blocked)
@@ -214,7 +248,9 @@ def _decide(
             f"escalate: the generator declined to answer rather than guess — {why}",
         )
 
-    # 6. Quality. Confidence below the floor (FR-10, D-05).
+    # 6. Quality. Confidence below the floor (FR-10, D-05) — either the
+    #    router's own threshold, or the FR-19 guardrail's verdict when a
+    #    sweep injected a lower one (D-14).
     if classification.confidence < threshold:
         return (
             ESCALATE,
@@ -222,6 +258,13 @@ def _decide(
             f"escalate: classifier confidence {classification.confidence:.2f} is below "
             f"the {threshold:.2f} auto-respond threshold for intent "
             f"'{classification.intent}'",
+        )
+    floor = _floor_failures(guardrail_results)
+    if floor:
+        return (
+            ESCALATE,
+            "low_confidence",
+            f"escalate: the confidence-floor guardrail held it — {floor[0].reason}",
         )
 
     top = passages[0]
@@ -248,8 +291,11 @@ def _build_bundle(
     why, and a blocked draft is still a faster starting point than a blank
     page (EV-D3). It must never be sent as-is, which ``draft_blocked``
     signals to the caller.
+
+    A confidence-floor failure does not set the flag: nothing looked at the
+    draft, so there is nothing for the reviewer to be warned about (D-14).
     """
-    blocked = bool([g for g in guardrail_results if g.blocking and not g.passed])
+    blocked = bool(_safety_failures(guardrail_results))
     return EscalationBundle(
         passages=list(passages),
         alternatives=list(classification.alternatives[:_BUNDLE_ALTERNATIVES]),

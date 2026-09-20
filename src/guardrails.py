@@ -1,26 +1,30 @@
-"""guardrails.py — four blocking guardrails on the generator's drafted response.
+"""guardrails.py — six blocking guardrails on the generator's drafted response.
 
 Satisfies: FR-16 (PII detection), FR-17 (grounding), FR-18 (instruction
-           integrity), FR-19 (confidence-floor), plus a fifth tone/scope
-           guardrail that has no PRD FR yet — see the module doc-block
-           below for the traceability gap and its Stage 5 log entry.
+           integrity), FR-19 (confidence-floor), plus tone/scope and
+           answer-relevance, neither of which has a PRD FR yet — see the
+           module doc-block below for the traceability gap and its Stage 5
+           log entry.
            All blocking per A7 — there is no "warning" mode in this
            project.
 Uses prompts: PR-GUARDRAIL-PII-01, PR-GUARDRAIL-GROUNDING-01,
-           PR-GUARDRAIL-TONESCOPE-01.
+           PR-GUARDRAIL-TONESCOPE-01, PR-GUARDRAIL-RELEVANCE-01.
 Writes:       one row to the decision log per ``run_all()`` invocation
               carrying the array of GuardrailResults for A8 reconciliation.
 
 Design decisions worth reading:
 
-- **Five guardrails, one interface.** Every guardrail is a class exposing
+- **Six guardrails, one interface.** Every guardrail is a class exposing
   ``.check(response, context) -> GuardrailResult``. ``run_all()`` calls
-  every one in order and returns the list. The router treats any
-  ``passed=False`` with ``blocking=True`` as a hard block. Four map to
+  every one (concurrently, D-12) and returns the list in guardrail order.
+  The router treats any ``passed=False`` with ``blocking=True`` as a hard
+  block — except the confidence floor, which is a coverage hold rather
+  than a verdict on the draft and escalates instead (D-14). Four map to
   the PRD FR-16..19 set (PII, grounding, instruction integrity,
-  confidence floor); the fifth (tone/scope — blocks commitments about
-  refunds, delivery timings, and roadmap items) is implicit per
-  architecture.md §6 with no PRD FR yet (traceability via R-04 + EV-D4;
+  confidence floor); tone/scope (blocks commitments about
+  refunds, delivery timings, and roadmap items) and answer relevance
+  (blocks a reply that answers a question nobody asked) are implicit per
+  architecture.md §5 with no PRD FR yet (traceability via R-04 + EV-D4;
   FR-25 for tone/scope is future work, logged in Stage 5 as intentional
   debt so the traceability audit reports the gap explicitly). FR-GUARD-01..04
   were deferred by PRD Table 9 Q7 (2026-09-03); the tests/test_guardrails.py
