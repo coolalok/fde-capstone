@@ -50,6 +50,27 @@ The free model and provider are not chosen here. That choice needs a completed r
 - **`--judge` stays off by default in the harness.** The pack does not require an LLM judge: its hallucination rate is "Human review of at least fifty responses, two assessors" (Evaluation Framework). NFR-01b and NFR-01c do specify judge-scored samples, but only from a judge calibrated to Spearman >= 0.70, and B-18 measured 0.35. Default-on would also add one call per draft against a rate-limited free provider. NFR-01b/c go to the Stage 5 revision log (B-22).
 - Before submission, a free configuration still has to complete the 80-ticket gate run. If none does, the report says so and presents the paid runs as the only complete ones.
 
+## Attempts against this decision
+
+- **2026-09-20.** First free configuration to COMPLETE a run:
+  `nvidia/nemotron-3-super-120b-a12b:free` drafting, `nex-agi/nex-n2.5-pro:free`
+  judging, 5 validation tickets, 16 live calls, $0.00, 0 degraded, A8
+  reconciled (`evaluation/results/b21_free_5_20260920`). It does NOT meet the
+  revisit trigger below and this decision stays open: the trigger asks for the
+  80-ticket run with failures on at most 15% of tickets, and this was 5 tickets
+  with 3 of 16 calls returning HTTP 200 carrying no choices. Quality was poor
+  on its own terms — 0 of 5 tickets answered, intent accuracy 0.6, p95 195s
+  against NFR-02's 4.0s.
+- The same day, both Google free models (`gemma-4-31b-it:free`,
+  `gemma-4-26b-a4b-it:free`) were rate-limited UPSTREAM — shared capacity, not
+  our quota, which still showed 50 of 50 requests available. Model availability
+  on the free tier is therefore not a property we control, and a graded run
+  that depends on one specific free model is a risk in itself.
+- Two model ids that looked plausible do not exist:
+  `meta-llama/llama-3.3-70b-instruct:free` and `google/gemini-2.5-flash:free`.
+  OpenRouter lists no free Meta Llama variant at all. The `:free` suffix is part
+  of an id, not a modifier that can be appended.
+
 ## Revisit trigger
 
 - A free configuration completes the 80-ticket validation run with failed calls on at most 15% of tickets: record the model and its figures in a D-01b that closes the open part of this decision.
