@@ -64,6 +64,7 @@ from src.config import (
 from src.logging_store import log_decision
 from src import model_cache
 from src import rate_limit
+from src.model_call import bounded
 from src.metrics import MODEL_CALL_FAILURES
 from src.prompt_loader import load_prompt
 from src.schema import GeneratedResponse, Passage, Ticket
@@ -128,17 +129,18 @@ def _openrouter_call(system: str, user: str, seed: int = 0) -> str:
         timeout=MODEL_TIMEOUT_SECONDS,
         max_retries=MODEL_MAX_RETRIES,
     )
-    completion = rate_limit.guarded(lambda: client.chat.completions.create(
-        model=MODEL_NAME,
-        messages=[
-            {"role": "system", "content": system},
-            {"role": "user", "content": user},
-        ],
-        temperature=GENERATE_TEMPERATURE,
-        # Only where the provider accepts it; see config.accepts_seed.
-        **({"seed": seed} if accepts_seed(MODEL_BASE_URL) else {}),
-        response_format={"type": "json_object"},
-    ))
+    completion = rate_limit.guarded(lambda: bounded(
+        lambda: client.chat.completions.create(
+            model=MODEL_NAME,
+            messages=[
+                {"role": "system", "content": system},
+                {"role": "user", "content": user},
+            ],
+            temperature=GENERATE_TEMPERATURE,
+            # Only where the provider accepts it; see config.accepts_seed.
+            **({"seed": seed} if accepts_seed(MODEL_BASE_URL) else {}),
+            response_format={"type": "json_object"},
+        ), stage="generation"))
     usage.record("generation", MODEL_NAME, getattr(completion, "usage", None))
     # OpenRouter can answer 200 with choices=None when the upstream provider
     # errors. Subscripting that raised "TypeError: 'NoneType' object is not

@@ -1341,3 +1341,17 @@ def test_a_raising_guardrail_does_not_affect_the_others_running_beside_it(
     results = run_all(grounded_response, context, guardrails=[Exploding(), Fine()])
     assert [(r.name, r.passed, r.fail_safe) for r in results] == \
         [("exploder", False, True), ("fine", True, False)]
+
+
+def test_an_abandoned_judge_call_fails_safe(grounded_response, context, db):
+    """D-13: a guardrail whose judge call is abandoned at the deadline blocks
+    the draft rather than passing it (A7/A11)."""
+    from src.model_call import ModelCallTimeout
+
+    def timing_out(system, user, seed=0):
+        raise ModelCallTimeout("provider did not answer within 180s")
+
+    results = run_all(grounded_response, context, call_model=timing_out)
+    llm_backed = [r for r in results if r.name in
+                  {"pii", "grounding", "tone_scope", "answer_relevance"}]
+    assert llm_backed and all(not r.passed and r.fail_safe for r in llm_backed)

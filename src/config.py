@@ -113,15 +113,25 @@ EMBEDDING_MODEL: str = os.environ.get("EMBEDDING_MODEL", "all-MiniLM-L6-v2")
 # indefinitely. Found 2026-09-04 when a validation sweep hung for two hours at
 # ticket 40 of 80.
 #
-# A healthy call runs ~2s, so 60s is ~30x headroom while keeping the worst
-# case per call bounded at (1 + retries) * timeout.
+# A healthy call runs ~2s, so 60s is ~30x headroom. It does NOT bound the call:
+# httpx reads it as the maximum gap between bytes, and a provider that streams
+# keep-alive comments resets it indefinitely (D-13). MODEL_CALL_DEADLINE_SECONDS
+# is the actual bound.
 MODEL_TIMEOUT_SECONDS: float = float(os.environ.get("MODEL_TIMEOUT_SECONDS", "60.0"))
 # 5, not the SDK default of 2. The SDK already backs off exponentially with
 # jitter and honours Retry-After, but it starts at 0.5s and caps at 8s, so two
 # retries spend under 2 seconds before a ticket gives up — nothing against an
 # upstream 429 (Build Spec: "Rate limits are a design problem"). Five keeps the
-# worst case bounded for A9: (1 + retries) * MODEL_TIMEOUT_SECONDS.
+# retry chain inside the D-13 deadline, which is what bounds it for A9.
 MODEL_MAX_RETRIES: int = int(os.environ.get("MODEL_MAX_RETRIES", "5"))
+
+# The wall-clock bound on one provider call, enforced by the caller (D-13).
+# 180s is ~13x the slowest judge measured (nemotron-120b, 13.8s mean) and covers
+# the SDK's retry chain on a healthy provider; past it the call is abandoned and
+# the stage takes its A11 path. This is the only limit a provider cannot reset
+# by keeping the connection alive.
+MODEL_CALL_DEADLINE_SECONDS: float = float(
+    os.environ.get("MODEL_CALL_DEADLINE_SECONDS", "180.0"))
 
 # Storage paths
 _ROOT = Path(__file__).parent.parent

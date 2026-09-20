@@ -441,3 +441,15 @@ def test_same_input_same_seed_same_output(db):
         b.confidence,
         b.reasoning,
     )
+
+
+def test_an_abandoned_call_falls_back_rather_than_raising(db):
+    """D-13: past the deadline the call is abandoned; the ticket still gets a
+    classification, so the run continues (A9/A11)."""
+    from src.model_call import ModelCallTimeout
+
+    result = classify(_ticket(), call_model=_raiser(
+        ModelCallTimeout("provider did not answer within 180s")))
+    assert result.intent == "unknown"
+    assert result.confidence == 0.0
+    assert "did not answer" in (result.error or "")
