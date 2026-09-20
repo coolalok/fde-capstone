@@ -213,6 +213,21 @@ def process_ticket(raw: dict, *, skip_guardrails: bool = False, judge: bool = Fa
         row["trigger"] = decision.trigger
         row["reason"] = decision.reason
         row["bundle_present"] = decision.bundle is not None
+        # The bundle itself, not just that there was one (FR-11). A reviewer
+        # reading this file sees exactly what the human handling the
+        # escalation would receive: the passages already retrieved, what else
+        # the classifier considered, the draft (flagged when a check found a
+        # fault in it), and the rule that stopped the send. Without this the
+        # object was built for every escalation and discarded.
+        row["escalation_bundle"] = None if decision.bundle is None else {
+            "passages": [{"doc_id": p.doc_id, "title": p.title, "score": p.score,
+                          "text": p.text} for p in decision.bundle.passages],
+            "alternatives": [{"intent": a.intent, "confidence": a.confidence}
+                             for a in decision.bundle.alternatives],
+            "draft": decision.bundle.draft,
+            "draft_blocked": decision.bundle.draft_blocked,
+            "uncertainty": decision.bundle.uncertainty,
+        }
         # ── The response AFTER the guardrails ─────────────────────────────
         # What the customer actually receives. Today the guardrails only
         # permit or withhold — they never rewrite — so on the auto_respond

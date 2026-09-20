@@ -175,6 +175,7 @@ def test_ticket_returns_route_and_citations_on_the_happy_path(client):
     assert body["unknown"] is False
     assert body["escalation_bundle_present"] is False
     assert body["latency_seconds"] >= 0
+    assert body["escalation_bundle"] is None, "nothing to hand over when it is sent"
 
     # Customer-facing string must have the inline marker stripped.
     assert "[DOC-AUTH-001]" not in body["answer"]
@@ -238,3 +239,48 @@ def test_healthz_reports_503_when_a_check_fails(client, monkeypatch):
     assert body["checks"]["model_key_present"] is False
     # Other checks still report — the caller can see which one failed.
     assert body["checks"]["chroma_path_exists"] is True
+
+
+# ─── FR-11: the escalation bundle reaches the human ─────────────────
+
+
+def test_an_escalation_returns_the_bundle_the_human_needs(client, monkeypatch):
+    """FR-11. The bundle was built for every escalation and only its existence
+    reported; EV-D1 is that a bare forwarded ticket makes the agent re-search
+    what the retriever already found."""
+    from src import api as api_module
+    from src.schema import Alternative, EscalationBundle, Passage, Route
+
+    def escalating_route(ticket, classification, passages, response=None,
+                         guardrail_results=None, **_):
+        return Route(
+            decision="escalate",
+            reason="escalate: intent 'compliance_request' is on the never-auto-respond list",
+            trigger="never_auto_respond_intent",
+            threshold_applied=0.85,
+            bundle=EscalationBundle(
+                passages=[Passage(doc_id="DOC-SEC-003", score=0.71, text="Audit logs…",
+                                  title="Audit logging", category="security",
+                                  chunk_index=0, chunk_text="Audit logs…")],
+                alternatives=[Alternative(intent="account_access", confidence=0.2)],
+                draft="Here is what the retention policy says.",
+                draft_blocked=True,
+                uncertainty="intent is on the never-auto-respond list",
+            ),
+        )
+
+    monkeypatch.setattr(api_module, "route", escalating_route)
+    r = client.post("/ticket", json={"ticket_id": "TEST-ESC", "channel": "email",
+                                     "subject": "Retention", "body": "How long are logs kept?"})
+    assert r.status_code == 200
+    body = r.json()
+    assert body["decision"] == "escalate"
+    assert body["escalation_bundle_present"] is True
+
+    bundle = body["escalation_bundle"]
+    assert bundle["passages"] == [{"doc_id": "DOC-SEC-003", "title": "Audit logging",
+                                   "score": 0.71, "text": "Audit logs…"}]
+    assert bundle["alternatives"] == [{"intent": "account_access", "confidence": 0.2}]
+    assert bundle["draft"] == "Here is what the retention policy says."
+    assert bundle["draft_blocked"] is True, "the reviewer must be told not to send it as-is"
+    assert bundle["uncertainty"]

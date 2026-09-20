@@ -617,3 +617,33 @@ def test_stage_latency_is_none_for_runs_that_predate_it():
     from evaluation.harness import stage_latency
 
     assert stage_latency([{"ticket_id": "T1", "latency_seconds": 3.0}]) is None
+
+
+class FeatureRequestClient(FakeModelClient):
+    """Classifies as feature_request, which D-07 never auto-answers."""
+
+    def __call__(self, system: str, user: str, seed: int = 0) -> str:
+        if "classifier" in system:
+            return json.dumps({"intent": "feature_request", "urgency": "low",
+                               "confidence": 0.93, "alternatives": [],
+                               "reasoning": "asks for a new capability"})
+        return super().__call__(system, user, seed)
+
+
+def test_an_escalated_row_carries_the_bundle_not_just_a_flag(db, _no_retrieval):
+    """FR-11: results.jsonl must show what the human handling it receives."""
+    row = process_ticket(SMOKE_TICKETS[1], call_model=FeatureRequestClient())
+    assert row["decision"] == "escalate", "feature_request is on the D-07 policy list"
+    assert row["bundle_present"] is True
+    bundle = row["escalation_bundle"]
+    assert [p["doc_id"] for p in bundle["passages"]] == ["DOC-AUTH-001"]
+    assert bundle["passages"][0]["text"], "the passage text travels, not just its id"
+    assert bundle["draft"], "the draft travels even when it will not be sent"
+    assert bundle["uncertainty"], "the rule that stopped the send"
+    assert isinstance(bundle["draft_blocked"], bool)
+
+
+def test_a_sent_row_has_no_bundle(db, _no_retrieval):
+    row = process_ticket(SMOKE_TICKETS[0], call_model=FakeModelClient())
+    assert row["decision"] == "auto_respond"
+    assert row["bundle_present"] is False and row["escalation_bundle"] is None

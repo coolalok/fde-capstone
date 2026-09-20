@@ -156,6 +156,38 @@ class Citation(BaseModel):
     score: float
 
 
+class BundlePassage(BaseModel):
+    doc_id: str
+    title: str
+    score: float
+    text: str
+
+
+class BundleAlternative(BaseModel):
+    intent: str
+    confidence: float
+
+
+class Bundle(BaseModel):
+    """What the human handling an escalation receives (FR-11).
+
+    EV-D1: escalations arrive today as a bare forwarded ticket, so the agent
+    re-reads it and re-searches the documentation. EV-DATA-03 found 24.3% of
+    correct escalations have an answer in the help articles already. Returning
+    the bundle is what makes that saving real: until now it was built for every
+    escalation and only its existence was reported.
+    """
+
+    passages: list[BundlePassage] = Field(default_factory=list)
+    alternatives: list[BundleAlternative] = Field(default_factory=list)
+    draft: str = ""
+    draft_blocked: bool = Field(
+        default=False,
+        description="A check found a fault in this draft. Never send it as-is.")
+    uncertainty: str = Field(
+        default="", description="The rule that stopped the system answering.")
+
+
 class TicketResponse(BaseModel):
     """What the endpoint returns for one ticket.
 
@@ -177,6 +209,8 @@ class TicketResponse(BaseModel):
     unknown: bool = False
     guardrail_activations: list[str] = Field(default_factory=list)
     escalation_bundle_present: bool = False
+    escalation_bundle: Optional[Bundle] = Field(
+        default=None, description="Populated for escalate and block (FR-11).")
     latency_seconds: float
     run_id: str
 
@@ -276,6 +310,15 @@ def handle_ticket(request: TicketRequest) -> TicketResponse:
             unknown=response.unknown,
             guardrail_activations=[g.name for g in guardrail_results if not g.passed],
             escalation_bundle_present=r.bundle is not None,
+            escalation_bundle=None if r.bundle is None else Bundle(
+                passages=[BundlePassage(doc_id=p.doc_id, title=p.title, score=p.score,
+                                        text=p.text) for p in r.bundle.passages],
+                alternatives=[BundleAlternative(intent=a.intent, confidence=a.confidence)
+                              for a in r.bundle.alternatives],
+                draft=r.bundle.draft,
+                draft_blocked=r.bundle.draft_blocked,
+                uncertainty=r.bundle.uncertainty,
+            ),
             latency_seconds=round(elapsed, 3),
             run_id=current_run_id(),
         )
