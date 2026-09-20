@@ -1,12 +1,12 @@
 ---
 id: PR-GUARDRAIL-RELEVANCE-01
 component: guardrails
-version: 1.0
+version: 1.1
 purpose: Check that the drafted answer addresses the question the customer actually asked.
 requirement: FR-14, R-01
 model: gpt-4o-mini
 temperature: 0.0
-last_changed: 2026-09-13
+last_changed: 2026-09-20
 ---
 
 ## What this prompt is for (plain summary for readers new to the file)
@@ -45,6 +45,17 @@ for answerable tickets (min 0.315, median 0.558) and unanswerable ones
 (min 0.256, median 0.481) overlap almost entirely, so no threshold
 separates them. Similarity measures topical closeness, not whether a
 passage answers the question.
+
+**Provenance of the worked example (not sent to the model).** The first
+worked example below quotes this ticket text and the reply the system
+actually drafted for it. The text is not unique to the graded set: it
+appears verbatim as DEV-0493 (chat, no subject) and, with different
+subjects, as DEV-0214, DEV-0249 and DEV-0398, all labelled
+`unclear_request` / escalate / unanswerable, exactly as VAL-0002 is. The
+ticket id was removed from the model-facing text in v1.1 so no prompt
+names a ticket from the set the system is scored on; every other prompt
+in the library already carried none. The quoted reply is our own
+generator's output from the 13 Sep run, not dataset content.
 
 `PR-GENERATE-01` already warns about exactly this — "Groundedness is
 necessary but not sufficient; the answer must also address what was
@@ -147,8 +158,8 @@ Rules on the schema:
 
 These are real cases. Follow them.
 
-**IRRELEVANT — invented context.** This is VAL-0002, the case this
-guardrail was built for.
+**IRRELEVANT — invented context.** This is the case this guardrail was
+built for.
 Ticket: "Following up on my previous message. Any update?"
 Reply: "We're still investigating the issue with your logs not arriving
 at the external destination. It's possible the destination rejected the
@@ -255,6 +266,25 @@ choose a topic on the customer's behalf. Note this case must NOT be
 failed for the customer's English — only for the reply's fit.
 
 ## Changelog
+
+- v1.1 (2026-09-20) removed the ticket id `VAL-0002` from the worked
+  example in the model-facing text; the ticket text, reply, verdict and
+  reasoning are unchanged, and the id was a label the judge has no use
+  for. Reason: VAL-0002 is in the 80-ticket validation set the system is
+  reported against, and prompts should not carry material from the set
+  they are scored on. The same text exists as DEV-0493 in the development
+  set, so the example loses nothing.
+
+  Measured, not assumed, on the stored drafts of b21_local_80_20260919:
+  gpt-4o-mini gave identical verdicts on 20 of 20 drafts, and
+  qwen2.5-7b-ctx8k on 71 of 72. The one change is VAL-0024, which v1.0
+  blocked and v1.1 passes — reproduced three times per arm, so it is the
+  prompt and not sampling. A 7B judge is measurably sensitive to a token
+  that carries no meaning for the task; a capable judge is not. VAL-0024's
+  draft explains API key scopes for a read/write permission failure, which
+  reads as relevant, so v1.1's verdict is the better one; its label is also
+  contested (the same ticket text is DEV-0145, labelled auto_respond and
+  answerable).
 
 - v1.0 (2026-09-13) initial. Written after the 13 Sep gate run showed
   6 of 10 unanswerable tickets receiving confident automatic replies
