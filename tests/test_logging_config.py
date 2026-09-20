@@ -104,9 +104,15 @@ def test_library_modules_do_not_configure_logging():
             for node in ast.walk(tree)
         )
 
+    # Exempt: modules that ARE entry points. index_docs.py and api.py both
+    # have a main() and are run as `python -m src.<mod>`. api.py earns it
+    # twice over — it calls configure_logging() inside the FastAPI lifespan
+    # hook, so importing the module (as these tests do) configures nothing;
+    # only starting the service does.
+    entry_points = {"logging_config.py", "index_docs.py", "api.py"}
     offenders = [
         p.name
         for p in pathlib.Path("src").glob("*.py")
-        if p.name not in {"logging_config.py", "index_docs.py"} and _calls_it(p)
+        if p.name not in entry_points and _calls_it(p)
     ]
     assert not offenders, f"library modules calling configure_logging(): {offenders}"

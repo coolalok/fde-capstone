@@ -763,7 +763,7 @@ def test_pii_pr_guardrail_pii_01_t02_fixture_blocks(context):
     assert "billing@cloudserve.example.com" in texts
 
 
-# ─── Tone/scope guardrail (5th, implicit per architecture.md §6) ────
+# ─── Tone/scope guardrail (5th, implicit per architecture.md §5) ────
 
 
 def test_tonescope_happy_path(grounded_response, context):
