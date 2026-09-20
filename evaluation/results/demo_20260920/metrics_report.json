@@ -1,0 +1,83 @@
+{
+  "run_id": "harness-20260920T164234Z-d453a078",
+  "model_name": "gpt-4o-mini",
+  "guardrail_model": "gpt-4o",
+  "confidence_threshold": 0.85,
+  "guardrails_enabled": true,
+  "labels_available": false,
+  "counts": {
+    "tickets_processed": 4,
+    "auto_respond": 1,
+    "escalate": 2,
+    "block": 1,
+    "degraded": 0,
+    "generator_unknown": 1,
+    "empty_retrieval": 1
+  },
+  "business_metrics": {
+    "fcr_proxy": 0.25,
+    "fcr_correct_proxy": null,
+    "escalation_rate": 0.75,
+    "repeat_contact_proxy": 0.25,
+    "ttr_seconds_median": 0.108
+  },
+  "technical_metrics": {
+    "latency_p50_seconds": 0.108,
+    "latency_p95_seconds": 0.922,
+    "latency_max_seconds": 0.922,
+    "classifier_failures": 0,
+    "generator_failures": 0,
+    "stage_latency": null
+  },
+  "governance_metrics": {
+    "decisions_logged": 4,
+    "reconciles": true,
+    "missing_from_log": [],
+    "extra_in_log": [],
+    "guardrail_activations": {
+      "grounding": 1,
+      "answer_relevance": 1,
+      "confidence_floor": 1
+    },
+    "guardrail_fail_safe_blocks": {},
+    "pii_detections": 0,
+    "kill_switch_active": false,
+    "injection_suspected": 1
+  },
+  "cost_metrics": {
+    "model_cache_enabled": true,
+    "calls": 14,
+    "live_calls": 0,
+    "cached_calls": 14,
+    "calls_without_usage": 0,
+    "prompt_tokens": 0,
+    "completion_tokens": 0,
+    "cost_usd": 0,
+    "unpriced_calls": 0,
+    "cached_prompt_tokens": 24389,
+    "cached_completion_tokens": 1193,
+    "cached_calls_without_counts": 0,
+    "cost_saved_usd": 0.038592,
+    "by_stage": {
+      "classification": {
+        "calls": 4,
+        "cached_calls": 4,
+        "prompt_tokens": 0,
+        "completion_tokens": 0
+      },
+      "generation": {
+        "calls": 4,
+        "cached_calls": 4,
+        "prompt_tokens": 0,
+        "completion_tokens": 0
+      },
+      "guardrail": {
+        "calls": 6,
+        "cached_calls": 6,
+        "prompt_tokens": 0,
+        "completion_tokens": 0
+      }
+    }
+  },
+  "wall_clock_seconds": 1.2
+}

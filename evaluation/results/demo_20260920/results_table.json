@@ -1,0 +1,149 @@
+{
+  "header": {
+    "run_id": "harness-20260920T164234Z-d453a078",
+    "run_date": "2026-09-20",
+    "tickets": 4,
+    "generator_model": "gpt-4o-mini",
+    "guardrail_model": "gpt-4o",
+    "guardrails_enabled": true,
+    "confidence_threshold": 0.85,
+    "model_cache_enabled": true,
+    "cached_calls": 14,
+    "live_calls": 0,
+    "tickets_with_replayed_calls": 4,
+    "code_version": "a288388",
+    "hidden_set_runs": 0,
+    "kill_switch_active": false
+  },
+  "rows": [
+    {
+      "measure": "First contact resolution",
+      "baseline": "42%",
+      "target": "60%",
+      "achieved": "25.0% auto-sent",
+      "confidence": "95% CI 5-70% (n=4)",
+      "notes": "No labels in the input, so a sent reply cannot be checked as a correct resolution; this is the auto-send rate only.",
+      "status": "NOT MET"
+    },
+    {
+      "measure": "Mean time to first reply",
+      "baseline": "8 to 12 hrs",
+      "target": "< 5 min",
+      "achieved": "0.9 s",
+      "confidence": "n=1 auto-sent tickets; median 0.9 s; 1 partly replayed from the model cache (faster than live)",
+      "notes": "Harness time from ticket read to reply ready; excludes queueing and delivery. The 3 escalated or blocked tickets get no automated reply (holding reply is out of scope, PRD Table 6), so their first reply comes from the human queue.",
+      "status": "MET"
+    },
+    {
+      "measure": "Satisfaction proxy",
+      "baseline": "3.2 / 5",
+      "target": "4.0",
+      "achieved": "Not measured",
+      "confidence": "No scored sample on this run",
+      "notes": "The Framework's method is human review of a stated sample of responses against a rubric, reporting sample size, rubric and scorers. Not done for this run. Nearest evidence: B-18, where one person scored 50 drafts from b21_openai_80_20260914 on the judge's RAG rubric (mean answer relevance 4.86/5) \u2014 a different rubric, a different run and a single scorer, so not a satisfaction proxy.",
+      "status": "NOT MEASURED"
+    },
+    {
+      "measure": "Escalation rate",
+      "baseline": "58%",
+      "target": "\u2264 30%",
+      "achieved": "75.0%",
+      "confidence": "95% CI 30-95% (n=4)",
+      "notes": "2 escalated by routing and 1 blocked by a guardrail; 0 tickets were blocked because a check could not run (fail-safe), not because it found a fault.",
+      "status": "NOT MET"
+    },
+    {
+      "measure": "Classification precision",
+      "baseline": "\u2014",
+      "target": "85%",
+      "achieved": "Not measured",
+      "confidence": "No labels",
+      "notes": "Needs labels.intent in the input.",
+      "status": "NOT MEASURED"
+    },
+    {
+      "measure": "Hallucination rate",
+      "baseline": "\u2014",
+      "target": "\u2264 5%",
+      "achieved": "Not measured to method",
+      "confidence": "\u2014",
+      "notes": "The Framework requires at least fifty responses assessed independently by two people, with their agreement reported. This project had one human assessor. Nearest evidence (B-18, drafts from b21_openai_80_20260914): one human found an unsupported claim in 1 of 50 drafts; the LLM judge in 5 of 50; the judge failed calibration (pooled Spearman 0.3492 against 0.70).",
+      "status": "NOT MEASURED"
+    },
+    {
+      "measure": "Citation accuracy",
+      "baseline": "\u2014",
+      "target": "95%",
+      "achieved": "Not measured to method",
+      "confidence": "\u2014",
+      "notes": "The Framework checks each citation against the sentence it is attached to. Sentence-level support was not assessed.",
+      "status": "NOT MEASURED"
+    },
+    {
+      "measure": "Latency p95",
+      "baseline": "\u2014",
+      "target": "< 3 s",
+      "achieved": "Not measured",
+      "confidence": "No live tickets",
+      "notes": "Every ticket was replayed from the model cache.",
+      "status": "NOT MEASURED"
+    },
+    {
+      "measure": "Private data occurrences",
+      "baseline": "\u2014",
+      "target": "0",
+      "achieved": "0",
+      "confidence": "Automated scan of all 1 sent replies; manual sample review: not done",
+      "notes": "The scan uses the PII guardrail's own patterns (email, API key, phone, account number), independently of the judge's verdict. The guardrail blocked 0 drafts for private data before sending.",
+      "status": "MET"
+    },
+    {
+      "measure": "Cross-group variation",
+      "baseline": "\u2014",
+      "target": "< 5 pts",
+      "achieved": "Not measured",
+      "confidence": "No labels",
+      "notes": "Needs labels.* in the input.",
+      "status": "NOT MEASURED"
+    }
+  ],
+  "governance": [
+    {
+      "condition": "Private data in outbound text",
+      "requirement": "Zero occurrences.",
+      "result": "0 (Automated scan of all 1 sent replies; manual sample review: not done)",
+      "status": "MET"
+    },
+    {
+      "condition": "Quality across customer groups",
+      "requirement": "Under five percentage points of variation.",
+      "result": "Not measured (No labels)",
+      "status": "NOT MEASURED"
+    },
+    {
+      "condition": "Decision logging",
+      "requirement": "Complete coverage.",
+      "result": "4 of 4 tickets logged; reconciles=True",
+      "status": "MET"
+    },
+    {
+      "condition": "Confidence calibration",
+      "requirement": "Stated confidence within five points of observed accuracy.",
+      "result": "No confidence band with enough tickets",
+      "status": "NOT MEASURED"
+    }
+  ],
+  "business": [
+    "1 of 4 tickets (25.0%) were answered without a human; 3 (75.0%) went to the human queue (baseline escalation 58%)."
+  ],
+  "routing": null,
+  "failures": null,
+  "stages": null,
+  "limitations": [
+    "A single run of 4 tickets: one ticket moves a rate by 25.0 points, and 95% intervals are wide.",
+    "4 tickets were partly replayed from the model cache (D-08), so they describe the run that filled it.",
+    "Not measured to the Framework's method: Satisfaction proxy, Classification precision, Hallucination rate, Citation accuracy, Latency p95, Cross-group variation.",
+    "Correctness is agreement with the dataset's labels, some of which are debatable (e.g. VAL-0004 is labelled unanswerable although DOC-AUTH-002 covers it).",
+    "Hidden evaluation set runs: 0. These figures are from a labelled validation set, not the held-out test set."
+  ]
+}
