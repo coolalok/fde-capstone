@@ -18,6 +18,9 @@ jobs:
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
+          # CPU-only torch first: the default Linux wheel pulls the CUDA
+          # stack (several GB) and the runner runs out of disk.
+          python -m pip install torch --index-url https://download.pytorch.org/whl/cpu
           python -m pip install -r requirements.txt
 
       - name: Lint
