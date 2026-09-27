@@ -108,8 +108,36 @@ NEVER_AUTO_RESPOND: frozenset[str] = frozenset(
 # `escalate` — which is what FR-10 and FR-19 both say it should be.
 COVERAGE_GUARDRAILS: frozenset[str] = frozenset({"confidence_floor"})
 
+# Guardrails whose SUBSTANTIVE verdict is advisory: recorded and logged, but not
+# on its own a reason to withhold a reply. A fail-safe result from one still
+# blocks, because that says the check could not run, not that the draft is fine.
+#
+# answer_relevance is here on measurement, not preference. Its judge scored
+# Spearman 0.046 against the human scorer over 50 items — the worst of the three
+# RAG dimensions, inside a judge the project marks "trusted": false
+# (evaluation/results/judge_calibration_20260917/agreement.json). Replaying the
+# 80-ticket local run with its verdicts ignored recovered 2 correct sends and
+# added 0 wrong ones (send precision 0.7143 -> 0.7231, correct FCR 0.5625 ->
+# 0.5875): every reply it held on that run was one that should have gone out
+# (evaluation/results/dev_local_80_20260923, replayed by
+# evaluation.guardrail_counterfactual's pii_and_no_relevance config).
+#
+# A7 is unaffected: pii, grounding, instruction_integrity and tone_scope still
+# block, and a relevance judge outage still holds the ticket.
+ADVISORY_GUARDRAILS: frozenset[str] = frozenset({"answer_relevance"})
+
 # How many classifier alternatives travel in the bundle. FR-11 says top-3.
 _BUNDLE_ALTERNATIVES = 3
+
+
+def _is_advisory(g: GuardrailResult) -> bool:
+    """True when this failure is advisory and must not block on its own.
+
+    Only a substantive verdict is advisory. ``fail_safe`` means the judge
+    errored or broke its output contract, which is an outage, so it still
+    blocks exactly as it did before.
+    """
+    return g.name in ADVISORY_GUARDRAILS and not g.fail_safe
 
 
 def _safety_failures(results: list[GuardrailResult]) -> list[GuardrailResult]:
@@ -117,7 +145,10 @@ def _safety_failures(results: list[GuardrailResult]) -> list[GuardrailResult]:
     return [
         g
         for g in results
-        if g.blocking and not g.passed and g.name not in COVERAGE_GUARDRAILS
+        if g.blocking
+        and not g.passed
+        and g.name not in COVERAGE_GUARDRAILS
+        and not _is_advisory(g)
     ]
 
 

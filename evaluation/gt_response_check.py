@@ -292,7 +292,7 @@ def citation_precision_recall(
 
 
 def answer_correctness(n_present: int, n_missing: int, n_prohibited: int,
-                       similarity: float | None) -> float:
+                       similarity: float | None) -> float | None:
     """RAGAS answer correctness: 0.75 * F1 + 0.25 * semantic similarity.
 
     F1 = TP / (TP + 0.5 * (FP + FN)) with
@@ -303,10 +303,20 @@ def answer_correctness(n_present: int, n_missing: int, n_prohibited: int,
     When the ticket asserts no facts either way (TP+FP+FN == 0) the factual
     term is undefined rather than zero — F1 falls back to the similarity so a
     ticket is not scored 0.75-down for having nothing to check.
+
+    With no similarity either (a boilerplate reference, whose similarity is
+    deliberately None) there is nothing to score at all, so the result is None
+    and ``_mean`` leaves it out. Returning 0.0 here contradicted the paragraph
+    above and was not harmless: all 79 boilerplate-reference tickets have an
+    empty must_mention, so every one of them scored a spurious 0.0 and dragged
+    ``answer_correctness_mean_all_tickets`` to 0.392 against a correct 0.637 on
+    evaluation/results/gt_local_20260923. The headline
+    ``answer_correctness_mean`` was never affected — it averages the
+    specific-reference tickets only.
     """
     denom = n_present + 0.5 * (n_prohibited + n_missing)
     if denom == 0:
-        return round(similarity, 4) if similarity is not None else 0.0
+        return round(similarity, 4) if similarity is not None else None
     f1 = n_present / denom
     if similarity is None:
         return round(f1, 4)

@@ -15,9 +15,12 @@ It processes incoming support tickets from four channels (email, live chat, docs
 
 ## Quick start
 
+Requires **Python 3.11** (the version CI runs). The pinned `numpy` and `pandas`
+have no wheels for 3.12 or later, so `pip install` fails there.
+
 ```bash
-# 1. Create and activate a virtual environment
-python3 -m venv .venv
+# 1. Create and activate a virtual environment (Python 3.11)
+python3.11 -m venv .venv
 source .venv/bin/activate      # macOS/Linux
 # .venv\Scripts\activate       # Windows
 
@@ -57,6 +60,55 @@ The graded artefact is `evaluation/results/<run>/metrics_report.json` produced
 by step 6. The API in step 8 wraps the same pipeline for demonstration and
 Prometheus monitoring; it is not the assessed interface (Build Spec §04
 labels its launch command *illustrative rather than prescriptive*).
+
+### On Windows
+
+The Python commands (steps 2, 4, 5, 7 and `python -m src.api`) are the same.
+The rest of the block above is bash. In PowerShell, use these instead:
+
+```powershell
+# 1. Python 3.11 through the py launcher
+py -3.11 -m venv .venv
+.venv\Scripts\Activate.ps1
+# If activation is blocked: Set-ExecutionPolicy -Scope Process Bypass
+
+# 3.
+Copy-Item .env.example .env
+
+# 6. One line; PowerShell does not continue lines with \
+python -m evaluation.harness --input data/validation_tickets.json --output "evaluation/results/run_$(Get-Date -Format yyyyMMdd)"
+
+# 8. In Windows PowerShell, curl is Invoke-WebRequest and does not take these flags
+Invoke-RestMethod http://127.0.0.1:8000/healthz
+Invoke-RestMethod -Method Post http://127.0.0.1:8000/ticket -ContentType "application/json" `
+    -Body '{"ticket_id":"DEMO-1","channel":"email","body":"How do I revert to the previous release?"}'
+curl.exe -s http://127.0.0.1:8000/metrics | Select-Object -First 20
+```
+
+In Git Bash the block above works as written, with two changes: `py -3.11`
+in place of `python3.11`, and `source .venv/Scripts/activate`. `jq` is not
+included with Git Bash; drop `| jq` or install it.
+
+### Processing order (D-17)
+
+The harness works high-urgency tickets first. It classifies every ticket, orders
+the queue by that rating, then runs the rest of the pipeline — so an interrupted
+run, an exhausted free-tier quota or a `--limit` slice has spent its calls on the
+tickets that matter most. Phase 2 reuses phase 1's result, so this costs no extra
+model calls, and a run that completes reports the same figures it would have in
+any order.
+
+`--limit N` still takes the first N tickets in file order and prioritises within
+them; it does not find the N most urgent tickets in the file.
+
+Every run committed under `evaluation/results/` predates this and was produced in
+file order. To reproduce one, add `--no-prioritize`:
+
+```
+python -m evaluation.harness --no-prioritize \
+    --input data/validation_tickets.json \
+    --output evaluation/results/run_$(date +%Y%m%d)
+```
 
 ## Demo: four tickets, four behaviours
 

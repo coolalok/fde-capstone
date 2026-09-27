@@ -31,6 +31,14 @@ Design decisions worth reading:
 - **Every ticket is wrapped.** A single ticket that raises anywhere must not end
   the run (FR-23). The failure is recorded, the ticket is force-escalated, and
   processing continues. Exit code stays 0 — a degraded run is a completed run.
+
+- **High-urgency tickets are worked first (D-17).** The run is two-phase:
+  classify everything, order the queue by the classifier's own urgency rating,
+  then run the rest of the pipeline reusing phase 1's result. Order cannot
+  change a completed run's figures — tickets are independent — so this is
+  entirely about what a run that does NOT finish has spent its quota on.
+  `--no-prioritize` restores file order, which is what every committed run
+  under evaluation/results/ was produced with.
 """
 from __future__ import annotations
 
@@ -42,7 +50,7 @@ import time
 import traceback
 from collections import Counter
 from pathlib import Path
-from typing import Any, Optional
+from typing import Any, NamedTuple, Optional
 
 from evaluation.gt_response_check import citation_precision_recall
 from evaluation.judge import DIMENSIONS as JUDGE_DIMENSIONS
@@ -60,18 +68,112 @@ from src.logging_store import new_run_id, reconcile, set_run_id
 from src.metrics import LATENCY, TICKETS, start_metrics_server
 from src.retrieve import retrieval_query, retrieve, warm
 from src.route import AUTO_RESPOND, BLOCK, ESCALATE, route
-from src.schema import GuardrailContext, Route
+from src.schema import ClassificationResult, GuardrailContext, Route
 
 import logging
 
 logger = logging.getLogger(__name__)
 
 
+# ─── urgency prioritisation (D-17) ───────────────────────────────────
+#
+# High-urgency tickets are worked first, so an interrupted run has spent its
+# provider quota on the tickets that matter most. A run that completes is
+# unaffected: tickets are processed independently, so the metrics report is
+# identical in any order. What changes is which tickets a PARTIAL run covers —
+# a killed run, an exhausted free-tier quota, or a --limit slice.
+#
+# Urgency is the classifier's own rating (PR-CLASSIFY-01), not labels.urgency:
+# the hidden evaluation set may carry no labels, and shaping a run with
+# ground truth is the governance line this project holds everywhere else.
+# That means classification must happen before the ordering is known, so the
+# run is two-phase and phase 2 reuses phase 1's result rather than paying for
+# it twice.
+
+URGENCY_RANK: dict[str, int] = {"high": 0, "medium": 1, "low": 2}
+
+
+class PriorClassification(NamedTuple):
+    """One ticket's phase-1 classification, carried into phase 2.
+
+    Timing and token usage travel with the result because process_ticket
+    measures both and would otherwise under-report each by one model call:
+    ``seconds`` restores stage_seconds["classification"] and the row's
+    end-to-end latency, ``calls`` restores the ticket's share of the run's
+    token spend, which process_ticket's opening usage.drain() would discard.
+    """
+
+    result: ClassificationResult
+    seconds: float
+    calls: list[dict[str, Any]]
+
+
+def classify_all(
+    tickets: list[dict], *, call_model: Optional[Any] = None,
+    progress: Optional[Any] = None,
+) -> dict[str, PriorClassification]:
+    """Phase 1: classify every ticket, keyed by ticket_id. Never raises.
+
+    classify() already returns an unknown-fallback rather than raising (A11),
+    but the surrounding work — ingest, timing, usage — is wrapped too, so one
+    unusable record cannot end the run before a single row is written (FR-23).
+    A ticket that fails here is ranked ``medium`` by the fallback and is
+    classified again in phase 2, which is the behaviour it would have had
+    without prioritisation.
+    """
+    prior: dict[str, PriorClassification] = {}
+    for i, raw in enumerate(tickets, 1):
+        ticket_id = str(raw.get("ticket_id", ""))
+        usage.drain()  # calls made outside a ticket are not this ticket's
+        t0 = time.perf_counter()
+        try:
+            result = classify(normalise_any(raw), call_model=call_model)
+        except Exception as exc:  # noqa: BLE001 - FR-23
+            logger.error(
+                "harness.prepass_degraded",
+                extra={"ticket_id": ticket_id, "error": str(exc),
+                       "error_type": type(exc).__name__},
+            )
+            continue
+        prior[ticket_id] = PriorClassification(
+            result=result,
+            seconds=round(time.perf_counter() - t0, 3),
+            calls=usage.drain(),
+        )
+        if progress is not None:
+            progress(i, len(tickets))
+    return prior
+
+
+def prioritise(
+    tickets: list[dict], prior: dict[str, PriorClassification]
+) -> list[dict]:
+    """Order tickets high urgency first. Stable: file order within a band.
+
+    A ticket phase 1 could not classify keeps ``medium``, the same rank the
+    unknown-fallback carries, so a pre-pass failure cannot push a ticket to
+    the front or the back of the queue on the strength of having failed.
+    """
+    def rank(raw: dict) -> int:
+        entry = prior.get(str(raw.get("ticket_id", "")))
+        urgency = entry.result.urgency if entry else "medium"
+        return URGENCY_RANK.get(urgency, URGENCY_RANK["medium"])
+
+    return sorted(tickets, key=rank)
+
+
 def process_ticket(raw: dict, *, skip_guardrails: bool = False, judge: bool = False,
-                   call_model: Optional[Any] = None) -> dict:
+                   call_model: Optional[Any] = None,
+                   prior: Optional[PriorClassification] = None) -> dict:
     """Run one ticket through the whole pipeline. Never raises.
 
     Returns the per-ticket result row (FR-21: one output row per ticket).
+
+    ``prior`` is this ticket's phase-1 classification when the run is
+    prioritised by urgency (D-17). Given one, the classifier is not called
+    again: its result, its stage timing and its token usage are read from the
+    pre-pass instead, so a prioritised run costs exactly what an unprioritised
+    one costs and produces the same row. None means classify here, as before.
 
     ``call_model`` is threaded to every stage that talks to the provider, so
     tests/test_harness_smoke.py can exercise the real pipeline with a fake
@@ -124,9 +226,13 @@ def process_ticket(raw: dict, *, skip_guardrails: bool = False, judge: bool = Fa
             },
         }
 
-        t0 = time.perf_counter()
-        classification = classify(ticket, call_model=call_model)
-        stage_seconds["classification"] = round(time.perf_counter() - t0, 3)
+        if prior is None:
+            t0 = time.perf_counter()
+            classification = classify(ticket, call_model=call_model)
+            stage_seconds["classification"] = round(time.perf_counter() - t0, 3)
+        else:
+            classification = prior.result
+            stage_seconds["classification"] = prior.seconds
         row["intent"] = classification.intent
         row["urgency"] = classification.urgency
         row["confidence"] = classification.confidence
@@ -296,9 +402,13 @@ def process_ticket(raw: dict, *, skip_guardrails: bool = False, judge: bool = Fa
                         "withheld_by": [], "modified_from_draft": False,
                         "withheld_reason": f"degraded: {type(exc).__name__}"})
 
-    calls = usage.drain()
+    # The pre-pass classification's calls and seconds belong to this ticket:
+    # they were spent on it, just earlier. Without them a prioritised run would
+    # report a lower cost and a faster p95 than the same work unprioritised.
+    calls = (prior.calls if prior else []) + usage.drain()
     row["usage"] = {**usage.summarise(calls), "per_call": calls}
-    row["latency_seconds"] = round(time.perf_counter() - started, 3)
+    row["latency_seconds"] = round(
+        time.perf_counter() - started + (prior.seconds if prior else 0.0), 3)
     # Live counters for the Setup Guide §06 dashboard: tickets by channel and
     # outcome, and end-to-end latency. The same figures are recomputed from the
     # rows for metrics_report.json (A10); these exist to be watchable DURING a
@@ -318,6 +428,22 @@ def process_ticket(raw: dict, *, skip_guardrails: bool = False, judge: bool = Fa
 # max-gap figure, which would otherwise be driven by a single ticket.
 MIN_CALIBRATION_BUCKET_N = 5
 
+# Intents the classifier returns when it is DECLINING to classify rather than
+# estimating a probability. Paired with a stated confidence of exactly 0.0 they
+# are an abstention marker, not a calibrated belief, so they are not a
+# calibration data point — the same reasoning the loop below already applies to
+# classifier fallbacks.
+#
+# Measured on evaluation/results/dev_local_410_20260924: 11 tickets came back
+# unclear_request at confidence 0.0, none of them a classifier error, and all 11
+# gold labels were unclear_request — so bucket 0.0-0.1 read stated 0.00 against
+# observed 1.00 and reported a +100.0 pt "gap" as the run's worst. That drove the
+# tier-three calibration condition to NOT MET while the two bands carrying 399 of
+# the 410 tickets sat inside tolerance at -3.7 and -5.7 pts. Comparing an
+# abstention token to an accuracy rate is a category error, not a finding.
+ABSTENTION_INTENTS: frozenset[str] = frozenset({"unclear_request", "unknown"})
+ABSTENTION_CONFIDENCE = 0.0
+
 # A judged draft with any dimension below this is listed for a human to read.
 # 4 is the rubric's "minor issue"; below it the rubric describes a material one.
 JUDGE_FLAG_BELOW = 4
@@ -325,6 +451,19 @@ JUDGE_FLAG_BELOW = 4
 
 def _pct(n: int, d: int) -> float:
     return round(n / d, 4) if d else 0.0
+
+
+def _defined_pct(n: int, d: int) -> Optional[float]:
+    """A rate that does not exist when its denominator is empty: 0/0 is None.
+
+    Distinct from ``_pct``, whose empty denominator means "no tickets were in
+    scope" and whose denominator is reported beside the figure. Here 0/0 means
+    the quantity is undefined for this class or group — a class that was never
+    predicted has no precision — and printing that as 0.0 both hides the gap
+    and drags a measured mean down, the same artifact MIN_CALIBRATION_BUCKET_N
+    guards against in the calibration buckets.
+    """
+    return round(n / d, 4) if d else None
 
 
 def _intent_precision_recall(rows: list[dict], truth: dict[str, dict]) -> dict:
@@ -345,10 +484,68 @@ def _intent_precision_recall(rows: list[dict], truth: dict[str, dict]) -> dict:
     return {
         cls: {
             "support": c["tp"] + c["fn"],
-            "precision": _pct(c["tp"], c["tp"] + c["fp"]),
-            "recall": _pct(c["tp"], c["tp"] + c["fn"]),
+            # The PRECISION denominator: how often the class was predicted.
+            # ``support`` is the recall denominator, so the two are not
+            # interchangeable and a figure must be printed with its own n.
+            "predicted": c["tp"] + c["fp"],
+            "precision": _defined_pct(c["tp"], c["tp"] + c["fp"]),
+            "recall": _defined_pct(c["tp"], c["tp"] + c["fn"]),
         }
         for cls, c in sorted(per.items())
+    }
+
+
+def _intent_confusion(rows: list[dict], truth: dict[str, dict]) -> dict[str, dict[str, int]]:
+    """Intent confusion matrix, keyed gold -> predicted. Labels required.
+
+    Evaluation Framework, "Intent classification precision and recall": report
+    both per class and include the confusion matrix. The per-class figures say
+    how often a class is wrong; the matrix says what it is mistaken for, which
+    is what a prompt revision acts on.
+    """
+    confusion: dict[str, Counter] = {}
+    for r in rows:
+        gold = truth.get(r["ticket_id"], {}).get("intent")
+        pred = r.get("intent")
+        if gold is None or pred is None:
+            continue
+        confusion.setdefault(gold, Counter())[pred] += 1
+    return {gold: dict(sorted(c.items())) for gold, c in sorted(confusion.items())}
+
+
+def _urgency_accuracy(rows: list[dict], truth: dict[str, dict]) -> dict:
+    """Predicted urgency against labels.urgency. Labels required.
+
+    Urgency has been predicted on every ticket since the classifier was built
+    and scored on none of them, which made D-17's ordering an unverifiable
+    claim: a queue sorted on an unmeasured rating is sorted on nothing in
+    particular. It also gives PR-CLASSIFY-01's deferred `received_at` question
+    (line 135, "revisit if B-21 surfaces urgency calibration as the weak
+    point") the instrument it was waiting on.
+
+    ``confusion`` is keyed gold -> predicted. The asymmetry is what matters for
+    D-17, not the headline accuracy: a high ticket called low is worked late,
+    which is the failure prioritisation exists to prevent, while a low ticket
+    called high only costs a place in the queue.
+    """
+    confusion: dict[str, Counter] = {}
+    correct = 0
+    n = 0
+    for r in rows:
+        gold = truth.get(r["ticket_id"], {}).get("urgency")
+        pred = r.get("urgency")
+        if gold is None or pred is None:
+            continue
+        n += 1
+        correct += pred == gold
+        confusion.setdefault(gold, Counter())[pred] += 1
+    return {
+        "n": n,
+        "accuracy": _defined_pct(correct, n),
+        "high_recall": _defined_pct(confusion.get("high", Counter())["high"],
+                                    sum(confusion.get("high", Counter()).values())),
+        "high_called_low": confusion.get("high", Counter())["low"],
+        "confusion": {gold: dict(sorted(c.items())) for gold, c in sorted(confusion.items())},
     }
 
 
@@ -691,6 +888,7 @@ def build_metrics(rows: list[dict], truth: dict[str, dict], *,
         buckets: list[list[float]] = [[] for _ in range(10)]
         correct = [0] * 10
         skipped_fallbacks = 0
+        skipped_abstentions = 0
         brier_terms: list[float] = []
         for r in rows:
             gold = truth.get(r["ticket_id"], {}).get("intent")
@@ -702,6 +900,11 @@ def build_metrics(rows: list[dict], truth: dict[str, dict], *,
             # packs bucket 0 with non-observations and flatters the result.
             if r.get("classifier_error"):
                 skipped_fallbacks += 1
+                continue
+            # An abstention is a refusal to classify, not a probability of being
+            # right. See ABSTENTION_INTENTS. Counted and reported, not hidden.
+            if conf == ABSTENTION_CONFIDENCE and pred in ABSTENTION_INTENTS:
+                skipped_abstentions += 1
                 continue
             b = min(9, int(conf * 10))
             buckets[b].append(conf)
@@ -729,6 +932,7 @@ def build_metrics(rows: list[dict], truth: dict[str, dict], *,
             })
         metrics["governance_metrics"]["confidence_calibration"] = calibration
         metrics["governance_metrics"]["calibration_fallbacks_excluded"] = skipped_fallbacks
+        metrics["governance_metrics"]["calibration_abstentions_excluded"] = skipped_abstentions
         metrics["governance_metrics"]["max_calibration_gap_pp"] = max(
             (abs(c["gap_pp"]) for c in calibration if c["sufficient_n"]), default=None)
         metrics["governance_metrics"]["calibration_min_bucket_n"] = MIN_CALIBRATION_BUCKET_N
@@ -748,7 +952,7 @@ def build_metrics(rows: list[dict], truth: dict[str, dict], *,
             if set(r.get("retrieved_doc_ids", [])[:3])
             & set(truth[r["ticket_id"]].get("expected_doc_ids", []))
         )
-        metrics["technical_metrics"]["retrieval_hit_at_3"] = _pct(hits, len(answerable))
+        metrics["technical_metrics"]["retrieval_hit_at_3"] = _defined_pct(hits, len(answerable))
         metrics["technical_metrics"]["retrieval_answerable_n"] = len(answerable)
         # Same definition as evaluation/retrieval_eval.py, on the chunks this run retrieved.
         metrics["technical_metrics"]["retrieval_recall_at_k"] = {
@@ -763,7 +967,9 @@ def build_metrics(rows: list[dict], truth: dict[str, dict], *,
         metrics["technical_metrics"]["citation_accuracy"] = _citation_accuracy(rows, truth)
         metrics["technical_metrics"]["citation_accuracy_sent"] = _citation_accuracy(
             [r for r in rows if r.get("decision") == AUTO_RESPOND], truth)
+        metrics["technical_metrics"]["urgency_accuracy"] = _urgency_accuracy(rows, truth)
         metrics["technical_metrics"]["intent_per_class"] = _intent_precision_recall(rows, truth)
+        metrics["technical_metrics"]["intent_confusion"] = _intent_confusion(rows, truth)
         metrics["technical_metrics"]["intent_accuracy"] = _pct(
             sum(1 for r in rows
                 if r.get("intent") == truth.get(r["ticket_id"], {}).get("intent")), n)
@@ -787,6 +993,12 @@ def main(argv: Optional[list[str]] = None) -> int:
     # untrusted, so a graded run should not depend on it.
     parser.add_argument("--judge", action="store_true",
                         help="score each draft with PR-EVAL-JUDGE-01 (review flags only)")
+    # On by default (D-17). A partial run should have spent its quota on the
+    # urgent tickets; --no-prioritize restores plain file order, which is what
+    # every committed run under evaluation/results/ was produced with.
+    parser.add_argument("--no-prioritize", dest="prioritize", action="store_false",
+                        help="process tickets in file order instead of highest "
+                             "urgency first (D-17)")
     parser.add_argument("--metrics-port", type=int, default=METRICS_PORT,
                         help="serve Prometheus metrics on this port during the run "
                              "(0 = off; or set METRICS_PORT)")
@@ -796,7 +1008,7 @@ def main(argv: Optional[list[str]] = None) -> int:
     input_path, output_dir = Path(args.input), Path(args.output)
     output_dir.mkdir(parents=True, exist_ok=True)
 
-    tickets = json.loads(input_path.read_text())
+    tickets = json.loads(input_path.read_text(encoding="utf-8"))
     if args.limit:
         tickets = tickets[: args.limit]
     # Ground truth is read here, from the raw file — never through the Ticket.
@@ -817,7 +1029,8 @@ def main(argv: Optional[list[str]] = None) -> int:
     print(f"[harness] run_id={run_id}", flush=True)
     print(f"[harness] input={input_path} tickets={len(tickets)} "
           f"labels={'yes' if truth else 'no'} guardrails={not args.skip_guardrails} "
-          f"judge={args.judge}",
+          f"judge={args.judge} "
+          f"order={'urgency' if args.prioritize else 'file'}",
           flush=True)
 
     # Load the embedder and open the index BEFORE the clock starts. It costs
@@ -829,6 +1042,28 @@ def main(argv: Optional[list[str]] = None) -> int:
           f"({time.perf_counter() - warm_started:.1f}s)", flush=True)
 
     started = time.perf_counter()
+
+    # Phase 1 (D-17). Classify everything, then work the urgent tickets first.
+    # The clock starts before this: the pre-pass is part of the run's cost and
+    # its wall time, not a free preliminary.
+    prior: dict[str, PriorClassification] = {}
+    if args.prioritize:
+        def _prepass_progress(i: int, n: int) -> None:
+            if i % 10 == 0 or i == n:
+                print(f"[harness]   classified {i}/{n} "
+                      f"({time.perf_counter() - started:.0f}s)", flush=True)
+
+        print(f"[harness] phase 1: classifying {len(tickets)} tickets to order "
+              f"them by urgency", flush=True)
+        prior = classify_all(tickets, progress=_prepass_progress)
+        tickets = prioritise(tickets, prior)
+        ordered = Counter(
+            prior[tid].result.urgency if tid in prior else "medium"
+            for tid in (str(t.get("ticket_id", "")) for t in tickets)
+        )
+        print(f"[harness] phase 2: high={ordered['high']} medium={ordered['medium']} "
+              f"low={ordered['low']} (highest urgency first)", flush=True)
+
     rows = []
     results_path = output_dir / "results.jsonl"
     # Stream each row as it completes and flush. An 80-ticket run takes ~40
@@ -839,7 +1074,8 @@ def main(argv: Optional[list[str]] = None) -> int:
     with results_path.open("w", encoding="utf-8") as fh:
         for i, raw in enumerate(tickets, 1):
             row = process_ticket(raw, skip_guardrails=args.skip_guardrails,
-                                 judge=args.judge)
+                                 judge=args.judge,
+                                 prior=prior.get(str(raw.get("ticket_id", ""))))
             rows.append(row)
             fh.write(json.dumps(row) + "\n")
             fh.flush()
@@ -851,7 +1087,7 @@ def main(argv: Optional[list[str]] = None) -> int:
                             skip_guardrails=args.skip_guardrails)
     metrics["wall_clock_seconds"] = round(time.perf_counter() - started, 1)
     report_path = output_dir / "metrics_report.json"
-    report_path.write_text(json.dumps(metrics, indent=2))
+    report_path.write_text(json.dumps(metrics, indent=2), encoding="utf-8")
     # The Evaluation Framework's results table, produced by this run rather than
     # by hand afterwards (Framework §4). A failure here must not fail the run (A9).
     try:

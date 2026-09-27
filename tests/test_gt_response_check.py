@@ -267,3 +267,25 @@ def test_fixed_on_our_side_detects_fix_claims(text):
 ])
 def test_fixed_on_our_side_ignores_activity_claims(text):
     assert not CLAIM_DETECTORS["the issue has been fixed on our side"].search(text), text
+
+
+def test_answer_correctness_is_undefined_when_there_is_nothing_to_score():
+    """A boilerplate reference has similarity forced to None and an empty
+    must_mention, so there is no factual term AND no similarity term. Returning
+    0.0 contradicted the docstring and scored all 79 such tickets a spurious
+    zero, pulling answer_correctness_mean_all_tickets to 0.392 against 0.637.
+    """
+    assert answer_correctness(0, 0, 0, None) is None
+
+
+def test_answer_correctness_falls_back_to_similarity_when_it_exists():
+    assert answer_correctness(0, 0, 0, 0.82) == 0.82
+
+
+def test_undefined_scores_are_left_out_of_the_mean_not_counted_as_zero():
+    assert _mean([0.6, None, 0.8]) == 0.7
+
+
+def test_a_real_zero_is_still_a_zero():
+    """All facts missed and a prohibited claim made: that IS 0.0, not undefined."""
+    assert answer_correctness(0, 2, 1, None) == 0.0

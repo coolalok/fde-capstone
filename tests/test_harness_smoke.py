@@ -201,6 +201,31 @@ def test_full_cli_run_exits_zero_and_writes_both_artefacts(db, _no_retrieval, tm
     assert "| Measure | Baseline | Target | Achieved | Confidence in the figure | Notes |" in table
 
 
+def test_full_cli_run_writes_the_results_table_under_a_windows_default_encoding(
+        db, _no_retrieval, tmp_path, monkeypatch):
+    """A1 on Windows: the default text encoding there is cp1252, which has no
+    '\u2264'. results_table.md was written without an encoding, so the write
+    raised UnicodeEncodeError; the harness caught it and the table was missing.
+    pathlib asks io.text_encoding() for the default, so patching it reproduces
+    Windows on any platform."""
+    import io
+
+    import evaluation.harness as h
+
+    monkeypatch.setattr(io, "text_encoding",
+                        lambda encoding, stacklevel=2: encoding or "cp1252")
+    monkeypatch.setattr(h, "process_ticket",
+                        lambda raw, **kw: process_ticket(raw, call_model=FakeModelClient(),
+                                                         **{k: v for k, v in kw.items()
+                                                            if k != "call_model"}))
+    src = tmp_path / "in.json"
+    src.write_text(json.dumps(SMOKE_TICKETS))
+    out = tmp_path / "out"
+    assert main(["--input", str(src), "--output", str(out)]) == 0
+    table = (out / "results_table.md").read_text(encoding="utf-8")
+    assert "\u2264" in table
+
+
 # ─── result rows must be auditable after the fact (2026-09-13) ───────
 
 
@@ -665,3 +690,71 @@ def test_a_normal_run_records_the_switch_as_off(db, _no_retrieval):
     rows = [process_ticket(t, call_model=FakeModelClient()) for t in SMOKE_TICKETS]
     m = build_metrics(rows, {}, run_id="smoke", skip_guardrails=False)
     assert m["governance_metrics"]["kill_switch_active"] is False
+
+
+# ─── undefined is not zero (26 Sep) ──────────────────────────────────
+
+
+def test_per_class_precision_and_recall_carry_both_denominators():
+    """Hand-worked. Gold a,a,b; predicted a,b,b: a is tp=1 fn=1 fp=0, b is
+    tp=1 fn=0 fp=1."""
+    from evaluation.harness import _intent_precision_recall
+
+    truth = {"T1": {"intent": "a"}, "T2": {"intent": "a"}, "T3": {"intent": "b"}}
+    rows = [{"ticket_id": "T1", "intent": "a"}, {"ticket_id": "T2", "intent": "b"},
+            {"ticket_id": "T3", "intent": "b"}]
+    assert _intent_precision_recall(rows, truth) == {
+        "a": {"support": 2, "predicted": 1, "precision": 1.0, "recall": 0.5},
+        "b": {"support": 1, "predicted": 2, "precision": 0.5, "recall": 1.0},
+    }
+
+
+def test_a_class_that_was_never_predicted_has_no_precision_rather_than_zero():
+    """0/0 printed as 0.0000 reads as a measured failure and averages in as a
+    real zero. A class nothing was classified as has no precision to report."""
+    from evaluation.harness import _intent_precision_recall
+
+    truth = {"T1": {"intent": "ghost"}, "T2": {"intent": "seen"}}
+    rows = [{"ticket_id": "T1", "intent": "seen"}, {"ticket_id": "T2", "intent": "seen"}]
+    per = _intent_precision_recall(rows, truth)
+    assert per["ghost"] == {"support": 1, "predicted": 0, "precision": None, "recall": 0.0}
+    assert per["seen"]["precision"] == 0.5, "measured precision is still a number"
+    # The mirror case: a class predicted but never the gold label has no recall.
+    assert _intent_precision_recall(
+        [{"ticket_id": "T1", "intent": "invented"}],
+        {"T1": {"intent": "real"}})["invented"] == {
+            "support": 0, "predicted": 1, "precision": 0.0, "recall": None}
+
+
+def test_intent_confusion_is_keyed_labelled_then_predicted():
+    """Hand-worked. Gold a,a,b,c; predicted a,b,b,a: the a row holds its one
+    correct ticket and the one mistaken for b; c was only ever called a."""
+    from evaluation.harness import _intent_confusion
+
+    truth = {"T1": {"intent": "a"}, "T2": {"intent": "a"}, "T3": {"intent": "b"},
+             "T4": {"intent": "c"}, "T5": {}}
+    rows = [{"ticket_id": "T1", "intent": "a"}, {"ticket_id": "T2", "intent": "b"},
+            {"ticket_id": "T3", "intent": "b"}, {"ticket_id": "T4", "intent": "a"},
+            {"ticket_id": "T5", "intent": "a"}]
+    assert _intent_confusion(rows, truth) == {"a": {"a": 1, "b": 1}, "b": {"b": 1},
+                                              "c": {"a": 1}}
+
+
+def test_metrics_without_labels_report_no_per_class_figures(db, _no_retrieval):
+    """The hidden set may carry no labels; their absence degrades the report."""
+    rows = [process_ticket(t, call_model=FakeModelClient()) for t in SMOKE_TICKETS]
+    m = build_metrics(rows, {}, run_id="smoke", skip_guardrails=False)
+    assert "intent_per_class" not in m["technical_metrics"]
+    assert "intent_confusion" not in m["technical_metrics"]
+
+
+def test_retrieval_hit_at_3_is_none_when_no_ticket_is_answerable(db, _no_retrieval):
+    """Its neighbour recall@k already reports None on an empty set; 0.0 here
+    would read as retrieval having missed every answerable ticket."""
+    rows = [process_ticket(t, call_model=FakeModelClient()) for t in SMOKE_TICKETS]
+    truth = {t["ticket_id"]: {**t["labels"], "answerable_from_docs": False}
+             for t in SMOKE_TICKETS}
+    tech = build_metrics(rows, truth, run_id="smoke", skip_guardrails=False)["technical_metrics"]
+    assert tech["retrieval_answerable_n"] == 0
+    assert tech["retrieval_hit_at_3"] is None
+    assert tech["retrieval_recall_at_k"]["recall@3"] is None

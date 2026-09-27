@@ -82,7 +82,7 @@ def load_prompt(prompt_id: str) -> LoadedPrompt:
     for base in (_BUILD_DIR, _EVAL_DIR):
         path = base / f"{prompt_id}.md"
         if path.exists():
-            return _parse(prompt_id, path.read_text())
+            return _parse(prompt_id, path.read_text(encoding="utf-8"))
     searched = [str(_BUILD_DIR), str(_EVAL_DIR)]
     raise FileNotFoundError(f"Prompt not found: {prompt_id!r}. Searched: {searched}")
 

@@ -31,7 +31,8 @@ from typing import Optional
 
 from src.config import CONFIDENCE_THRESHOLD
 from src.guardrails import _llm_detection_is_value_shaped
-from src.route import AUTO_RESPOND, NEVER_AUTO_RESPOND
+from src.route import (ADVISORY_GUARDRAILS, AUTO_RESPOND, COVERAGE_GUARDRAILS,
+                       NEVER_AUTO_RESPOND)
 
 _ROOT = Path(__file__).parent.parent
 TICKETS_PATH = _ROOT / "data" / "validation_tickets.json"
@@ -50,25 +51,58 @@ def _pii_block_survives_filter(g: dict) -> bool:
         for d in detections)
 
 
+def _holds_at_safety(g: dict, *, pii_filter: bool, drop_relevance: bool) -> bool:
+    """Is this guardrail verdict a rule-2 safety block? Mirrors route._safety_failures.
+
+    The sets come from src.route so that the two cannot drift: a coverage
+    guardrail is held back to rule 6, and an ADVISORY verdict is recorded but
+    does not withhold a reply — unless it is fail_safe, which says the check
+    could not run rather than that the draft is fine (route._is_advisory).
+    """
+    if g["passed"] or not g["blocking"] or g["name"] in COVERAGE_GUARDRAILS:
+        return False
+    if g.get("fail_safe"):
+        return True
+    if g["name"] in ADVISORY_GUARDRAILS:
+        return False
+    if drop_relevance and g["name"] == "answer_relevance":
+        return False
+    if pii_filter and g["name"] == "pii" and not _pii_block_survives_filter(g):
+        return False
+    return True
+
+
 def sends(row: dict, *, pii_filter: bool, drop_relevance: bool) -> bool:
-    """Would the router auto-respond, in src/route.py's rule order?"""
+    """Would the router auto-respond, in src/route.py's rule order?
+
+    Rules 0 (kill switch) and 1 (an unlogged upstream decision) are not
+    replayable: a result row records neither. Both escalate every ticket they
+    fire on, so a run made under either simply fails the reproduction check
+    below and the tool refuses to report, which is the right answer.
+    """
     if row.get("degraded"):
         return False
-    for g in row.get("guardrails", []):
-        if not g["blocking"] or g["passed"]:
-            continue
-        if g.get("fail_safe"):
-            return False
-        if drop_relevance and g["name"] == "answer_relevance":
-            continue
-        if pii_filter and g["name"] == "pii" and not _pii_block_survives_filter(g):
-            continue
+    # 2. Safety: a blocking guardrail that read the draft and found a fault.
+    if any(_holds_at_safety(g, pii_filter=pii_filter, drop_relevance=drop_relevance)
+           for g in row.get("guardrails", [])):
         return False
+    # 2b. Injection attempt in the ticket text (R-03, D-16).
+    if row.get("injection_flags"):
+        return False
+    # 3. Policy: intents that never auto-answer (D-07).
     if row.get("intent") in NEVER_AUTO_RESPOND:
         return False
-    if not row.get("retrieved_doc_ids") or row.get("unknown"):
+    # 4. Coverage: retrieval found nothing to ground a reply in.
+    if not row.get("retrieved_doc_ids"):
         return False
-    return (row.get("confidence") or 0.0) >= CONFIDENCE_THRESHOLD
+    # 5. Honesty: the generator declined to answer.
+    if row.get("unknown"):
+        return False
+    # 6. Quality: the confidence floor, as the threshold and as the guardrail.
+    if (row.get("confidence") or 0.0) < CONFIDENCE_THRESHOLD:
+        return False
+    return not any(g["name"] in COVERAGE_GUARDRAILS and g["blocking"] and not g["passed"]
+                   for g in row.get("guardrails", []))
 
 
 def main(argv: Optional[list[str]] = None) -> int:

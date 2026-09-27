@@ -30,8 +30,8 @@ from pathlib import Path
 from typing import Any, Optional
 
 from evaluation import fairness_audit as fa
-from evaluation.harness import (_citation_accuracy, failure_breakdown, routing_outcomes,
-                                stage_latency)
+from evaluation.harness import (_citation_accuracy, _intent_confusion, _intent_precision_recall,
+                                failure_breakdown, routing_outcomes, stage_latency)
 from src.generate import strip_citation_markers
 from src.guardrails import regex_pii_detections
 
@@ -46,7 +46,9 @@ DEV_TICKETS_PATH = _ROOT / "data" / "development_tickets.json"
 AUTO = "auto_respond"
 MET, NOT_MET, NOT_MEASURED = "MET", "NOT MET", "NOT MEASURED"
 
-# Measure, baseline and target exactly as printed in the Framework's table.
+# Measure, baseline and target exactly as printed in the Framework's results
+# table. The last two are not in that table but are asked for elsewhere in the
+# Framework: repeat contacts in the tier-one table, availability in tier two.
 FRAMEWORK_ROWS = (
     ("First contact resolution", "42%", "60%"),
     ("Mean time to first reply", "8 to 12 hrs", "< 5 min"),
@@ -58,10 +60,21 @@ FRAMEWORK_ROWS = (
     ("Latency p95", "—", "< 3 s"),
     ("Private data occurrences", "—", "0"),
     ("Cross-group variation", "—", "< 5 pts"),
+    ("Repeat contacts", "Not measured", "Halved"),
+    ("Availability", "—", "99.5%"),
 )
 FCR_TARGET, REPLY_TARGET_S, ESCALATION_TARGET = 0.60, 300.0, 0.30
 PRECISION_TARGET, LATENCY_TARGET_S, VARIATION_TARGET = 0.85, 3.0, 0.05
 CALIBRATION_TOLERANCE_PP = 5.0
+AVAILABILITY_TARGET = 0.995
+
+# fairness_audit.assess already decides whether a segment's gap is separable
+# from the best segment's interval. This row takes its status from that verdict
+# rather than re-deriving one from the gap alone, so the Confidence cell and the
+# status cannot contradict each other. A breach that is not significant at these
+# segment sizes is a gap this sample cannot resolve: unmeasured, not failed.
+VARIATION_STATUS = {"WITHIN_LIMIT": MET, "BREACH": NOT_MET,
+                    "BREACH_NOT_SIGNIFICANT": NOT_MEASURED}
 
 
 def pct(x: float) -> str:
@@ -119,11 +132,16 @@ def first_contact_resolution(rows: list[dict], labels: dict[str, dict]) -> dict:
     n = len(rows)
     sent = [r for r in rows if r.get("decision") == AUTO]
     if not labels:
-        return _row("First contact resolution", f"{pct(len(sent) / n)} auto-sent",
-                    ci_text(len(sent), n),
-                    "No labels in the input, so a sent reply cannot be checked as a "
-                    "correct resolution; this is the auto-send rate only.",
-                    MET if len(sent) / n >= FCR_TARGET else NOT_MET)
+        # Without labels a sent reply cannot be checked as a correct
+        # resolution, so there is nothing to compare with the 60% target:
+        # deleting the labels must not turn a failing run into a passing one.
+        return _row("First contact resolution", "Not measured",
+                    f"No labels in the input (n={n} tickets)",
+                    "Needs labels.expected_route to tell a resolved contact from a wrong "
+                    f"answer that comes back. Nearest evidence: {pct(len(sent) / n)} of "
+                    f"tickets were auto-sent ({ci_text(len(sent), n)}) — a different "
+                    "measure, since sending a reply is not evidence of resolving anything.",
+                    NOT_MEASURED)
     correct = [r for r in sent if labels[r["ticket_id"]].get("expected_route") == AUTO]
     wrong = len(sent) - len(correct)
     return _row(
@@ -184,28 +202,105 @@ def escalation_rate(rows: list[dict]) -> dict:
         MET if k / n <= ESCALATION_TARGET else NOT_MET)
 
 
-def classification_precision(metrics: dict, labels: dict[str, dict]) -> dict:
+def repeat_contacts(rows: list[dict], tickets: dict[str, dict],
+                    labels: dict[str, dict]) -> dict:
+    """The same customer raising the same issue again within a week (tier one).
+
+    An offline run cannot see a customer come back, so the achieved figure is
+    unmeasured. The baseline is not: the Dataset Guide calls history.* "the
+    current baseline", and history.repeat_contact records whether each ticket
+    came back under human handling. That is the figure "Halved" is set against.
+    """
+    history = [tickets[r["ticket_id"]]["history"] for r in rows
+               if "repeat_contact" in tickets.get(r["ticket_id"], {}).get("history", {})]
+    if not history:
+        return _row("Repeat contacts", "Not measured",
+                    "An offline run cannot observe a customer returning",
+                    "No history.repeat_contact in the input, so there is no baseline to "
+                    "halve either.", NOT_MEASURED)
+    k, n = sum(1 for h in history if h["repeat_contact"]), len(history)
+    leading = ""
+    if labels:
+        routing = routing_outcomes(rows, labels)
+        leading = (f" Leading indicator: {routing['wrong_sends']} of {routing['sent']} sent "
+                   "replies went to tickets the labels say must be held, the kind of reply "
+                   "that comes back as a repeat contact.")
+    row = _row("Repeat contacts", "Not measured",
+               "An offline run cannot observe a customer returning",
+               f"Baseline from history.repeat_contact: {k} of {n} of these tickets "
+               f"({pct(k / n)}) came back under human handling, so halved is "
+               f"{pct(k / n / 2)} or lower.{leading}", NOT_MEASURED)
+    row["baseline"] = f"{pct(k / n)} (history, n={n})"
+    return row
+
+
+def availability(rows: list[dict]) -> dict:
+    """Tickets served with every stage working (tier two, 99.5%).
+
+    "Include behaviour when the model provider fails": a ticket whose model call
+    failed still gets a decision (FR-23 escalates it), so the Notes count those
+    separately from tickets the run lost, which is none by construction.
+    """
+    n = len(rows)
+    failed = [r for r in rows
+              if r.get("degraded") or r.get("classifier_error") or r.get("generator_error")
+              or any(g.get("fail_safe") for g in r.get("guardrails", []))]
+    k = n - len(failed)
+    decided = sum(1 for r in rows if r.get("decision"))
+    unconfirmed = (" At this n the interval cannot confirm 99.5%."
+                   if fa.wilson(k, n)[0] < AVAILABILITY_TARGET else "")
+    return _row(
+        "Availability", pct(k / n), ci_text(k, n),
+        f"{k} of {n} tickets had every stage work. {len(failed)} hit a model-call or "
+        "pipeline failure (degraded ticket, classifier or generator error, or a guardrail "
+        f"that could not run); {decided} of {n} still received a decision, a failure "
+        "escalating rather than erroring. One run's tickets are not uptime over time."
+        + unconfirmed,
+        MET if k / n >= AVAILABILITY_TARGET else NOT_MET)
+
+
+def classification_precision(rows: list[dict], metrics: dict, labels: dict[str, dict]) -> dict:
     per = metrics.get("technical_metrics", {}).get("intent_per_class")
+    if per and labels and any("predicted" not in v for v in per.values()):
+        # A run recorded before the precision denominator was stored: recompute
+        # from the run's own rows, as citation_accuracy does. The stored
+        # precision cannot be read instead, because 0/0 and a measured 0.0 were
+        # both written as 0.0 and are no longer distinguishable.
+        per = _intent_precision_recall(rows, labels)
     if not labels or not per:
         return _row("Classification precision", "Not measured", "No labels",
                     "Needs labels.intent in the input.", NOT_MEASURED)
     classes = {c: v for c, v in per.items() if v["support"] > 0}
-    precisions = [v["precision"] for v in classes.values()]
+    # A class that was never predicted has no precision denominator. It is not
+    # 0% precise; it is unmeasured, and averaging it in as a zero understates
+    # every other class's work.
+    measured = {c: v for c, v in classes.items() if v["precision"] is not None}
+    unmeasured = sorted(set(classes) - set(measured))
+    if not measured:
+        return _row("Classification precision", "Not measured",
+                    f"No class was predicted on any of {len(classes)} labelled classes",
+                    "Precision has no denominator on this run: nothing was predicted.",
+                    NOT_MEASURED)
+    precisions = [v["precision"] for v in measured.values()]
     passing = sum(1 for p in precisions if p >= PRECISION_TARGET)
-    supports = [v["support"] for v in classes.values()]
-    small = sum(1 for s in supports if s < 5)
-    weakest = sorted(classes.items(), key=lambda kv: kv[1]["precision"])[:3]
-    weak = "; ".join(f"{c} {v['precision'] * 100:.0f}% (n={v['support']})" for c, v in weakest)
+    predicted = [v["predicted"] for v in classes.values()]
+    thin = sum(1 for p in predicted if 0 < p < 5)
+    weakest = sorted(measured.items(), key=lambda kv: kv[1]["precision"])[:3]
+    weak = "; ".join(f"{c} {v['precision'] * 100:.0f}% (n={v['predicted']})" for c, v in weakest)
+    never = (f" {len(unmeasured)} class(es) never predicted, so their precision is "
+             f"undefined rather than 0% and is excluded from the mean: "
+             f"{', '.join(unmeasured)}.") if unmeasured else ""
     return _row(
         "Classification precision",
-        f"{pct(statistics.mean(precisions))} mean over {len(classes)} classes; "
-        f"{passing} of {len(classes)} at ≥85%",
-        f"Per-class n: median {statistics.median(supports):.0f}; {small} classes have "
-        "fewer than 5 tickets, so per-class figures are indicative only",
-        f"Weakest: {weak}. Overall intent accuracy "
+        f"{pct(statistics.mean(precisions))} mean over the {len(measured)} classes with "
+        f"a precision denominator; {passing} of {len(measured)} at ≥85%",
+        f"Precision n (predictions made per class): median "
+        f"{statistics.median(predicted):.0f}; {thin} classes were predicted fewer than 5 "
+        f"times and {len(unmeasured)} never, so per-class figures are indicative only",
+        f"Weakest: {weak}.{never} Overall intent accuracy "
         f"{pct(metrics['technical_metrics'].get('intent_accuracy', 0))}. The target is "
         "per class, so it is met only if every class reaches 85%.",
-        MET if passing == len(classes) else NOT_MET)
+        NOT_MET if passing < len(measured) else (NOT_MEASURED if unmeasured else MET))
 
 
 def hallucination_rate(evidence: dict) -> dict:
@@ -278,25 +373,35 @@ def cross_group_variation(rows: list[dict], tickets: dict[str, dict]) -> tuple[d
         return row, {}
     report = fa.audit(rows, tickets)
     gaps = []
+    excluded = 0
     for dimension in ("language_fluency", "customer_region", "customer_tier"):
         a = fa.assess(report["dimensions"][dimension], "decision_correct",
                       VARIATION_TARGET)
+        best_n = next((f["n"] for f in a["segments"] if f["segment"] == a["best_segment"]), 0)
         for f in a["segments"]:
-            if f["status"] != "INSUFFICIENT_N":
-                gaps.append((f["gap_from_best"], dimension, f["segment"], a["best_segment"],
-                             f["n"], f["status"]))
+            if f["status"] == "INSUFFICIENT_N":
+                excluded += 1
+                continue
+            gaps.append((f["gap_from_best"], dimension, f["segment"], a["best_segment"],
+                         f["n"], best_n, f["status"]))
     if not gaps:
-        return _row("Cross-group variation", "Not measured", "Every segment under n=10",
+        return _row("Cross-group variation", "Not measured",
+                    f"Every segment under n={fa.MIN_N}",
                     "No segment reached the audit's minimum size.", NOT_MEASURED), report
-    gap, dimension, segment, best, n, status = max(gaps)
+    gap, dimension, segment, best, n, best_n, status = max(gaps)
+    # Name both sides of the comparison, and only claim an exclusion that ran.
+    small = f"; {excluded} segments under n={fa.MIN_N} excluded" if excluded else ""
     return _row(
         "Cross-group variation",
         f"{gap * 100:.0f} pts ({dimension}: {segment} vs {best})",
-        f"{status.replace('_', ' ').lower()} at n={n}; segments under n=10 excluded",
+        f"{status.replace('_', ' ').lower()}: {segment} n={n} against {best} n={best_n}{small}",
         "Quality here is decision correctness against labels, not a rubric score, across "
-        "language fluency, region and tier. NFR-05 allows 15 points; this Framework target "
-        "is 5. Full per-segment figures: fairness audit.",
-        MET if gap < VARIATION_TARGET else NOT_MET), report
+        "language fluency, region and tier. The status is the audit's own per-segment "
+        "verdict: a gap wider than the target whose interval overlaps the best segment's "
+        "is a gap this sample cannot resolve, so it is reported as not measured rather "
+        "than as a failure. NFR-05 allows 15 points; this Framework target is 5. Full "
+        "per-segment figures: fairness audit.",
+        VARIATION_STATUS[status]), report
 
 
 # ─── tier three: governance conditions ──────────────────────────────
@@ -318,6 +423,21 @@ def governance_conditions(rows: list[dict], metrics: dict, pii_row: dict,
     if band:
         calib_text += (f"; 0.80-0.90 band observed {band['observed']:.2f} "
                        f"(n={band['n']}, Framework expects about 0.85)")
+    # Say what was left out and why, so the figure cannot read as a clean sweep.
+    # An abstention is a refusal to classify, not a stated probability of being
+    # right; see ABSTENTION_INTENTS in evaluation/harness.py.
+    abstained = g.get("calibration_abstentions_excluded") or 0
+    fallbacks = g.get("calibration_fallbacks_excluded") or 0
+    if abstained or fallbacks:
+        parts = []
+        if abstained:
+            parts.append(f"{abstained} abstention{'s' if abstained != 1 else ''} "
+                         f"(confidence 0.00 with no intent named)")
+        if fallbacks:
+            parts.append(f"{fallbacks} classifier fallback"
+                         f"{'s' if fallbacks != 1 else ''}")
+        calib_text += (f"; excluded from the gap: {' and '.join(parts)}, "
+                       f"which state no probability")
     return [
         {"condition": "Private data in outbound text", "requirement": "Zero occurrences.",
          "result": f"{pii_row['achieved']} ({pii_row['confidence']})",
@@ -344,12 +464,12 @@ def b18_evidence() -> Optional[dict]:
     agreement_path = CALIBRATION_RESULTS / "agreement.json"
     if not (CALIBRATION_FIXTURE.exists() and judged_path.exists() and agreement_path.exists()):
         return None
-    fixture = json.loads(CALIBRATION_FIXTURE.read_text())
+    fixture = json.loads(CALIBRATION_FIXTURE.read_text(encoding="utf-8"))
     human = [i["human_scores"] for i in fixture["items"]
              if all(v is not None for v in i["human_scores"].values())]
-    judged = [json.loads(line) for line in judged_path.open()]
+    judged = [json.loads(line) for line in judged_path.open(encoding="utf-8")]
     scored = [j["scores"] for j in judged if j.get("scores")]
-    agreement = json.loads(agreement_path.read_text())
+    agreement = json.loads(agreement_path.read_text(encoding="utf-8"))
     return {
         "source_run": Path(fixture.get("source_run", "")).parent.name or "unknown",
         "n": len(human),
@@ -389,12 +509,14 @@ def build(rows: list[dict], metrics: dict, tickets: dict[str, dict], *,
         time_to_first_reply(rows),
         satisfaction_proxy(evidence),
         escalation_rate(rows),
-        classification_precision(metrics, labels),
+        classification_precision(rows, metrics, labels),
         hallucination_rate(evidence),
         citation_accuracy(rows, metrics, labels),
         latency_p95(rows, metrics),
         pii,
         variation,
+        repeat_contacts(rows, tickets, labels),
+        availability(rows),
     ]
     cost = metrics.get("cost_metrics", {})
     run_id = metrics.get("run_id", "")
@@ -421,6 +543,7 @@ def build(rows: list[dict], metrics: dict, tickets: dict[str, dict], *,
             "business": business_reading(rows, labels),
             "routing": routing_outcomes(rows, labels) if labels else None,
             "failures": failure_breakdown(rows, labels) if labels else None,
+            "intent": intent_by_class(rows, labels),
             "stages": stage_latency(rows),
             "limitations": limitations(header, table, rows, tickets)}
 
@@ -464,7 +587,7 @@ def contested_labels(rows: list[dict], tickets: dict[str, dict]) -> dict:
     if not pool:
         return {"n": 0, "tickets": [], "pairs_within_run": 0}
     try:
-        pool += [t for t in json.loads(DEV_TICKETS_PATH.read_text())
+        pool += [t for t in json.loads(DEV_TICKETS_PATH.read_text(encoding="utf-8"))
                  if t.get("ticket_id") not in tickets]
     except (OSError, ValueError):  # no dev file to compare against; run's own is enough
         pass
@@ -497,9 +620,18 @@ def limitations(header: dict, table: list[dict], rows: Optional[list[dict]] = No
     unmeasured = [r["measure"] for r in table if r["status"] == NOT_MEASURED]
     if unmeasured:
         items.append("Not measured to the Framework's method: " + ", ".join(unmeasured) + ".")
+    # Name the set this run actually used. Both sentences below used to hardcode
+    # the validation set and a VAL- example, which a development-set run then
+    # printed verbatim — citing a ticket it had never processed.
+    prefixes = {str(r.get("ticket_id", "")).split("-")[0]
+                for r in (rows or []) if r.get("ticket_id")}
+    source = {"VAL": "labelled validation set", "DEV": "labelled development set"}.get(
+        next(iter(prefixes)) if len(prefixes) == 1 else "", "labelled data")
+    debatable = ("e.g. VAL-0004 is labelled unanswerable although DOC-AUTH-002 covers it"
+                 if any(str(r.get("ticket_id", "")) == "VAL-0004" for r in (rows or []))
+                 else None)
     items.append("Correctness is agreement with the dataset's labels, some of which are "
-                 "debatable (e.g. VAL-0004 is labelled unanswerable although DOC-AUTH-002 "
-                 "covers it).")
+                 "debatable" + (f" ({debatable})" if debatable else "") + ".")
     contested = contested_labels(rows or [], tickets or {})
     if contested["n"]:
         pairs = contested["pairs_within_run"]
@@ -511,7 +643,7 @@ def limitations(header: dict, table: list[dict], rows: Optional[list[dict]] = No
             + (f"; {pairs} such {'pair sits' if pairs == 1 else 'pairs sit'} inside "
                "this run, where no system can be right on both" if pairs else "") + ".")
     items.append(f"Hidden evaluation set runs: {header['hidden_set_runs']}. These figures are "
-                 "from a labelled validation set, not the held-out test set.")
+                 f"from a {source}, not the held-out test set.")
     return items
 
 
@@ -546,6 +678,7 @@ def to_markdown(t: dict) -> str:
     out += ["", "## What the numbers mean for the queue", ""]
     out += [f"- {line}" for line in t["business"]]
     out += routing_markdown(t.get("routing"), t.get("failures"))
+    out += intent_markdown(t.get("intent"))
     out += stages_markdown(t.get("stages"))
     out += ["", "## Facts for \"the figures above should be treated with caution because\"",
             ""]
@@ -583,6 +716,50 @@ def routing_markdown(routing: Optional[dict], failures: Optional[dict]) -> list[
     return out
 
 
+def intent_by_class(rows: list[dict], labels: dict[str, dict]) -> Optional[dict]:
+    """Per-class precision and recall, and the confusion matrix behind them.
+
+    Evaluation Framework, "Intent classification precision and recall": "Report
+    both, per class, and include the confusion matrix in your appendix."
+    Computed from the rows, not read from metrics_report.json, so the table of a
+    run recorded before the matrix existed can be regenerated without re-running
+    it. None when the labels carry no intent.
+    """
+    per = _intent_precision_recall(rows, labels)
+    if not per:
+        return None
+    return {"per_class": per, "confusion": _intent_confusion(rows, labels)}
+
+
+def intent_markdown(intent: Optional[dict]) -> list[str]:
+    """The per-class table and the confusion matrix, one row per class."""
+    if not intent:
+        return []
+    per, confusion = intent["per_class"], intent["confusion"]
+    classes = list(per)
+    out = ["", "## Intent classification by class", "",
+           "Precision is over the tickets predicted as the class (n predicted); recall "
+           "is over the tickets labelled as it (n labelled). A class never predicted "
+           "has no precision and one never labelled has no recall: n/a, not 0%.", "",
+           "| Intent | n labelled | n predicted | Precision | Recall |",
+           "|---|---|---|---|---|"]
+    out += [f"| {c} | {v['support']} | {v['predicted']} | {_maybe_pct(v['precision'])} "
+            f"| {_maybe_pct(v['recall'])} |" for c, v in per.items()]
+    out += ["", "### Intent confusion matrix", "",
+            "Rows are the labelled intent; columns are the predicted intent, numbered as "
+            "the rows are. The diagonal (bold) is correct classifications; any other "
+            "count is tickets mistaken for that column's class. Blank cells are zero.", "",
+            "| Labelled / predicted | " + " | ".join(str(i) for i in range(1, len(classes) + 1))
+            + " |",
+            "|---|" + "---|" * len(classes)]
+    for i, gold in enumerate(classes, 1):
+        row = confusion.get(gold, {})
+        cells = [("**{}**" if pred == gold else "{}").format(row[pred]) if row.get(pred) else ""
+                 for pred in classes]
+        out.append(f"| {i}. {gold} | " + " | ".join(cells) + " |")
+    return out
+
+
 def stages_markdown(stages: Optional[dict]) -> list[str]:
     """Seconds per pipeline stage. Absent for runs made before stage timing existed."""
     if not stages:
@@ -605,8 +782,8 @@ def _maybe_pct(x: Optional[float]) -> str:
 def write(output_dir: Path, rows: list[dict], metrics: dict, tickets: dict[str, dict], *,
           hidden_set_runs: int = 0) -> dict:
     table = build(rows, metrics, tickets, hidden_set_runs=hidden_set_runs)
-    (output_dir / "results_table.json").write_text(json.dumps(table, indent=2))
-    (output_dir / "results_table.md").write_text(to_markdown(table))
+    (output_dir / "results_table.json").write_text(json.dumps(table, indent=2), encoding="utf-8")
+    (output_dir / "results_table.md").write_text(to_markdown(table), encoding="utf-8")
     return table
 
 
@@ -618,9 +795,10 @@ def main(argv: Optional[list[str]] = None) -> int:
                     help="how many times the hidden evaluation set has been run")
     args = ap.parse_args(argv)
     out = Path(args.results)
-    rows = [json.loads(line) for line in (out / "results.jsonl").open()]
-    metrics: dict[str, Any] = json.loads((out / "metrics_report.json").read_text())
-    tickets = {t["ticket_id"]: t for t in json.loads(Path(args.tickets).read_text())}
+    rows = [json.loads(line) for line in (out / "results.jsonl").open(encoding="utf-8")]
+    metrics: dict[str, Any] = json.loads((out / "metrics_report.json").read_text(encoding="utf-8"))
+    tickets = {t["ticket_id"]: t
+               for t in json.loads(Path(args.tickets).read_text(encoding="utf-8"))}
     table = write(out, rows, metrics, tickets, hidden_set_runs=args.hidden_set_runs)
     for r in table["rows"]:
         print(f"[results] {r['measure']:26} {r['status']:13} {r['achieved']}")

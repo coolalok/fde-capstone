@@ -1,0 +1,28 @@
+{
+  "run_id": "gtcheck-20260923T120926Z-2466ed04",
+  "tickets_checked": 40,
+  "answers_produced": 39,
+  "answers_declined_unknown": 1,
+  "answers_with_a_prohibited_claim": 0,
+  "prohibited_claim_rate": 0.0,
+  "violations_by_claim": {},
+  "must_mention_expected": 30,
+  "must_mention_missing": 15,
+  "must_mention_coverage": 0.5,
+  "context_recall_mean": 0.9,
+  "context_recall_n": 40,
+  "citation_precision_mean": 0.9103,
+  "citation_recall_mean": 0.859,
+  "citation_n": 39,
+  "specific_reference_n": 24,
+  "boilerplate_reference_n": 15,
+  "answer_similarity_mean": 0.7054,
+  "answer_correctness_mean": 0.637,
+  "answer_correctness_mean_all_tickets": 0.392,
+  "ragas_weights": {
+    "factual": 0.75,
+    "similarity": 0.25
+  },
+  "note": "Detection is a lower bound \u2014 a phrasing no pattern covers counts as clean. Guardrails were NOT run; this measures the generator.",
+  "wall_clock_seconds": 283.8
+}

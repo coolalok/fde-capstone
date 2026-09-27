@@ -110,6 +110,50 @@ def test_blocking_guardrail_routes_to_block(db):
     assert "pii" in r.reason
 
 
+# ─── advisory guardrails: answer_relevance ───────────────────────────
+# Its judge scored Spearman 0.046 against the human scorer, and replaying the
+# 80-ticket local run with its verdicts ignored recovered 2 correct sends and
+# added 0 wrong ones. A substantive verdict is therefore advisory; an outage
+# is not. See ADVISORY_GUARDRAILS in src/route.py.
+
+
+def test_substantive_relevance_failure_does_not_block(db):
+    gs = _passing_guardrails()
+    gs.append(GuardrailResult(
+        name="answer_relevance", passed=False, blocking=True, fail_safe=False,
+        reason="reply does not address the question asked"))
+    r = _route(guardrail_results=gs)
+    assert r.decision == AUTO_RESPOND
+    assert r.trigger == "confident_and_grounded"
+
+
+def test_relevance_fail_safe_still_blocks(db):
+    """fail_safe means the judge could not run. That is an outage, not a
+    verdict that the draft is fine, so it must still withhold the reply."""
+    gs = _passing_guardrails()
+    gs.append(GuardrailResult(
+        name="answer_relevance", passed=False, blocking=True, fail_safe=True,
+        reason="answer_relevance_guardrail_error: TimeoutError"))
+    r = _route(guardrail_results=gs)
+    assert r.decision == BLOCK
+    assert r.trigger == "guardrail_blocked"
+    assert "answer_relevance" in r.reason
+
+
+def test_advisory_relevance_does_not_rescue_a_real_block(db):
+    """A7: making relevance advisory must not weaken the other guardrails."""
+    gs = _passing_guardrails()
+    gs[1] = GuardrailResult(name="grounding", passed=False, blocking=True,
+                            reason="2 unsupported claim(s)")
+    gs.append(GuardrailResult(
+        name="answer_relevance", passed=False, blocking=True, fail_safe=False,
+        reason="reply does not address the question asked"))
+    r = _route(guardrail_results=gs)
+    assert r.decision == BLOCK
+    assert "grounding" in r.reason
+    assert "answer_relevance" not in r.reason
+
+
 def test_empty_retrieval_escalates(db):
     r = _route(passages=[])
     assert r.decision == ESCALATE

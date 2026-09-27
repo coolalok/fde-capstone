@@ -1,0 +1,1728 @@
+{
+  "tickets": 410,
+  "degraded_excluded": 0,
+  "length_cuts_words": [
+    25.0,
+    30.0
+  ],
+  "overall": {
+    "n": 410,
+    "composition": {
+      "should_auto": 253,
+      "should_hold": 157,
+      "unanswerable": 117
+    },
+    "decision_correct": {
+      "k": 309,
+      "n": 410,
+      "value": 0.7537,
+      "ci95": [
+        0.7097,
+        0.7929
+      ]
+    },
+    "resolution_rate": {
+      "k": 228,
+      "n": 253,
+      "value": 0.9012,
+      "ci95": [
+        0.8582,
+        0.9322
+      ]
+    },
+    "unsafe_send_rate": {
+      "k": 76,
+      "n": 157,
+      "value": 0.4841,
+      "ci95": [
+        0.4072,
+        0.5617
+      ]
+    },
+    "auto_precision": {
+      "k": 228,
+      "n": 304,
+      "value": 0.75,
+      "ci95": [
+        0.6984,
+        0.7954
+      ]
+    },
+    "intent_accuracy": {
+      "k": 353,
+      "n": 410,
+      "value": 0.861,
+      "ci95": [
+        0.8241,
+        0.8911
+      ]
+    },
+    "retrieval_hit_at_3": {
+      "k": 279,
+      "n": 293,
+      "value": 0.9522,
+      "ci95": [
+        0.9214,
+        0.9713
+      ]
+    },
+    "mean_confidence": 0.8809
+  },
+  "dimensions": {
+    "language_fluency": {
+      "fluent": {
+        "n": 308,
+        "composition": {
+          "should_auto": 187,
+          "should_hold": 121,
+          "unanswerable": 88
+        },
+        "decision_correct": {
+          "k": 230,
+          "n": 308,
+          "value": 0.7468,
+          "ci95": [
+            0.6954,
+            0.7921
+          ]
+        },
+        "resolution_rate": {
+          "k": 171,
+          "n": 187,
+          "value": 0.9144,
+          "ci95": [
+            0.8655,
+            0.9466
+          ]
+        },
+        "unsafe_send_rate": {
+          "k": 62,
+          "n": 121,
+          "value": 0.5124,
+          "ci95": [
+            0.4243,
+            0.5997
+          ]
+        },
+        "auto_precision": {
+          "k": 171,
+          "n": 233,
+          "value": 0.7339,
+          "ci95": [
+            0.6737,
+            0.7865
+          ]
+        },
+        "intent_accuracy": {
+          "k": 267,
+          "n": 308,
+          "value": 0.8669,
+          "ci95": [
+            0.8244,
+            0.9003
+          ]
+        },
+        "retrieval_hit_at_3": {
+          "k": 211,
+          "n": 220,
+          "value": 0.9591,
+          "ci95": [
+            0.9241,
+            0.9783
+          ]
+        },
+        "mean_confidence": 0.8845,
+        "mix_adjusted_quality": {
+          "value": 0.751,
+          "n": 121,
+          "ci95": [
+            0.7091,
+            0.7928
+          ]
+        }
+      },
+      "non_fluent": {
+        "n": 102,
+        "composition": {
+          "should_auto": 66,
+          "should_hold": 36,
+          "unanswerable": 29
+        },
+        "decision_correct": {
+          "k": 79,
+          "n": 102,
+          "value": 0.7745,
+          "ci95": [
+            0.6843,
+            0.8448
+          ]
+        },
+        "resolution_rate": {
+          "k": 57,
+          "n": 66,
+          "value": 0.8636,
+          "ci95": [
+            0.7607,
+            0.9266
+          ]
+        },
+        "unsafe_send_rate": {
+          "k": 14,
+          "n": 36,
+          "value": 0.3889,
+          "ci95": [
+            0.2478,
+            0.5514
+          ]
+        },
+        "auto_precision": {
+          "k": 57,
+          "n": 71,
+          "value": 0.8028,
+          "ci95": [
+            0.6958,
+            0.8787
+          ]
+        },
+        "intent_accuracy": {
+          "k": 86,
+          "n": 102,
+          "value": 0.8431,
+          "ci95": [
+            0.7603,
+            0.9011
+          ]
+        },
+        "retrieval_hit_at_3": {
+          "k": 68,
+          "n": 73,
+          "value": 0.9315,
+          "ci95": [
+            0.8495,
+            0.9704
+          ]
+        },
+        "mean_confidence": 0.8701,
+        "mix_adjusted_quality": {
+          "value": 0.7669,
+          "n": 36,
+          "ci95": [
+            0.6895,
+            0.8444
+          ]
+        }
+      }
+    },
+    "customer_region": {
+      "asia_pacific": {
+        "n": 98,
+        "composition": {
+          "should_auto": 53,
+          "should_hold": 45,
+          "unanswerable": 35
+        },
+        "decision_correct": {
+          "k": 74,
+          "n": 98,
+          "value": 0.7551,
+          "ci95": [
+            0.6614,
+            0.8296
+          ]
+        },
+        "resolution_rate": {
+          "k": 49,
+          "n": 53,
+          "value": 0.9245,
+          "ci95": [
+            0.8214,
+            0.9703
+          ]
+        },
+        "unsafe_send_rate": {
+          "k": 20,
+          "n": 45,
+          "value": 0.4444,
+          "ci95": [
+            0.3094,
+            0.5882
+          ]
+        },
+        "auto_precision": {
+          "k": 49,
+          "n": 69,
+          "value": 0.7101,
+          "ci95": [
+            0.5943,
+            0.8038
+          ]
+        },
+        "intent_accuracy": {
+          "k": 85,
+          "n": 98,
+          "value": 0.8673,
+          "ci95": [
+            0.7862,
+            0.9208
+          ]
+        },
+        "retrieval_hit_at_3": {
+          "k": 59,
+          "n": 63,
+          "value": 0.9365,
+          "ci95": [
+            0.8478,
+            0.975
+          ]
+        },
+        "mean_confidence": 0.8504,
+        "mix_adjusted_quality": {
+          "value": 0.7832,
+          "n": 45,
+          "ci95": [
+            0.7128,
+            0.8537
+          ]
+        }
+      },
+      "europe": {
+        "n": 124,
+        "composition": {
+          "should_auto": 85,
+          "should_hold": 39,
+          "unanswerable": 28
+        },
+        "decision_correct": {
+          "k": 99,
+          "n": 124,
+          "value": 0.7984,
+          "ci95": [
+            0.7193,
+            0.8595
+          ]
+        },
+        "resolution_rate": {
+          "k": 76,
+          "n": 85,
+          "value": 0.8941,
+          "ci95": [
+            0.8109,
+            0.9433
+          ]
+        },
+        "unsafe_send_rate": {
+          "k": 16,
+          "n": 39,
+          "value": 0.4103,
+          "ci95": [
+            0.2708,
+            0.5658
+          ]
+        },
+        "auto_precision": {
+          "k": 76,
+          "n": 92,
+          "value": 0.8261,
+          "ci95": [
+            0.736,
+            0.89
+          ]
+        },
+        "intent_accuracy": {
+          "k": 102,
+          "n": 124,
+          "value": 0.8226,
+          "ci95": [
+            0.746,
+            0.8798
+          ]
+        },
+        "retrieval_hit_at_3": {
+          "k": 92,
+          "n": 96,
+          "value": 0.9583,
+          "ci95": [
+            0.8977,
+            0.9837
+          ]
+        },
+        "mean_confidence": 0.8895,
+        "mix_adjusted_quality": {
+          "value": 0.7775,
+          "n": 39,
+          "ci95": [
+            0.7078,
+            0.8472
+          ]
+        }
+      },
+      "latin_america": {
+        "n": 45,
+        "composition": {
+          "should_auto": 26,
+          "should_hold": 19,
+          "unanswerable": 16
+        },
+        "decision_correct": {
+          "k": 29,
+          "n": 45,
+          "value": 0.6444,
+          "ci95": [
+            0.4984,
+            0.7678
+          ]
+        },
+        "resolution_rate": {
+          "k": 23,
+          "n": 26,
+          "value": 0.8846,
+          "ci95": [
+            0.7102,
+            0.96
+          ]
+        },
+        "unsafe_send_rate": {
+          "k": 13,
+          "n": 19,
+          "value": 0.6842,
+          "ci95": [
+            0.4601,
+            0.8464
+          ]
+        },
+        "auto_precision": {
+          "k": 23,
+          "n": 36,
+          "value": 0.6389,
+          "ci95": [
+            0.4757,
+            0.7752
+          ]
+        },
+        "intent_accuracy": {
+          "k": 41,
+          "n": 45,
+          "value": 0.9111,
+          "ci95": [
+            0.7927,
+            0.9649
+          ]
+        },
+        "retrieval_hit_at_3": {
+          "k": 29,
+          "n": 29,
+          "value": 1.0,
+          "ci95": [
+            0.883,
+            1.0
+          ]
+        },
+        "mean_confidence": 0.8778,
+        "mix_adjusted_quality": {
+          "value": 0.6668,
+          "n": 19,
+          "ci95": [
+            0.56,
+            0.7736
+          ]
+        }
+      },
+      "north_america": {
+        "n": 143,
+        "composition": {
+          "should_auto": 89,
+          "should_hold": 54,
+          "unanswerable": 38
+        },
+        "decision_correct": {
+          "k": 107,
+          "n": 143,
+          "value": 0.7483,
+          "ci95": [
+            0.6713,
+            0.8123
+          ]
+        },
+        "resolution_rate": {
+          "k": 80,
+          "n": 89,
+          "value": 0.8989,
+          "ci95": [
+            0.8189,
+            0.9459
+          ]
+        },
+        "unsafe_send_rate": {
+          "k": 27,
+          "n": 54,
+          "value": 0.5,
+          "ci95": [
+            0.3711,
+            0.6289
+          ]
+        },
+        "auto_precision": {
+          "k": 80,
+          "n": 107,
+          "value": 0.7477,
+          "ci95": [
+            0.6578,
+            0.8204
+          ]
+        },
+        "intent_accuracy": {
+          "k": 125,
+          "n": 143,
+          "value": 0.8741,
+          "ci95": [
+            0.8098,
+            0.9189
+          ]
+        },
+        "retrieval_hit_at_3": {
+          "k": 99,
+          "n": 105,
+          "value": 0.9429,
+          "ci95": [
+            0.8809,
+            0.9736
+          ]
+        },
+        "mean_confidence": 0.8954,
+        "mix_adjusted_quality": {
+          "value": 0.7462,
+          "n": 54,
+          "ci95": [
+            0.6831,
+            0.8092
+          ]
+        }
+      }
+    },
+    "customer_tier": {
+      "business": {
+        "n": 133,
+        "composition": {
+          "should_auto": 86,
+          "should_hold": 47,
+          "unanswerable": 31
+        },
+        "decision_correct": {
+          "k": 107,
+          "n": 133,
+          "value": 0.8045,
+          "ci95": [
+            0.729,
+            0.863
+          ]
+        },
+        "resolution_rate": {
+          "k": 77,
+          "n": 86,
+          "value": 0.8953,
+          "ci95": [
+            0.8129,
+            0.944
+          ]
+        },
+        "unsafe_send_rate": {
+          "k": 17,
+          "n": 47,
+          "value": 0.3617,
+          "ci95": [
+            0.2397,
+            0.5046
+          ]
+        },
+        "auto_precision": {
+          "k": 77,
+          "n": 94,
+          "value": 0.8191,
+          "ci95": [
+            0.7293,
+            0.8839
+          ]
+        },
+        "intent_accuracy": {
+          "k": 111,
+          "n": 133,
+          "value": 0.8346,
+          "ci95": [
+            0.7622,
+            0.8882
+          ]
+        },
+        "retrieval_hit_at_3": {
+          "k": 95,
+          "n": 102,
+          "value": 0.9314,
+          "ci95": [
+            0.8651,
+            0.9664
+          ]
+        },
+        "mean_confidence": 0.8766,
+        "mix_adjusted_quality": {
+          "value": 0.7969,
+          "n": 47,
+          "ci95": [
+            0.732,
+            0.8618
+          ]
+        }
+      },
+      "enterprise": {
+        "n": 71,
+        "composition": {
+          "should_auto": 41,
+          "should_hold": 30,
+          "unanswerable": 23
+        },
+        "decision_correct": {
+          "k": 51,
+          "n": 71,
+          "value": 0.7183,
+          "ci95": [
+            0.6046,
+            0.8096
+          ]
+        },
+        "resolution_rate": {
+          "k": 38,
+          "n": 41,
+          "value": 0.9268,
+          "ci95": [
+            0.8057,
+            0.9748
+          ]
+        },
+        "unsafe_send_rate": {
+          "k": 17,
+          "n": 30,
+          "value": 0.5667,
+          "ci95": [
+            0.392,
+            0.7262
+          ]
+        },
+        "auto_precision": {
+          "k": 38,
+          "n": 55,
+          "value": 0.6909,
+          "ci95": [
+            0.5597,
+            0.7972
+          ]
+        },
+        "intent_accuracy": {
+          "k": 56,
+          "n": 71,
+          "value": 0.7887,
+          "ci95": [
+            0.6802,
+            0.8676
+          ]
+        },
+        "retrieval_hit_at_3": {
+          "k": 45,
+          "n": 48,
+          "value": 0.9375,
+          "ci95": [
+            0.8316,
+            0.9785
+          ]
+        },
+        "mean_confidence": 0.8766,
+        "mix_adjusted_quality": {
+          "value": 0.7378,
+          "n": 30,
+          "ci95": [
+            0.6553,
+            0.8204
+          ]
+        }
+      },
+      "standard": {
+        "n": 206,
+        "composition": {
+          "should_auto": 126,
+          "should_hold": 80,
+          "unanswerable": 63
+        },
+        "decision_correct": {
+          "k": 151,
+          "n": 206,
+          "value": 0.733,
+          "ci95": [
+            0.6687,
+            0.7888
+          ]
+        },
+        "resolution_rate": {
+          "k": 113,
+          "n": 126,
+          "value": 0.8968,
+          "ci95": [
+            0.8315,
+            0.9387
+          ]
+        },
+        "unsafe_send_rate": {
+          "k": 42,
+          "n": 80,
+          "value": 0.525,
+          "ci95": [
+            0.417,
+            0.6308
+          ]
+        },
+        "auto_precision": {
+          "k": 113,
+          "n": 155,
+          "value": 0.729,
+          "ci95": [
+            0.6542,
+            0.7928
+          ]
+        },
+        "intent_accuracy": {
+          "k": 186,
+          "n": 206,
+          "value": 0.9029,
+          "ci95": [
+            0.8548,
+            0.9363
+          ]
+        },
+        "retrieval_hit_at_3": {
+          "k": 139,
+          "n": 143,
+          "value": 0.972,
+          "ci95": [
+            0.9303,
+            0.9891
+          ]
+        },
+        "mean_confidence": 0.8852,
+        "mix_adjusted_quality": {
+          "value": 0.7353,
+          "n": 80,
+          "ci95": [
+            0.6827,
+            0.7879
+          ]
+        }
+      }
+    },
+    "channel": {
+      "chat": {
+        "n": 128,
+        "composition": {
+          "should_auto": 84,
+          "should_hold": 44,
+          "unanswerable": 32
+        },
+        "decision_correct": {
+          "k": 98,
+          "n": 128,
+          "value": 0.7656,
+          "ci95": [
+            0.6852,
+            0.8306
+          ]
+        },
+        "resolution_rate": {
+          "k": 78,
+          "n": 84,
+          "value": 0.9286,
+          "ci95": [
+            0.8528,
+            0.9669
+          ]
+        },
+        "unsafe_send_rate": {
+          "k": 24,
+          "n": 44,
+          "value": 0.5455,
+          "ci95": [
+            0.4007,
+            0.6829
+          ]
+        },
+        "auto_precision": {
+          "k": 78,
+          "n": 102,
+          "value": 0.7647,
+          "ci95": [
+            0.6737,
+            0.8365
+          ]
+        },
+        "intent_accuracy": {
+          "k": 96,
+          "n": 128,
+          "value": 0.75,
+          "ci95": [
+            0.6684,
+            0.817
+          ]
+        },
+        "retrieval_hit_at_3": {
+          "k": 90,
+          "n": 96,
+          "value": 0.9375,
+          "ci95": [
+            0.8703,
+            0.971
+          ]
+        },
+        "mean_confidence": 0.8913,
+        "mix_adjusted_quality": {
+          "value": 0.7471,
+          "n": 44,
+          "ci95": [
+            0.6826,
+            0.8115
+          ]
+        }
+      },
+      "docs_comment": {
+        "n": 67,
+        "composition": {
+          "should_auto": 35,
+          "should_hold": 32,
+          "unanswerable": 26
+        },
+        "decision_correct": {
+          "k": 44,
+          "n": 67,
+          "value": 0.6567,
+          "ci95": [
+            0.5373,
+            0.7591
+          ]
+        },
+        "resolution_rate": {
+          "k": 28,
+          "n": 35,
+          "value": 0.8,
+          "ci95": [
+            0.6411,
+            0.8996
+          ]
+        },
+        "unsafe_send_rate": {
+          "k": 16,
+          "n": 32,
+          "value": 0.5,
+          "ci95": [
+            0.3363,
+            0.6637
+          ]
+        },
+        "auto_precision": {
+          "k": 28,
+          "n": 44,
+          "value": 0.6364,
+          "ci95": [
+            0.4887,
+            0.7622
+          ]
+        },
+        "intent_accuracy": {
+          "k": 56,
+          "n": 67,
+          "value": 0.8358,
+          "ci95": [
+            0.7294,
+            0.9058
+          ]
+        },
+        "retrieval_hit_at_3": {
+          "k": 39,
+          "n": 41,
+          "value": 0.9512,
+          "ci95": [
+            0.8386,
+            0.9865
+          ]
+        },
+        "mean_confidence": 0.8754,
+        "mix_adjusted_quality": {
+          "value": 0.6851,
+          "n": 32,
+          "ci95": [
+            0.5837,
+            0.7866
+          ]
+        }
+      },
+      "email": {
+        "n": 169,
+        "composition": {
+          "should_auto": 107,
+          "should_hold": 62,
+          "unanswerable": 45
+        },
+        "decision_correct": {
+          "k": 133,
+          "n": 169,
+          "value": 0.787,
+          "ci95": [
+            0.7192,
+            0.842
+          ]
+        },
+        "resolution_rate": {
+          "k": 97,
+          "n": 107,
+          "value": 0.9065,
+          "ci95": [
+            0.8365,
+            0.9484
+          ]
+        },
+        "unsafe_send_rate": {
+          "k": 26,
+          "n": 62,
+          "value": 0.4194,
+          "ci95": [
+            0.3048,
+            0.5433
+          ]
+        },
+        "auto_precision": {
+          "k": 97,
+          "n": 123,
+          "value": 0.7886,
+          "ci95": [
+            0.7083,
+            0.8515
+          ]
+        },
+        "intent_accuracy": {
+          "k": 157,
+          "n": 169,
+          "value": 0.929,
+          "ci95": [
+            0.88,
+            0.9589
+          ]
+        },
+        "retrieval_hit_at_3": {
+          "k": 119,
+          "n": 124,
+          "value": 0.9597,
+          "ci95": [
+            0.9091,
+            0.9827
+          ]
+        },
+        "mean_confidence": 0.8692,
+        "mix_adjusted_quality": {
+          "value": 0.7817,
+          "n": 62,
+          "ci95": [
+            0.7245,
+            0.839
+          ]
+        }
+      },
+      "forum": {
+        "n": 46,
+        "composition": {
+          "should_auto": 27,
+          "should_hold": 19,
+          "unanswerable": 14
+        },
+        "decision_correct": {
+          "k": 34,
+          "n": 46,
+          "value": 0.7391,
+          "ci95": [
+            0.5974,
+            0.844
+          ]
+        },
+        "resolution_rate": {
+          "k": 25,
+          "n": 27,
+          "value": 0.9259,
+          "ci95": [
+            0.7663,
+            0.9794
+          ]
+        },
+        "unsafe_send_rate": {
+          "k": 10,
+          "n": 19,
+          "value": 0.5263,
+          "ci95": [
+            0.3171,
+            0.7267
+          ]
+        },
+        "auto_precision": {
+          "k": 25,
+          "n": 35,
+          "value": 0.7143,
+          "ci95": [
+            0.5494,
+            0.8367
+          ]
+        },
+        "intent_accuracy": {
+          "k": 44,
+          "n": 46,
+          "value": 0.9565,
+          "ci95": [
+            0.8547,
+            0.988
+          ]
+        },
+        "retrieval_hit_at_3": {
+          "k": 31,
+          "n": 32,
+          "value": 0.9688,
+          "ci95": [
+            0.8426,
+            0.9945
+          ]
+        },
+        "mean_confidence": 0.9033,
+        "mix_adjusted_quality": {
+          "value": 0.7527,
+          "n": 19,
+          "ci95": [
+            0.6504,
+            0.8551
+          ]
+        }
+      }
+    },
+    "length": {
+      "long": {
+        "n": 136,
+        "composition": {
+          "should_auto": 86,
+          "should_hold": 50,
+          "unanswerable": 38
+        },
+        "decision_correct": {
+          "k": 97,
+          "n": 136,
+          "value": 0.7132,
+          "ci95": [
+            0.6322,
+            0.7826
+          ]
+        },
+        "resolution_rate": {
+          "k": 80,
+          "n": 86,
+          "value": 0.9302,
+          "ci95": [
+            0.856,
+            0.9676
+          ]
+        },
+        "unsafe_send_rate": {
+          "k": 33,
+          "n": 50,
+          "value": 0.66,
+          "ci95": [
+            0.5215,
+            0.7756
+          ]
+        },
+        "auto_precision": {
+          "k": 80,
+          "n": 113,
+          "value": 0.708,
+          "ci95": [
+            0.6184,
+            0.7839
+          ]
+        },
+        "intent_accuracy": {
+          "k": 126,
+          "n": 136,
+          "value": 0.9265,
+          "ci95": [
+            0.8699,
+            0.9596
+          ]
+        },
+        "retrieval_hit_at_3": {
+          "k": 94,
+          "n": 98,
+          "value": 0.9592,
+          "ci95": [
+            0.8997,
+            0.984
+          ]
+        },
+        "mean_confidence": 0.9118,
+        "mix_adjusted_quality": {
+          "value": 0.7042,
+          "n": 50,
+          "ci95": [
+            0.6446,
+            0.7638
+          ]
+        }
+      },
+      "medium": {
+        "n": 129,
+        "composition": {
+          "should_auto": 87,
+          "should_hold": 42,
+          "unanswerable": 30
+        },
+        "decision_correct": {
+          "k": 100,
+          "n": 129,
+          "value": 0.7752,
+          "ci95": [
+            0.6958,
+            0.8387
+          ]
+        },
+        "resolution_rate": {
+          "k": 77,
+          "n": 87,
+          "value": 0.8851,
+          "ci95": [
+            0.8012,
+            0.9364
+          ]
+        },
+        "unsafe_send_rate": {
+          "k": 19,
+          "n": 42,
+          "value": 0.4524,
+          "ci95": [
+            0.3122,
+            0.6005
+          ]
+        },
+        "auto_precision": {
+          "k": 77,
+          "n": 96,
+          "value": 0.8021,
+          "ci95": [
+            0.7114,
+            0.8695
+          ]
+        },
+        "intent_accuracy": {
+          "k": 112,
+          "n": 129,
+          "value": 0.8682,
+          "ci95": [
+            0.7991,
+            0.9161
+          ]
+        },
+        "retrieval_hit_at_3": {
+          "k": 98,
+          "n": 99,
+          "value": 0.9899,
+          "ci95": [
+            0.945,
+            0.9982
+          ]
+        },
+        "mean_confidence": 0.9074,
+        "mix_adjusted_quality": {
+          "value": 0.7559,
+          "n": 42,
+          "ci95": [
+            0.6867,
+            0.8251
+          ]
+        }
+      },
+      "short": {
+        "n": 145,
+        "composition": {
+          "should_auto": 80,
+          "should_hold": 65,
+          "unanswerable": 49
+        },
+        "decision_correct": {
+          "k": 112,
+          "n": 145,
+          "value": 0.7724,
+          "ci95": [
+            0.6977,
+            0.8331
+          ]
+        },
+        "resolution_rate": {
+          "k": 71,
+          "n": 80,
+          "value": 0.8875,
+          "ci95": [
+            0.7998,
+            0.9397
+          ]
+        },
+        "unsafe_send_rate": {
+          "k": 24,
+          "n": 65,
+          "value": 0.3692,
+          "ci95": [
+            0.2623,
+            0.4908
+          ]
+        },
+        "auto_precision": {
+          "k": 71,
+          "n": 95,
+          "value": 0.7474,
+          "ci95": [
+            0.6516,
+            0.824
+          ]
+        },
+        "intent_accuracy": {
+          "k": 115,
+          "n": 145,
+          "value": 0.7931,
+          "ci95": [
+            0.72,
+            0.8511
+          ]
+        },
+        "retrieval_hit_at_3": {
+          "k": 87,
+          "n": 96,
+          "value": 0.9062,
+          "ci95": [
+            0.8313,
+            0.9499
+          ]
+        },
+        "mean_confidence": 0.8285,
+        "mix_adjusted_quality": {
+          "value": 0.7892,
+          "n": 65,
+          "ci95": [
+            0.7277,
+            0.8507
+          ]
+        }
+      }
+    }
+  },
+  "checks": [
+    {
+      "dimension": "language_fluency",
+      "binding": true,
+      "measure": "decision_correct",
+      "limit": 0.15,
+      "verdict": "WITHIN_LIMIT",
+      "best_segment": "non_fluent",
+      "segments": [
+        {
+          "segment": "fluent",
+          "value": 0.7468,
+          "n": 308,
+          "ci95": [
+            0.6954,
+            0.7921
+          ],
+          "gap_from_best": 0.0277,
+          "status": "WITHIN_LIMIT"
+        },
+        {
+          "segment": "non_fluent",
+          "value": 0.7745,
+          "n": 102,
+          "ci95": [
+            0.6843,
+            0.8448
+          ],
+          "gap_from_best": 0.0,
+          "status": "WITHIN_LIMIT"
+        }
+      ],
+      "unassessed": []
+    },
+    {
+      "dimension": "language_fluency",
+      "binding": true,
+      "measure": "resolution_rate",
+      "limit": 0.15,
+      "verdict": "WITHIN_LIMIT",
+      "best_segment": "fluent",
+      "segments": [
+        {
+          "segment": "fluent",
+          "value": 0.9144,
+          "n": 187,
+          "ci95": [
+            0.8655,
+            0.9466
+          ],
+          "gap_from_best": 0.0,
+          "status": "WITHIN_LIMIT"
+        },
+        {
+          "segment": "non_fluent",
+          "value": 0.8636,
+          "n": 66,
+          "ci95": [
+            0.7607,
+            0.9266
+          ],
+          "gap_from_best": 0.0508,
+          "status": "WITHIN_LIMIT"
+        }
+      ],
+      "unassessed": []
+    },
+    {
+      "dimension": "language_fluency",
+      "binding": true,
+      "measure": "unsafe_send_rate",
+      "limit": 0.15,
+      "verdict": "WITHIN_LIMIT",
+      "best_segment": "non_fluent",
+      "segments": [
+        {
+          "segment": "fluent",
+          "value": 0.5124,
+          "n": 121,
+          "ci95": [
+            0.4243,
+            0.5997
+          ],
+          "gap_from_best": 0.1235,
+          "status": "WITHIN_LIMIT"
+        },
+        {
+          "segment": "non_fluent",
+          "value": 0.3889,
+          "n": 36,
+          "ci95": [
+            0.2478,
+            0.5514
+          ],
+          "gap_from_best": 0.0,
+          "status": "WITHIN_LIMIT"
+        }
+      ],
+      "unassessed": []
+    },
+    {
+      "dimension": "customer_region",
+      "binding": true,
+      "measure": "decision_correct",
+      "limit": 0.15,
+      "verdict": "BREACH_NOT_SIGNIFICANT",
+      "best_segment": "europe",
+      "segments": [
+        {
+          "segment": "asia_pacific",
+          "value": 0.7551,
+          "n": 98,
+          "ci95": [
+            0.6614,
+            0.8296
+          ],
+          "gap_from_best": 0.0433,
+          "status": "WITHIN_LIMIT"
+        },
+        {
+          "segment": "europe",
+          "value": 0.7984,
+          "n": 124,
+          "ci95": [
+            0.7193,
+            0.8595
+          ],
+          "gap_from_best": 0.0,
+          "status": "WITHIN_LIMIT"
+        },
+        {
+          "segment": "latin_america",
+          "value": 0.6444,
+          "n": 45,
+          "ci95": [
+            0.4984,
+            0.7678
+          ],
+          "gap_from_best": 0.154,
+          "status": "BREACH_NOT_SIGNIFICANT"
+        },
+        {
+          "segment": "north_america",
+          "value": 0.7483,
+          "n": 143,
+          "ci95": [
+            0.6713,
+            0.8123
+          ],
+          "gap_from_best": 0.0501,
+          "status": "WITHIN_LIMIT"
+        }
+      ],
+      "unassessed": []
+    },
+    {
+      "dimension": "customer_region",
+      "binding": true,
+      "measure": "resolution_rate",
+      "limit": 0.15,
+      "verdict": "WITHIN_LIMIT",
+      "best_segment": "asia_pacific",
+      "segments": [
+        {
+          "segment": "asia_pacific",
+          "value": 0.9245,
+          "n": 53,
+          "ci95": [
+            0.8214,
+            0.9703
+          ],
+          "gap_from_best": 0.0,
+          "status": "WITHIN_LIMIT"
+        },
+        {
+          "segment": "europe",
+          "value": 0.8941,
+          "n": 85,
+          "ci95": [
+            0.8109,
+            0.9433
+          ],
+          "gap_from_best": 0.0304,
+          "status": "WITHIN_LIMIT"
+        },
+        {
+          "segment": "latin_america",
+          "value": 0.8846,
+          "n": 26,
+          "ci95": [
+            0.7102,
+            0.96
+          ],
+          "gap_from_best": 0.0399,
+          "status": "WITHIN_LIMIT"
+        },
+        {
+          "segment": "north_america",
+          "value": 0.8989,
+          "n": 89,
+          "ci95": [
+            0.8189,
+            0.9459
+          ],
+          "gap_from_best": 0.0256,
+          "status": "WITHIN_LIMIT"
+        }
+      ],
+      "unassessed": []
+    },
+    {
+      "dimension": "customer_region",
+      "binding": true,
+      "measure": "unsafe_send_rate",
+      "limit": 0.15,
+      "verdict": "BREACH_NOT_SIGNIFICANT",
+      "best_segment": "europe",
+      "segments": [
+        {
+          "segment": "asia_pacific",
+          "value": 0.4444,
+          "n": 45,
+          "ci95": [
+            0.3094,
+            0.5882
+          ],
+          "gap_from_best": 0.0341,
+          "status": "WITHIN_LIMIT"
+        },
+        {
+          "segment": "europe",
+          "value": 0.4103,
+          "n": 39,
+          "ci95": [
+            0.2708,
+            0.5658
+          ],
+          "gap_from_best": 0.0,
+          "status": "WITHIN_LIMIT"
+        },
+        {
+          "segment": "latin_america",
+          "value": 0.6842,
+          "n": 19,
+          "ci95": [
+            0.4601,
+            0.8464
+          ],
+          "gap_from_best": 0.2739,
+          "status": "BREACH_NOT_SIGNIFICANT"
+        },
+        {
+          "segment": "north_america",
+          "value": 0.5,
+          "n": 54,
+          "ci95": [
+            0.3711,
+            0.6289
+          ],
+          "gap_from_best": 0.0897,
+          "status": "WITHIN_LIMIT"
+        }
+      ],
+      "unassessed": []
+    },
+    {
+      "dimension": "customer_tier",
+      "binding": true,
+      "measure": "auto_precision",
+      "limit": 0.1,
+      "verdict": "BREACH_NOT_SIGNIFICANT",
+      "best_segment": "business",
+      "segments": [
+        {
+          "segment": "business",
+          "value": 0.8191,
+          "n": 94,
+          "ci95": [
+            0.7293,
+            0.8839
+          ],
+          "gap_from_best": 0.0,
+          "status": "WITHIN_LIMIT"
+        },
+        {
+          "segment": "enterprise",
+          "value": 0.6909,
+          "n": 55,
+          "ci95": [
+            0.5597,
+            0.7972
+          ],
+          "gap_from_best": 0.1282,
+          "status": "BREACH_NOT_SIGNIFICANT"
+        },
+        {
+          "segment": "standard",
+          "value": 0.729,
+          "n": 155,
+          "ci95": [
+            0.6542,
+            0.7928
+          ],
+          "gap_from_best": 0.0901,
+          "status": "WITHIN_LIMIT"
+        }
+      ],
+      "unassessed": []
+    },
+    {
+      "dimension": "language_fluency",
+      "binding": false,
+      "measure": "mix_adjusted_quality",
+      "limit": 0.15,
+      "verdict": "WITHIN_LIMIT",
+      "best_segment": "non_fluent",
+      "segments": [
+        {
+          "segment": "fluent",
+          "value": 0.751,
+          "n": 121,
+          "ci95": [
+            0.7091,
+            0.7928
+          ],
+          "gap_from_best": 0.0159,
+          "status": "WITHIN_LIMIT"
+        },
+        {
+          "segment": "non_fluent",
+          "value": 0.7669,
+          "n": 36,
+          "ci95": [
+            0.6895,
+            0.8444
+          ],
+          "gap_from_best": 0.0,
+          "status": "WITHIN_LIMIT"
+        }
+      ],
+      "unassessed": []
+    },
+    {
+      "dimension": "customer_region",
+      "binding": false,
+      "measure": "mix_adjusted_quality",
+      "limit": 0.15,
+      "verdict": "WITHIN_LIMIT",
+      "best_segment": "asia_pacific",
+      "segments": [
+        {
+          "segment": "asia_pacific",
+          "value": 0.7832,
+          "n": 45,
+          "ci95": [
+            0.7128,
+            0.8537
+          ],
+          "gap_from_best": 0.0,
+          "status": "WITHIN_LIMIT"
+        },
+        {
+          "segment": "europe",
+          "value": 0.7775,
+          "n": 39,
+          "ci95": [
+            0.7078,
+            0.8472
+          ],
+          "gap_from_best": 0.0057,
+          "status": "WITHIN_LIMIT"
+        },
+        {
+          "segment": "latin_america",
+          "value": 0.6668,
+          "n": 19,
+          "ci95": [
+            0.56,
+            0.7736
+          ],
+          "gap_from_best": 0.1164,
+          "status": "WITHIN_LIMIT"
+        },
+        {
+          "segment": "north_america",
+          "value": 0.7462,
+          "n": 54,
+          "ci95": [
+            0.6831,
+            0.8092
+          ],
+          "gap_from_best": 0.037,
+          "status": "WITHIN_LIMIT"
+        }
+      ],
+      "unassessed": []
+    },
+    {
+      "dimension": "channel",
+      "binding": false,
+      "measure": "decision_correct",
+      "limit": 0.15,
+      "verdict": "WITHIN_LIMIT",
+      "best_segment": "email",
+      "segments": [
+        {
+          "segment": "chat",
+          "value": 0.7656,
+          "n": 128,
+          "ci95": [
+            0.6852,
+            0.8306
+          ],
+          "gap_from_best": 0.0214,
+          "status": "WITHIN_LIMIT"
+        },
+        {
+          "segment": "docs_comment",
+          "value": 0.6567,
+          "n": 67,
+          "ci95": [
+            0.5373,
+            0.7591
+          ],
+          "gap_from_best": 0.1303,
+          "status": "WITHIN_LIMIT"
+        },
+        {
+          "segment": "email",
+          "value": 0.787,
+          "n": 169,
+          "ci95": [
+            0.7192,
+            0.842
+          ],
+          "gap_from_best": 0.0,
+          "status": "WITHIN_LIMIT"
+        },
+        {
+          "segment": "forum",
+          "value": 0.7391,
+          "n": 46,
+          "ci95": [
+            0.5974,
+            0.844
+          ],
+          "gap_from_best": 0.0479,
+          "status": "WITHIN_LIMIT"
+        }
+      ],
+      "unassessed": []
+    },
+    {
+      "dimension": "length",
+      "binding": false,
+      "measure": "decision_correct",
+      "limit": 0.15,
+      "verdict": "WITHIN_LIMIT",
+      "best_segment": "medium",
+      "segments": [
+        {
+          "segment": "long",
+          "value": 0.7132,
+          "n": 136,
+          "ci95": [
+            0.6322,
+            0.7826
+          ],
+          "gap_from_best": 0.062,
+          "status": "WITHIN_LIMIT"
+        },
+        {
+          "segment": "medium",
+          "value": 0.7752,
+          "n": 129,
+          "ci95": [
+            0.6958,
+            0.8387
+          ],
+          "gap_from_best": 0.0,
+          "status": "WITHIN_LIMIT"
+        },
+        {
+          "segment": "short",
+          "value": 0.7724,
+          "n": 145,
+          "ci95": [
+            0.6977,
+            0.8331
+          ],
+          "gap_from_best": 0.0028,
+          "status": "WITHIN_LIMIT"
+        }
+      ],
+      "unassessed": []
+    }
+  ],
+  "nfr05_breaches": [],
+  "nfr05_unproven": [
+    "customer_region.decision_correct",
+    "customer_region.unsafe_send_rate",
+    "customer_tier.auto_precision"
+  ],
+  "quality_basis": "label-based decision outcomes; NOT rubric-scored (B-17 judge not built)",
+  "source": "evaluation/results/dev_local_410_20260924",
+  "models": {
+    "generator": "llama3.1-8b-ctx8k",
+    "judge": "qwen2.5-7b-ctx8k"
+  }
+}

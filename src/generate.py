@@ -216,6 +216,124 @@ def _structural_critic(
     return CritiqueResult(passed=not problems, unsupported_claims=problems)
 
 
+# ─── derived-figure check (part of the D-06 self-check loop) ─────────
+#
+# A number in the reply that is in neither the passages nor the ticket was
+# worked out, not quoted. PR-GENERATE-01 forbids that; this is what notices
+# when the instruction was not followed.
+#
+# It sits with _structural_critic rather than in src/guardrails.py because it
+# catches a fault the model produces on its own, detectable without judgement —
+# the same class as a fabricated citation. Putting it here means the model gets
+# the finding as retry feedback and can redraft, and only an exhausted retry
+# escalates. A guardrail could only withhold the reply.
+#
+# The failure it exists for: on evaluation/results/dev_local_80_20260923 the
+# generator quoted DOC-DATA-002's "roughly ten minutes per hundred gigabytes"
+# correctly and turned 400 GB into "around 40 hours" (correct: 40 minutes).
+# The reply was SENT — every guardrail passed it, rightly, because the citation
+# resolves and the rate is quoted accurately. Only the arithmetic is wrong, and
+# nothing downstream reads arithmetic.
+#
+# Scope: across the 629 drafts in evaluation/results/, exactly 2 carried a
+# derived number and both were wrong.
+_NUMBER = re.compile(r"\d+(?:\.\d+)?")
+_WORD_NUMBERS: dict[str, str] = {
+    "one": "1", "two": "2", "three": "3", "four": "4", "five": "5",
+    "six": "6", "seven": "7", "eight": "8", "nine": "9", "ten": "10",
+    "eleven": "11", "twelve": "12", "fifteen": "15", "twenty": "20",
+    "thirty": "30", "forty": "40", "fifty": "50", "sixty": "60",
+    "seventy": "70", "eighty": "80", "ninety": "90",
+    "hundred": "100", "thousand": "1000",
+}
+_WORD_NUMBER_RE = re.compile(
+    r"\b(" + "|".join(_WORD_NUMBERS) + r")\b", re.IGNORECASE
+)
+# Compounds must read as one number. DOC-BILL-003 says "fifty, eighty and
+# ninety-five per cent" and DOC-API-002 says "at or below two hundred", so a
+# reply writing those as digits is quoting. Reading "ninety-five" as 90 and 5
+# flagged VAL-0032 in b21_local_80_20260919 — a correctly grounded reply.
+_TENS = ("twenty", "thirty", "forty", "fifty", "sixty", "seventy", "eighty",
+         "ninety")
+_MULTIPLIERS = {"hundred": 100, "thousand": 1000}
+_TENS_UNIT = re.compile(
+    r"\b(" + "|".join(_TENS) + r")[- ]"
+    r"(one|two|three|four|five|six|seven|eight|nine)\b", re.IGNORECASE)
+_UNIT_MULTIPLIER = re.compile(
+    r"\b(" + "|".join(w for w in _WORD_NUMBERS if w not in _MULTIPLIERS) + r")"
+    r"\s+(" + "|".join(_MULTIPLIERS) + r")\b", re.IGNORECASE)
+# "1,000" is one number, not 1 and 000.
+_THOUSANDS_SEP = re.compile(r"(?<=\d),(?=\d\d\d\b)")
+
+
+def _fold_compounds(text: str) -> str:
+    """Rewrite compound written-out numbers as digits, longest form first."""
+    text = _TENS_UNIT.sub(
+        lambda m: str(int(_WORD_NUMBERS[m.group(1).lower()])
+                      + int(_WORD_NUMBERS[m.group(2).lower()])), text)
+    return _UNIT_MULTIPLIER.sub(
+        lambda m: str(int(_WORD_NUMBERS[m.group(1).lower()])
+                      * _MULTIPLIERS[m.group(2).lower()]), text)
+
+
+def numbers_in(text: str, *, expand: bool = False) -> set[str]:
+    """Every number in ``text``, written-out forms normalised to digits.
+
+    ``expand`` adds the decomposed reading alongside the compound one. It is
+    set for the SOURCE side only: a larger supported set can only let more
+    replies through, never hold one back, so an imperfect reading of an article
+    errs towards answering rather than withholding.
+    """
+    lowered = _THOUSANDS_SEP.sub("", text.lower())
+
+    def digits(s: str) -> set[str]:
+        spelled = _WORD_NUMBER_RE.sub(
+            lambda m: _WORD_NUMBERS[m.group(0).lower()], s)
+        return {n.lstrip("0") or "0" for n in _NUMBER.findall(spelled)}
+
+    found = digits(_fold_compounds(lowered))
+    if expand:
+        found |= digits(lowered)
+    return found
+
+
+def derived_numbers(
+    answer: str, passages: list[Passage], ticket: Ticket
+) -> list[str]:
+    """Numbers in ``answer`` that are in neither the passages nor the ticket.
+
+    Citation markers are stripped first, or every ``[DOC-API-002]`` would read
+    as the number 2.
+    """
+    if not answer.strip():
+        return []
+    stated = numbers_in(strip_citation_markers(answer))
+    supported = numbers_in(
+        " ".join(p.text for p in passages)
+        + " " + (ticket.body or "")
+        + " " + (ticket.subject or ""),
+        expand=True,
+    )
+    return sorted(stated - supported, key=lambda n: (len(n), n))
+
+
+def _derived_figure_problems(
+    response: GeneratedResponse, passages: list[Passage], ticket: Ticket
+) -> list[str]:
+    """Retry feedback for any figure the draft worked out rather than quoted."""
+    if response.unknown:
+        return []
+    found = derived_numbers(response.answer, passages, ticket)
+    if not found:
+        return []
+    return [
+        f"the figure {n!r} appears in neither the passages nor the ticket — "
+        f"you worked it out. Quote the rate as the passage states it and let "
+        f"the customer apply it to their own numbers (PR-GENERATE-01 scope)"
+        for n in found
+    ]
+
+
 # ─── public API ──────────────────────────────────────────────────────
 
 
@@ -407,9 +525,15 @@ def _run_grounded_branch(
                 retries=attempt,
             )
 
-        if critique.passed:
+        # A figure the model worked out is a fault it produced on its own, so
+        # it joins the critic's findings and travels the same retry path.
+        numeric_problems = _derived_figure_problems(response, passages, ticket)
+
+        if critique.passed and not numeric_problems:
             response.retries = attempt
             return response
+
+        problems = list(critique.unsupported_claims) + numeric_problems
 
         if attempt >= GENERATE_MAX_RETRIES:
             # Retry cap reached with no grounded answer — escalate as unknown
@@ -418,14 +542,14 @@ def _run_grounded_branch(
                 "generate.retry_exhausted",
                 extra={
                     "ticket_id": ticket.ticket_id,
-                    "unsupported_claims": critique.unsupported_claims,
+                    "unsupported_claims": problems,
                     "attempts": attempt + 1,
                 },
             )
             return GeneratedResponse.unknown_fallback(
                 error=(
                     "self_rag_retry_exhausted: "
-                    + "; ".join(critique.unsupported_claims)
+                    + "; ".join(problems)
                 ),
                 retries=attempt,
             )
@@ -433,7 +557,7 @@ def _run_grounded_branch(
         # Prepare feedback for the next attempt.
         retry_feedback = (
             "UNSUPPORTED CLAIMS FROM YOUR PREVIOUS DRAFT — remove or ground "
-            "each of these:\n- " + "\n- ".join(critique.unsupported_claims)
+            "each of these:\n- " + "\n- ".join(problems)
         )
 
     # Unreachable — the loop returns on every branch.

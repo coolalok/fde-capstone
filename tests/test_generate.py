@@ -20,7 +20,9 @@ from src.generate import (
     _collapse_repeated_markers,
     _parse_response,
     _structural_critic,
+    derived_numbers,
     generate,
+    numbers_in,
     strip_citation_markers,
 )
 from src.schema import GeneratedResponse, Passage, Ticket
@@ -103,7 +105,7 @@ def test_grounded_branch_returns_answer_with_valid_citations(db):
     """FR-13: grounded answer + citation that resolves to a supplied passage."""
     stub = _stub_returning(
         {
-            "answer": "Reset your MFA by opening [DOC-AUTH-001] and following step 3.",
+            "answer": "Reset your MFA by opening [DOC-AUTH-001] and following the steps there.",
             "citations": ["DOC-AUTH-001"],
             "confidence": 0.88,
             "unknown": False,
@@ -620,3 +622,87 @@ def test_failure_log_keeps_the_raw_model_text(monkeypatch, caplog):
     assert out.unknown is True
     heads = [getattr(r, "raw_response_head", None) for r in caplog.records]
     assert '{"answer": "unterminated' in heads
+
+
+# ─── derived figures (2026-09-24) ────────────────────────────────────
+# Source: evaluation/results/dev_local_80_20260923. DEV-0024 quoted
+# DOC-DATA-002's "roughly ten minutes per hundred gigabytes" correctly, turned
+# 400 GB into "around 40 hours" (correct: 40 minutes) and was SENT — every
+# guardrail passed it, because the citation resolves and the rate is accurate.
+# Drafts below are synthetic, shaped after that failure.
+
+
+def _rate_passages() -> list[Passage]:
+    return [Passage(
+        doc_id="DOC-DATA-002", score=0.8,
+        text="Allow roughly ten minutes per hundred gigabytes for the restore, "
+             "and considerably longer where the instance is also under load.",
+        title="Restore", category="data", chunk_index=0,
+        chunk_text="Allow roughly ten minutes per hundred gigabytes.")]
+
+
+def test_numbers_in_reads_compounds_as_one_number():
+    """"ninety-five" is 95, not 90 and 5; "two hundred" is 200; "1,000" is one
+    number. Reading them apart falsely flagged VAL-0032, a grounded reply."""
+    assert numbers_in("ninety-five per cent") == {"95"}
+    assert numbers_in("two hundred") == {"200"}
+    assert numbers_in("1,000 requests") == {"1000"}
+    # The source side keeps both readings, so it can only pass more replies.
+    assert {"95", "90", "5"} <= numbers_in("ninety-five", expand=True)
+
+
+def test_derived_numbers_allows_quoted_and_customer_supplied_figures():
+    ticket = _ticket(body="The database is about four hundred gigabytes.")
+    answer = ("Allow roughly ten minutes per hundred gigabytes. Your database "
+              "is about four hundred gigabytes. [DOC-DATA-002]")
+    assert derived_numbers(answer, _rate_passages(), ticket) == []
+
+
+def test_derived_numbers_flags_a_worked_out_figure():
+    ticket = _ticket(body="The database is about four hundred gigabytes.")
+    answer = "So allow around 40 hours. [DOC-DATA-002]"
+    assert derived_numbers(answer, _rate_passages(), ticket) == ["40"]
+
+
+def test_a_worked_out_figure_triggers_one_retry_then_returns_the_clean_draft(db):
+    """The DEV-0024 shape: the model computes, is told the figure is not in
+    the sources, and redrafts by quoting the rate instead."""
+    stub = _stub_sequence([
+        {"answer": "Allow ten minutes per hundred gigabytes, so around 40 "
+                   "hours. [DOC-DATA-002]",
+         "citations": ["DOC-DATA-002"], "confidence": 0.9, "unknown": False},
+        {"answer": "Allow roughly ten minutes per hundred gigabytes. "
+                   "[DOC-DATA-002]",
+         "citations": ["DOC-DATA-002"], "confidence": 0.85, "unknown": False},
+    ])
+    resp = generate(
+        _ticket(body="The database is about four hundred gigabytes."),
+        _rate_passages(), ticket_id="T-ARITH", call_model=stub)
+    assert resp.unknown is False
+    assert "40 hours" not in resp.answer
+    assert resp.retries == 1
+    assert resp.error is None
+
+
+def test_a_worked_out_figure_that_survives_the_retry_escalates(db):
+    """Rather nothing than wrong (EV-M3): if it will not stop calculating, the
+    ticket goes to a person instead of the reply going to the customer."""
+    stub = _stub_returning(
+        {"answer": "So allow around 40 hours. [DOC-DATA-002]",
+         "citations": ["DOC-DATA-002"], "confidence": 0.9, "unknown": False})
+    resp = generate(
+        _ticket(body="The database is about four hundred gigabytes."),
+        _rate_passages(), ticket_id="T-ARITH-2", call_model=stub)
+    assert resp.unknown is True
+    assert resp.answer == ""
+    assert "self_rag_retry_exhausted" in resp.error
+    assert "40" in resp.error
+
+
+def test_the_check_does_not_fire_on_the_unknown_branch(db):
+    stub = _stub_returning(
+        {"answer": "", "citations": [], "confidence": 0.0, "unknown": True})
+    resp = generate(_ticket(), _rate_passages(), ticket_id="T-UNK",
+                    call_model=stub)
+    assert resp.unknown is True
+    assert resp.error is None

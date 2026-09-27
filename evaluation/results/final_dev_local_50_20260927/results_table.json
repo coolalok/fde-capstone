@@ -1,0 +1,392 @@
+{
+  "header": {
+    "run_id": "harness-20260927T101501Z-32ab3564",
+    "run_date": "2026-09-27",
+    "tickets": 50,
+    "generator_model": "llama3.1-8b-ctx8k",
+    "guardrail_model": "qwen2.5-7b-ctx8k",
+    "guardrails_enabled": true,
+    "confidence_threshold": 0.85,
+    "model_cache_enabled": false,
+    "cached_calls": 0,
+    "live_calls": 198,
+    "tickets_with_replayed_calls": 0,
+    "code_version": "a288388 + uncommitted changes",
+    "hidden_set_runs": 0,
+    "kill_switch_active": false
+  },
+  "rows": [
+    {
+      "measure": "First contact resolution",
+      "baseline": "42%",
+      "target": "60%",
+      "achieved": "60.0% correctly resolved (80.0% auto-sent)",
+      "confidence": "95% CI 46-72% (n=50)",
+      "notes": "10 of 40 sent replies went to tickets the labels say must be held, so they are not counted as resolved: a wrong answer returns as a repeat contact. Correctness is agreement with labels.expected_route, not a check of reply quality.",
+      "status": "MET"
+    },
+    {
+      "measure": "Mean time to first reply",
+      "baseline": "8 to 12 hrs",
+      "target": "< 5 min",
+      "achieved": "52.2 s",
+      "confidence": "n=40 auto-sent tickets; median 51.1 s",
+      "notes": "Harness time from ticket read to reply ready; excludes queueing and delivery. The 10 escalated or blocked tickets get no automated reply (holding reply is out of scope, PRD Table 6), so their first reply comes from the human queue.",
+      "status": "MET"
+    },
+    {
+      "measure": "Satisfaction proxy",
+      "baseline": "3.2 / 5",
+      "target": "4.0",
+      "achieved": "Not measured",
+      "confidence": "No scored sample on this run",
+      "notes": "The Framework's method is human review of a stated sample of responses against a rubric, reporting sample size, rubric and scorers. Not done for this run. Nearest evidence: B-18, where one person scored 50 drafts from b21_openai_80_20260914 on the judge's RAG rubric (mean answer relevance 4.86/5) \u2014 a different rubric, a different run and a single scorer, so not a satisfaction proxy.",
+      "status": "NOT MEASURED"
+    },
+    {
+      "measure": "Escalation rate",
+      "baseline": "58%",
+      "target": "\u2264 30%",
+      "achieved": "20.0%",
+      "confidence": "95% CI 11-33% (n=50)",
+      "notes": "6 escalated by routing and 4 blocked by a guardrail; 0 tickets were blocked because a check could not run (fail-safe), not because it found a fault.",
+      "status": "MET"
+    },
+    {
+      "measure": "Classification precision",
+      "baseline": "\u2014",
+      "target": "85%",
+      "achieved": "97.8% mean over the 18 classes with a precision denominator; 17 of 18 at \u226585%",
+      "confidence": "Precision n (predictions made per class): median 2; 16 classes were predicted fewer than 5 times and 0 never, so per-class figures are indicative only",
+      "notes": "Weakest: account_access 60% (n=5); api_key_issue 100% (n=2); api_usage_question 100% (n=3). Overall intent accuracy 96.0%. The target is per class, so it is met only if every class reaches 85%.",
+      "status": "NOT MET"
+    },
+    {
+      "measure": "Hallucination rate",
+      "baseline": "\u2014",
+      "target": "\u2264 5%",
+      "achieved": "Not measured to method",
+      "confidence": "\u2014",
+      "notes": "The Framework requires at least fifty responses assessed independently by two people, with their agreement reported. This project had one human assessor. Nearest evidence (B-18, drafts from b21_openai_80_20260914): one human found an unsupported claim in 1 of 50 drafts; the LLM judge in 5 of 50; the judge failed calibration (pooled Spearman 0.3492 against 0.70).",
+      "status": "NOT MEASURED"
+    },
+    {
+      "measure": "Citation accuracy",
+      "baseline": "\u2014",
+      "target": "95%",
+      "achieved": "Not measured to method",
+      "confidence": "\u2014",
+      "notes": "The Framework checks each citation against the sentence it is attached to. Sentence-level support was not assessed. Nearest evidence: the cited ARTICLE was one the labels expect in 88.9% of citations over 36 drafts (recall 84.7%) \u2014 a check of the right source, not of support.",
+      "status": "NOT MEASURED"
+    },
+    {
+      "measure": "Latency p95",
+      "baseline": "\u2014",
+      "target": "< 3 s",
+      "achieved": "77.9 s",
+      "confidence": "n=50 live tickets; max 88.0 s",
+      "notes": "End to end per ticket, including retrieval and every model call, run in sequence. Models: llama3.1-8b-ctx8k drafting, qwen2.5-7b-ctx8k guardrails.",
+      "status": "NOT MET"
+    },
+    {
+      "measure": "Private data occurrences",
+      "baseline": "\u2014",
+      "target": "0",
+      "achieved": "0",
+      "confidence": "Automated scan of all 40 sent replies; manual sample review: not done",
+      "notes": "The scan uses the PII guardrail's own patterns (email, API key, phone, account number), independently of the judge's verdict. The guardrail blocked 0 drafts for private data before sending.",
+      "status": "MET"
+    },
+    {
+      "measure": "Cross-group variation",
+      "baseline": "\u2014",
+      "target": "< 5 pts",
+      "achieved": "30 pts (language_fluency: fluent vs non_fluent)",
+      "confidence": "breach not significant: fluent n=40 against non_fluent n=10; 1 segments under n=10 excluded",
+      "notes": "Quality here is decision correctness against labels, not a rubric score, across language fluency, region and tier. The status is the audit's own per-segment verdict: a gap wider than the target whose interval overlaps the best segment's is a gap this sample cannot resolve, so it is reported as not measured rather than as a failure. NFR-05 allows 15 points; this Framework target is 5. Full per-segment figures: fairness audit.",
+      "status": "NOT MEASURED"
+    },
+    {
+      "measure": "Repeat contacts",
+      "baseline": "24.0% (history, n=50)",
+      "target": "Halved",
+      "achieved": "Not measured",
+      "confidence": "An offline run cannot observe a customer returning",
+      "notes": "Baseline from history.repeat_contact: 12 of 50 of these tickets (24.0%) came back under human handling, so halved is 12.0% or lower. Leading indicator: 10 of 40 sent replies went to tickets the labels say must be held, the kind of reply that comes back as a repeat contact.",
+      "status": "NOT MEASURED"
+    },
+    {
+      "measure": "Availability",
+      "baseline": "\u2014",
+      "target": "99.5%",
+      "achieved": "98.0%",
+      "confidence": "95% CI 90-100% (n=50)",
+      "notes": "49 of 50 tickets had every stage work. 1 hit a model-call or pipeline failure (degraded ticket, classifier or generator error, or a guardrail that could not run); 50 of 50 still received a decision, a failure escalating rather than erroring. One run's tickets are not uptime over time. At this n the interval cannot confirm 99.5%.",
+      "status": "NOT MET"
+    }
+  ],
+  "governance": [
+    {
+      "condition": "Private data in outbound text",
+      "requirement": "Zero occurrences.",
+      "result": "0 (Automated scan of all 40 sent replies; manual sample review: not done)",
+      "status": "MET"
+    },
+    {
+      "condition": "Quality across customer groups",
+      "requirement": "Under five percentage points of variation.",
+      "result": "30 pts (language_fluency: fluent vs non_fluent) (breach not significant: fluent n=40 against non_fluent n=10; 1 segments under n=10 excluded)",
+      "status": "NOT MEASURED"
+    },
+    {
+      "condition": "Decision logging",
+      "requirement": "Complete coverage.",
+      "result": "50 of 50 tickets logged; reconciles=True",
+      "status": "MET"
+    },
+    {
+      "condition": "Confidence calibration",
+      "requirement": "Stated confidence within five points of observed accuracy.",
+      "result": "largest gap +1.0 pts in band 0.9-1.0 (stated 0.95, observed 0.96, n=50)",
+      "status": "MET"
+    }
+  ],
+  "business": [
+    "40 of 50 tickets (80.0%) were answered without a human; 10 (20.0%) went to the human queue (baseline escalation 58%).",
+    "10 of those answers went to tickets that should have reached a person, so correct automated resolution is 60.0% against the 42% human baseline: the system moves work off the queue, but not yet more correctly resolved work."
+  ],
+  "routing": {
+    "n": 50,
+    "should_send": 32,
+    "sent": 40,
+    "correct_sends": 30,
+    "wrong_sends": 10,
+    "wrong_holds": 2,
+    "send_precision": 0.75,
+    "send_coverage": 0.9375,
+    "wrong_send_rate": 0.2,
+    "wrong_hold_rate": 0.04
+  },
+  "failures": {
+    "wrong_decisions": 12,
+    "by_stage": {
+      "answerability": 10,
+      "generation": 1,
+      "guardrail": 1
+    },
+    "by_reason": {
+      "answerability:sent_unanswerable": 10,
+      "generation:generator_unknown": 1,
+      "guardrail:grounding:verdict": 1
+    }
+  },
+  "intent": {
+    "per_class": {
+      "account_access": {
+        "support": 3,
+        "predicted": 5,
+        "precision": 0.6,
+        "recall": 1.0
+      },
+      "api_key_issue": {
+        "support": 2,
+        "predicted": 2,
+        "precision": 1.0,
+        "recall": 1.0
+      },
+      "api_usage_question": {
+        "support": 3,
+        "predicted": 3,
+        "precision": 1.0,
+        "recall": 1.0
+      },
+      "authentication_failure": {
+        "support": 4,
+        "predicted": 2,
+        "precision": 1.0,
+        "recall": 0.5
+      },
+      "billing_query": {
+        "support": 3,
+        "predicted": 3,
+        "precision": 1.0,
+        "recall": 1.0
+      },
+      "compliance_request": {
+        "support": 4,
+        "predicted": 4,
+        "precision": 1.0,
+        "recall": 1.0
+      },
+      "configuration_help": {
+        "support": 3,
+        "predicted": 3,
+        "precision": 1.0,
+        "recall": 1.0
+      },
+      "data_export": {
+        "support": 2,
+        "predicted": 2,
+        "precision": 1.0,
+        "recall": 1.0
+      },
+      "database_issue": {
+        "support": 2,
+        "predicted": 2,
+        "precision": 1.0,
+        "recall": 1.0
+      },
+      "deployment_failure": {
+        "support": 4,
+        "predicted": 4,
+        "precision": 1.0,
+        "recall": 1.0
+      },
+      "feature_request": {
+        "support": 2,
+        "predicted": 2,
+        "precision": 1.0,
+        "recall": 1.0
+      },
+      "integration_help": {
+        "support": 3,
+        "predicted": 3,
+        "precision": 1.0,
+        "recall": 1.0
+      },
+      "performance_degradation": {
+        "support": 1,
+        "predicted": 1,
+        "precision": 1.0,
+        "recall": 1.0
+      },
+      "quota_or_overage": {
+        "support": 2,
+        "predicted": 2,
+        "precision": 1.0,
+        "recall": 1.0
+      },
+      "rate_limit": {
+        "support": 2,
+        "predicted": 2,
+        "precision": 1.0,
+        "recall": 1.0
+      },
+      "rollback_request": {
+        "support": 5,
+        "predicted": 5,
+        "precision": 1.0,
+        "recall": 1.0
+      },
+      "security_incident": {
+        "support": 2,
+        "predicted": 2,
+        "precision": 1.0,
+        "recall": 1.0
+      },
+      "sso_configuration": {
+        "support": 3,
+        "predicted": 3,
+        "precision": 1.0,
+        "recall": 1.0
+      }
+    },
+    "confusion": {
+      "account_access": {
+        "account_access": 3
+      },
+      "api_key_issue": {
+        "api_key_issue": 2
+      },
+      "api_usage_question": {
+        "api_usage_question": 3
+      },
+      "authentication_failure": {
+        "account_access": 2,
+        "authentication_failure": 2
+      },
+      "billing_query": {
+        "billing_query": 3
+      },
+      "compliance_request": {
+        "compliance_request": 4
+      },
+      "configuration_help": {
+        "configuration_help": 3
+      },
+      "data_export": {
+        "data_export": 2
+      },
+      "database_issue": {
+        "database_issue": 2
+      },
+      "deployment_failure": {
+        "deployment_failure": 4
+      },
+      "feature_request": {
+        "feature_request": 2
+      },
+      "integration_help": {
+        "integration_help": 3
+      },
+      "performance_degradation": {
+        "performance_degradation": 1
+      },
+      "quota_or_overage": {
+        "quota_or_overage": 2
+      },
+      "rate_limit": {
+        "rate_limit": 2
+      },
+      "rollback_request": {
+        "rollback_request": 5
+      },
+      "security_incident": {
+        "security_incident": 2
+      },
+      "sso_configuration": {
+        "sso_configuration": 3
+      }
+    }
+  },
+  "stages": {
+    "n_live_tickets": 50,
+    "stages": {
+      "classification": {
+        "n": 50,
+        "p50": 2.947,
+        "p95": 3.271,
+        "mean": 3.257
+      },
+      "retrieval": {
+        "n": 50,
+        "p50": 0.281,
+        "p95": 0.485,
+        "mean": 0.307
+      },
+      "generation": {
+        "n": 50,
+        "p50": 16.395,
+        "p95": 29.011,
+        "mean": 17.987
+      },
+      "guardrails": {
+        "n": 50,
+        "p50": 30.358,
+        "p95": 45.665,
+        "mean": 31.785
+      }
+    },
+    "model_calls_per_ticket": {
+      "mean": 3.96,
+      "max": 4
+    }
+  },
+  "limitations": [
+    "A single run of 50 tickets: one ticket moves a rate by 2.0 points, and 95% intervals are wide.",
+    "Not measured to the Framework's method: Satisfaction proxy, Hallucination rate, Citation accuracy, Cross-group variation, Repeat contacts.",
+    "Correctness is agreement with the dataset's labels, some of which are debatable.",
+    "6 of 50 tickets have text that appears elsewhere in the labelled data with a different expected_route or answerable_from_docs, so their correct answer is set by which copy was filed here, not by the ticket.",
+    "Hidden evaluation set runs: 0. These figures are from a labelled development set, not the held-out test set."
+  ]
+}

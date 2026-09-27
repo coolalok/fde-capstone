@@ -1,0 +1,343 @@
+{
+  "run_id": "harness-20260923T191730Z-991c8f6a",
+  "model_name": "llama3.1-8b-ctx8k",
+  "guardrail_model": "qwen2.5-7b-ctx8k",
+  "confidence_threshold": 0.85,
+  "guardrails_enabled": true,
+  "labels_available": true,
+  "counts": {
+    "tickets_processed": 410,
+    "auto_respond": 304,
+    "escalate": 71,
+    "block": 35,
+    "degraded": 0,
+    "generator_unknown": 21,
+    "empty_retrieval": 12
+  },
+  "business_metrics": {
+    "fcr_proxy": 0.7415,
+    "fcr_correct_proxy": 0.5561,
+    "escalation_rate": 0.2585,
+    "repeat_contact_proxy": 0.0512,
+    "ttr_seconds_median": 47.541,
+    "routing_outcomes": {
+      "n": 410,
+      "should_send": 253,
+      "sent": 304,
+      "correct_sends": 228,
+      "wrong_sends": 76,
+      "wrong_holds": 25,
+      "send_precision": 0.75,
+      "send_coverage": 0.9012,
+      "wrong_send_rate": 0.1854,
+      "wrong_hold_rate": 0.061
+    },
+    "failure_breakdown": {
+      "wrong_decisions": 101,
+      "by_stage": {
+        "answerability": 63,
+        "guardrail": 18,
+        "other": 12,
+        "generation": 5,
+        "classification": 2,
+        "retrieval": 1
+      },
+      "by_reason": {
+        "answerability:sent_unanswerable": 63,
+        "guardrail:grounding:verdict": 18,
+        "other:sent_against_label": 12,
+        "generation:generator_unknown": 5,
+        "retrieval:no_expected_doc_retrieved": 1,
+        "classification:low_confidence": 1,
+        "classification:sent_never_auto_intent": 1
+      }
+    }
+  },
+  "technical_metrics": {
+    "latency_p50_seconds": 47.541,
+    "latency_p95_seconds": 57.945,
+    "latency_max_seconds": 121.395,
+    "classifier_failures": 0,
+    "generator_failures": 9,
+    "stage_latency": {
+      "n_live_tickets": 267,
+      "stages": {
+        "classification": {
+          "n": 267,
+          "p50": 2.994,
+          "p95": 4.038,
+          "mean": 3.25
+        },
+        "retrieval": {
+          "n": 267,
+          "p50": 0.363,
+          "p95": 0.592,
+          "mean": 0.344
+        },
+        "generation": {
+          "n": 267,
+          "p50": 16.462,
+          "p95": 20.638,
+          "mean": 16.924
+        },
+        "guardrails": {
+          "n": 267,
+          "p50": 30.017,
+          "p95": 35.897,
+          "mean": 28.63
+        }
+      },
+      "model_calls_per_ticket": {
+        "mean": 3.88,
+        "max": 5
+      }
+    },
+    "retrieval_hit_at_3": 0.9522,
+    "retrieval_answerable_n": 293,
+    "retrieval_recall_at_k": {
+      "recall@1": 0.7696,
+      "recall@3": 0.8618,
+      "recall@5": 0.9096
+    },
+    "unknown_correctness": {
+      "unanswerable_n": 115,
+      "declined_unanswerable": 11,
+      "answered_unanswerable": 104,
+      "declined_answerable": 1,
+      "precision": 0.9167,
+      "recall": 0.0957,
+      "generator_failures_excluded": 9
+    },
+    "citation_accuracy": {
+      "n": 285,
+      "precision": 0.8684,
+      "recall": 0.8351,
+      "citing_with_no_expected_doc": 104
+    },
+    "citation_accuracy_sent": {
+      "n": 241,
+      "precision": 0.8862,
+      "recall": 0.8195,
+      "citing_with_no_expected_doc": 63
+    },
+    "urgency_accuracy": {
+      "n": 410,
+      "accuracy": 0.5244,
+      "high_recall": 0.6393,
+      "high_called_low": 2,
+      "confusion": {
+        "high": {
+          "high": 78,
+          "low": 2,
+          "medium": 42
+        },
+        "low": {
+          "high": 25,
+          "low": 33,
+          "medium": 48
+        },
+        "medium": {
+          "high": 46,
+          "low": 32,
+          "medium": 104
+        }
+      }
+    },
+    "intent_per_class": {
+      "account_access": {
+        "support": 18,
+        "precision": 0.7222,
+        "recall": 0.7222
+      },
+      "api_key_issue": {
+        "support": 15,
+        "precision": 0.7895,
+        "recall": 1.0
+      },
+      "api_usage_question": {
+        "support": 19,
+        "precision": 0.5172,
+        "recall": 0.7895
+      },
+      "authentication_failure": {
+        "support": 15,
+        "precision": 1.0,
+        "recall": 0.6667
+      },
+      "billing_query": {
+        "support": 18,
+        "precision": 1.0,
+        "recall": 1.0
+      },
+      "compliance_request": {
+        "support": 22,
+        "precision": 0.9412,
+        "recall": 0.7273
+      },
+      "configuration_help": {
+        "support": 13,
+        "precision": 0.9286,
+        "recall": 1.0
+      },
+      "data_export": {
+        "support": 24,
+        "precision": 0.7273,
+        "recall": 1.0
+      },
+      "data_residency": {
+        "support": 26,
+        "precision": 0.8387,
+        "recall": 1.0
+      },
+      "database_issue": {
+        "support": 21,
+        "precision": 1.0,
+        "recall": 0.9524
+      },
+      "deployment_failure": {
+        "support": 17,
+        "precision": 0.7391,
+        "recall": 1.0
+      },
+      "feature_request": {
+        "support": 17,
+        "precision": 1.0,
+        "recall": 0.9412
+      },
+      "integration_help": {
+        "support": 15,
+        "precision": 0.0,
+        "recall": 0.0
+      },
+      "onboarding": {
+        "support": 22,
+        "precision": 0.8182,
+        "recall": 0.8182
+      },
+      "performance_degradation": {
+        "support": 20,
+        "precision": 0.8333,
+        "recall": 1.0
+      },
+      "quota_or_overage": {
+        "support": 19,
+        "precision": 1.0,
+        "recall": 1.0
+      },
+      "rate_limit": {
+        "support": 11,
+        "precision": 1.0,
+        "recall": 0.9091
+      },
+      "rollback_request": {
+        "support": 21,
+        "precision": 1.0,
+        "recall": 0.7143
+      },
+      "security_incident": {
+        "support": 23,
+        "precision": 1.0,
+        "recall": 1.0
+      },
+      "sso_configuration": {
+        "support": 21,
+        "precision": 0.8182,
+        "recall": 0.8571
+      },
+      "unclear_request": {
+        "support": 15,
+        "precision": 1.0,
+        "recall": 0.8667
+      },
+      "webhook_issue": {
+        "support": 18,
+        "precision": 1.0,
+        "recall": 0.7778
+      }
+    },
+    "intent_accuracy": 0.861
+  },
+  "governance_metrics": {
+    "decisions_logged": 410,
+    "reconciles": true,
+    "missing_from_log": [],
+    "extra_in_log": [],
+    "guardrail_activations": {
+      "confidence_floor": 13,
+      "grounding": 34,
+      "answer_relevance": 28,
+      "tone_scope": 1
+    },
+    "guardrail_fail_safe_blocks": {},
+    "pii_detections": 0,
+    "kill_switch_active": false,
+    "injection_suspected": 0,
+    "confidence_calibration": [
+      {
+        "bucket": "0.0-0.1",
+        "n": 11,
+        "stated_avg": 0.0,
+        "observed": 1.0,
+        "gap_pp": 100.0,
+        "sufficient_n": true
+      },
+      {
+        "bucket": "0.8-0.9",
+        "n": 171,
+        "stated_avg": 0.849,
+        "observed": 0.813,
+        "gap_pp": -3.7,
+        "sufficient_n": true
+      },
+      {
+        "bucket": "0.9-1.0",
+        "n": 228,
+        "stated_avg": 0.947,
+        "observed": 0.89,
+        "gap_pp": -5.7,
+        "sufficient_n": true
+      }
+    ],
+    "calibration_fallbacks_excluded": 0,
+    "max_calibration_gap_pp": 100.0,
+    "calibration_min_bucket_n": 5,
+    "brier_score": 0.1462,
+    "brier_n": 410
+  },
+  "cost_metrics": {
+    "model_cache_enabled": true,
+    "calls": 1605,
+    "live_calls": 1187,
+    "cached_calls": 418,
+    "calls_without_usage": 0,
+    "prompt_tokens": 2190615,
+    "completion_tokens": 103349,
+    "cost_usd": 0.0,
+    "unpriced_calls": 0,
+    "cached_prompt_tokens": 691450,
+    "cached_completion_tokens": 28403,
+    "cached_calls_without_counts": 45,
+    "cost_saved_usd": 0.0,
+    "by_stage": {
+      "classification": {
+        "calls": 410,
+        "cached_calls": 128,
+        "prompt_tokens": 376271,
+        "completion_tokens": 19415
+      },
+      "generation": {
+        "calls": 417,
+        "cached_calls": 81,
+        "prompt_tokens": 613487,
+        "completion_tokens": 45589
+      },
+      "guardrail": {
+        "calls": 778,
+        "cached_calls": 209,
+        "prompt_tokens": 1200857,
+        "completion_tokens": 38345
+      }
+    }
+  },
+  "wall_clock_seconds": 15436.7
+}

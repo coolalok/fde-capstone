@@ -97,3 +97,17 @@ def test_repeated_placeholder_substituted_every_occurrence():
 def test_load_prompt_raises_filenotfound_for_missing_id():
     with pytest.raises(FileNotFoundError):
         load_prompt("PR-DOES-NOT-EXIST")
+
+
+def test_load_prompt_reads_utf8_under_a_windows_default_encoding(monkeypatch):
+    """A1 on Windows: prompts contain '\u2014'. Read as cp1252 (the Windows
+    default) it reaches the model as mojibake. pathlib asks io.text_encoding()
+    for the default, so patching it reproduces Windows on any platform."""
+    import io
+
+    monkeypatch.setattr(io, "text_encoding",
+                        lambda encoding, stacklevel=2: encoding or "cp1252")
+    p = load_prompt("PR-GUARDRAIL-PII-01")
+    text = p.system + p.user_template
+    assert "\u2014" in text
+    assert "\u00e2\u20ac" not in text
