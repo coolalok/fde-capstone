@@ -25,6 +25,8 @@ refuses unless --force is given.
 
 Usage:
     python -m evaluation.judge_calibration build
+    python -m evaluation.judge_calibration build --results <run>/results.jsonl \
+        --tickets data/development_tickets.json --out <fixture> --generator <model>
 """
 from __future__ import annotations
 
@@ -151,37 +153,43 @@ def main(argv: Optional[list[str]] = None) -> int:
     ap = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     ap.add_argument("cmd", choices=["build"])
     ap.add_argument("--force", action="store_true", help="overwrite even if human scores exist")
+    ap.add_argument("--results", type=Path, default=RESULTS, help="harness results.jsonl to sample")
+    ap.add_argument("--tickets", type=Path, default=TICKETS, help="ticket file the run used")
+    ap.add_argument("--out", type=Path, default=FIXTURE, help="fixture to write")
+    ap.add_argument("--generator", default="gpt-4o-mini (B-21 run)", help="drafting model, recorded")
     args = ap.parse_args(argv)
+    results, out = args.results.resolve(), args.out.resolve()
 
-    if FIXTURE.exists() and has_human_scores(json.loads(FIXTURE.read_text())) and not args.force:
-        raise SystemExit(f"{FIXTURE} already holds human scores; refusing to overwrite")
+    if out.exists() and has_human_scores(json.loads(out.read_text())) and not args.force:
+        raise SystemExit(f"{out} already holds human scores; refusing to overwrite")
 
     from src.ingest import normalise_any
     from src.logging_config import configure_logging
     from src.logging_store import new_run_id, set_run_id
-    from src.retrieve import retrieve
+    from src.retrieve import retrieval_query, retrieve
 
     configure_logging()
     set_run_id(new_run_id("judge-calibration"))
-    tickets = {t["ticket_id"]: t for t in json.loads(TICKETS.read_text())}
-    rows = [json.loads(line) for line in RESULTS.open()]
+    tickets = {t["ticket_id"]: t for t in json.loads(args.tickets.read_text())}
+    rows = [json.loads(line) for line in results.open()]
     rows_by_id = {r["ticket_id"]: r for r in rows}
     ids = select_ticket_ids(rows, tickets)
     items = build_items(ids, rows_by_id, tickets,
-                        lambda tid: retrieve(normalise_any(tickets[tid]).body, ticket_id=tid))
+                        lambda tid: retrieve(retrieval_query(normalise_any(tickets[tid])),
+                                             ticket_id=tid))
     fixture = {
         "purpose": "B-18 human calibration set for PR-EVAL-JUDGE-01 (score blind; see README note)",
         "prompt_id": PROMPT_ID,
-        "source_run": str(RESULTS.relative_to(_ROOT)),
-        "generator": "gpt-4o-mini (B-21 run)",
+        "source_run": str(results.relative_to(_ROOT)),
+        "generator": args.generator,
         "seed": SEED,
         "excluded_worked_examples": list(FEW_SHOT_TICKETS),
         "dimensions": list(DIMENSIONS),
         "items": items,
     }
-    FIXTURE.parent.mkdir(parents=True, exist_ok=True)
-    FIXTURE.write_text(json.dumps(fixture, indent=1, ensure_ascii=False) + "\n")
-    print(f"[calibration] wrote {len(items)} items to {FIXTURE}")
+    out.parent.mkdir(parents=True, exist_ok=True)
+    out.write_text(json.dumps(fixture, indent=1, ensure_ascii=False) + "\n")
+    print(f"[calibration] wrote {len(items)} items to {out}")
     return 0
 
 

@@ -17,6 +17,7 @@ made from a different fixture.
 Usage:
     python -m evaluation.calibration_sheet build
     python -m evaluation.calibration_sheet import --scores ~/Downloads/judge_calibration_scores.json
+    python -m evaluation.calibration_sheet --fixture <fixture> build --out <sheet>
 """
 from __future__ import annotations
 
@@ -126,20 +127,22 @@ def import_scores(fixture: dict, payload: dict) -> dict:
 
 def main(argv: Optional[list[str]] = None) -> int:
     ap = argparse.ArgumentParser(description=__doc__.splitlines()[0])
+    ap.add_argument("--fixture", type=Path, default=FIXTURE, help="calibration fixture")
     sub = ap.add_subparsers(dest="cmd", required=True)
-    sub.add_parser("build")
+    build = sub.add_parser("build")
+    build.add_argument("--out", type=Path, default=SHEET, help="sheet to write")
     imp = sub.add_parser("import")
     imp.add_argument("--scores", required=True)
     args = ap.parse_args(argv)
-    fixture = json.loads(FIXTURE.read_text())
+    fixture = json.loads(args.fixture.read_text())
     if args.cmd == "build":
-        SHEET.parent.mkdir(parents=True, exist_ok=True)
-        SHEET.write_text(build_html(fixture, PROMPT_FILE.read_text()), encoding="utf-8")
-        print(f"[sheet] wrote {SHEET} ({len(fixture['items'])} items, "
+        args.out.parent.mkdir(parents=True, exist_ok=True)
+        args.out.write_text(build_html(fixture, PROMPT_FILE.read_text()), encoding="utf-8")
+        print(f"[sheet] wrote {args.out} ({len(fixture['items'])} items, "
               f"fixture {fixture_id(fixture)})")
         return 0
     report = import_scores(fixture, json.loads(Path(args.scores).read_text()))
-    FIXTURE.write_text(json.dumps(fixture, indent=1, ensure_ascii=False) + "\n")
+    args.fixture.write_text(json.dumps(fixture, indent=1, ensure_ascii=False) + "\n")
     print(f"[sheet] imported: {report}")
     return 0
 

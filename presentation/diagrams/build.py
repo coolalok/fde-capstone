@@ -1,7 +1,7 @@
 """Build the three architecture diagrams for the capstone video (1920x1080 SVG + PNG).
 
 Source of truth: docs/architecture.md and src/route.py in fde-capstone.
-Counts: evaluation/results/run_20260920 (80 validation tickets, 20 Sep 2026).
+Counts: evaluation/results/final_val_paid_80_20260927 (80 validation tickets, 27 Sep 2026).
 """
 from pathlib import Path
 from html import escape
@@ -113,7 +113,7 @@ def outcomes(cards, x=1566, w=304, y0=196, h=150, gap=18, route_mid=None):
 def diagram_a():
     b = []
     b.append(t(56, 78, "How a ticket moves through CloudServe Draft", size=46, weight=700))
-    b.append(t(56, 124, "Six steps, always in this order. The decision to send, hand over or hold back is made last, "
+    b.append(t(56, 124, "Six steps, always in this order. The decision to send, escalate or block is made last, "
                         "from what the first five found.", size=24, fill=MUTED))
     b.append(channels_card())
 
@@ -123,7 +123,7 @@ def diagram_a():
         ("3", "SEARCH", ["Find the passages", "in the 29 help", "articles that", "answer it"]),
         ("4", "DRAFT", ["Write a reply that", "cites those", "articles, or say", "\"I don't know\""]),
         ("5", "CHECK", ["Six safety checks", "on the draft.", "Any one of them", "can stop it"]),
-        ("6", "DECIDE", ["Send, hand over", "or hold back.", "Same ticket,", "same decision,", "every time"]),
+        ("6", "DECIDE", ["Send, escalate", "or block.", "Same ticket,", "same decision,", "every time"]),
     ]
     for i, (n, name, lines) in enumerate(stages):
         x = bx(i)
@@ -151,9 +151,9 @@ def diagram_a():
         b.append(t(xx + 22, yy, c, size=20))
 
     b.append(outcomes([
-        ("SEND", SEND, SEND_BG, ["A cited reply goes to", "the customer"], "48 of 80"),
-        ("HAND OVER", ESC, ESC_BG, ["A person gets the ticket with", "the articles found, the draft", "and why the system was unsure"], "24 of 80"),
-        ("HOLD BACK", BLOCK, BLOCK_BG, ["A check failed. The draft is", "withheld and a person", "reviews it; it is never sent as-is"], "8 of 80"),
+        ("SEND", SEND, SEND_BG, ["A cited reply goes to", "the customer"], "61 of 80"),
+        ("ESCALATE", ESC, ESC_BG, ["A person gets the ticket with", "the articles found, the draft", "and why the system was unsure"], "14 of 80"),
+        ("BLOCK", BLOCK, BLOCK_BG, ["A check failed. The draft is", "withheld and a person", "reviews it; it is never sent as-is"], "5 of 80"),
     ]))
 
     # around every step
@@ -174,8 +174,8 @@ def diagram_a():
         b.append(t(x + 18, y0 + 92, title, size=22, weight=700, fill=MUTED if dashed else INK))
         b.append(t(x + 18, y0 + 122, lines, size=19, fill=MUTED if dashed else INK, lh=1.2))
 
-    b.append(t(56, 1040, "Source: docs/architecture.md. Counts are from the graded run of 20 Sep 2026 "
-                         "(run_20260920, 80 validation tickets).", size=17, fill=MUTED))
+    b.append(t(56, 1040, "Source: docs/architecture.md. Counts are from the graded run of 27 Sep 2026 "
+                         "(final_val_paid_80_20260927, 80 validation tickets).", size=17, fill=MUTED))
     return svg("".join(b))
 
 
@@ -188,14 +188,14 @@ def diagram_b():
     rules = [
         ("0", "Is the kill switch on?", "kill_switch_active", "D-15", "esc", "0"),
         ("1", "Did a decision fail to reach the log?", "decision_not_logged", "D-03b", "esc", "0"),
-        ("2", "Did any of the five checks that read the draft fail?", "guardrail_blocked", "D-14", "blk", "8"),
+        ("2", "Did any of the five checks that read the draft fail?", "guardrail_blocked", "D-14", "blk", "5"),
         ("2b", "Was a prompt-injection attempt flagged on the way in?", "injection_suspected", "D-16", "esc", "0"),
         ("3", "Is it an intent that never auto-answers? (compliance, security incident, feature request, unclear, unknown)",
-         "never_auto_respond_intent", "D-07", "esc", "13"),
+         "never_auto_respond_intent", "D-07", "esc", "14"),
         ("4", "Did search find nothing above the 0.25 relevance floor?", "empty_retrieval", "D-02a", "esc", "0"),
         ("5", "Did the drafter say the articles do not answer it?", "generator_unknown", "FR-14", "esc", "0"),
-        ("6", "Is the classifier's confidence below 0.85?", "low_confidence", "D-05b", "esc", "11"),
-        ("", "None of the above: confident and grounded", "confident_and_grounded", "", "send", "48"),
+        ("6", "Is the classifier's confidence below 0.85?", "low_confidence", "D-05b", "esc", "0"),
+        ("", "None of the above: confident and grounded", "confident_and_grounded", "", "send", "61"),
     ]
     x0, y0, rh, rg = 56, 164, 84, 10
     colx = {"q": 150, "out": 1140, "trig": 1350, "adr": 1655, "n": 1850}
@@ -206,7 +206,7 @@ def diagram_b():
     b.append(t(colx["adr"], y0 + 6, "Decision", size=19, weight=700, fill=MUTED))
     b.append(t(colx["n"], y0 + 6, "Graded run", size=19, weight=700, fill=MUTED, anchor="end"))
     y = y0 + 22
-    styles = {"esc": ("HAND OVER", ESC, ESC_BG), "blk": ("HOLD BACK", BLOCK, BLOCK_BG), "send": ("SEND", SEND, SEND_BG)}
+    styles = {"esc": ("ESCALATE", ESC, ESC_BG), "blk": ("BLOCK", BLOCK, BLOCK_BG), "send": ("SEND", SEND, SEND_BG)}
     for n, q, trig, adr, kind, cnt in rules:
         label, col, bg = styles[kind]
         last = kind == "send"
@@ -232,8 +232,8 @@ def diagram_b():
         if not last:
             b.append(arrow(x0 + 44, y + rh / 2 + 17, x0 + 44, y + rh + rg + rh / 2 - 19, color=LINE, sw=2.5))
         y += rh + rg
-    b.append(t(56, 1050, "Source: src/route.py and docs/architecture.md §6. Counts: run_20260920, 80 validation tickets "
-                         "(48 sent, 24 handed over, 8 held back).", size=17, fill=MUTED))
+    b.append(t(56, 1050, "Source: src/route.py and docs/architecture.md §6. Counts: final_val_paid_80_20260927, 80 validation tickets "
+                         "(61 sent, 14 escalated, 5 blocked).", size=17, fill=MUTED))
     return svg("".join(b))
 
 
@@ -287,9 +287,9 @@ def diagram_c():
                size=16, fill=MUTED, style="italic"))
 
     b.append(outcomes([
-        ("auto_respond", SEND, SEND_BG, ["confident_and_grounded", "Cited reply sent"], "48 / 80"),
-        ("escalate", ESC, ESC_BG, ["Rules 0, 1, 2b, 3, 4, 5, 6", "EscalationBundle: passages,", "top-3 intents, draft, reason"], "24 / 80"),
-        ("block", BLOCK, BLOCK_BG, ["Rule 2: a draft check failed", "Draft travels flagged", "draft_blocked, never sendable"], "8 / 80"),
+        ("auto_respond", SEND, SEND_BG, ["confident_and_grounded", "Cited reply sent"], "61 / 80"),
+        ("escalate", ESC, ESC_BG, ["Rules 0, 1, 2b, 3, 4, 5, 6", "EscalationBundle: passages,", "top-3 intents, draft, reason"], "14 / 80"),
+        ("block", BLOCK, BLOCK_BG, ["Rule 2: a draft check failed", "Draft travels flagged", "draft_blocked, never sendable"], "5 / 80"),
     ]))
 
     # cross-cutting / persistence
@@ -310,7 +310,7 @@ def diagram_c():
         b.append(t(x + 16, y0 + 84, title, size=21, weight=700, fill=MUTED if dashed else INK))
         b.append(t(x + 16, y0 + 112, lines, size=17, fill=MUTED if dashed else INK, lh=1.25))
     b.append(t(56, 1046, "Source: docs/architecture.md, src/route.py, docs/adr/. Free-tier corroboration: "
-                         "llama3.1-8b + qwen2.5-7b via Ollama, 80/80 on 19 Sep. Counts: run_20260920.", size=16, fill=MUTED))
+                         "llama3.1-8b + qwen2.5-7b via Ollama, 50/50 dev tickets on 27 Sep, $0. Counts: final_val_paid_80_20260927.", size=16, fill=MUTED))
     return svg("".join(b))
 
 

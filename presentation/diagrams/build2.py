@@ -118,7 +118,7 @@ def diagram_d():
     b.append(rect(cx0, iy + 240, 1520, 48, fill=LLM_BG, stroke=LLM, sw=1.5, r=10))
     b.append(t(cx0 + 18, iy + 271, "Model providers:", size=18, weight=700, fill=LLM))
     b.append(t(cx0 + 176, iy + 271, "graded run gpt-4o-mini (drafts) + gpt-4o (guardrails)   ·   free tier: Ollama "
-                                    "llama3.1-8b + qwen2.5-7b, 80/80 on 19 Sep   ·   OpenRouter (D-01)", size=18))
+                                    "llama3.1-8b + qwen2.5-7b, 50 dev tickets on 27 Sep at $0   ·   OpenRouter (D-01)", size=18))
 
     b.append(t(56, 1046, "Source: docs/architecture.md (Layers) and src/. Chips show which infrastructure each module uses.",
                size=16, fill=MUTED))
