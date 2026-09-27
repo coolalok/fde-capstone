@@ -156,7 +156,8 @@ def main(argv: Optional[list[str]] = None) -> int:
     ap.add_argument("--results", type=Path, default=RESULTS, help="harness results.jsonl to sample")
     ap.add_argument("--tickets", type=Path, default=TICKETS, help="ticket file the run used")
     ap.add_argument("--out", type=Path, default=FIXTURE, help="fixture to write")
-    ap.add_argument("--generator", default="gpt-4o-mini (B-21 run)", help="drafting model, recorded")
+    ap.add_argument("--generator", default="gpt-4o-mini (B-21 run)",
+                    help="drafting model, recorded")
     args = ap.parse_args(argv)
     results, out = args.results.resolve(), args.out.resolve()
 
