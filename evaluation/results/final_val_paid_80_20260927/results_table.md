@@ -1,6 +1,6 @@
 # Evaluation results
 
-Run `harness-20260927T101501Z-10995e3f` on 2026-09-27: 80 tickets. Code `a288388 + uncommitted changes` at table generation. Drafting model `gpt-4o-mini`, guardrail model `gpt-4o`, confidence threshold 0.85, guardrails on. Model cache off (0 cached calls, 304 live); 0 tickets replayed. Runs against the hidden evaluation set: 0.
+Run `harness-20260927T101501Z-10995e3f` on 2026-09-27: 80 tickets. Code `47e0bc1` at table generation. Drafting model `gpt-4o-mini`, guardrail model `gpt-4o`, confidence threshold 0.85, guardrails on. Model cache off (0 cached calls, 304 live); 0 tickets replayed. Runs against the hidden evaluation set: 0.
 
 | Measure | Baseline | Target | Achieved | Confidence in the figure | Notes |
 |---|---|---|---|---|---|
