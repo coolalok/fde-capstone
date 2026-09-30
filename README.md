@@ -4,8 +4,6 @@ An intelligent customer support system for CloudServe Solutions (fictional clien
 Built for the Forward Deployed AI Engineering capstone project.
 
 **Author:** Alok Kulkarni
-**Deadline:** 20 September 2026
-**Status:** Week 3 — submission-ready
 
 ---
 
